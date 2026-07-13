@@ -1,0 +1,202 @@
+/* ============================================
+   MATERIAL DESIGN 3 — Complete Token System
+   For COMPr — WhatsApp Media Optimizer
+   Sources: m3.material.io/foundations & /styles
+   ============================================ */
+
+/* ---- 1. COLOR SYSTEM ---- */
+:root {
+  --md-sys-color-primary: #1DA851;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #075E54;
+  --md-sys-color-on-primary-container: #FFFFFF;
+  --md-sys-color-secondary: #128C7E;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #E0F2F0;
+  --md-sys-color-on-secondary-container: #05201C;
+  --md-sys-color-tertiary: #6D4F8C;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #EFE2F9;
+  --md-sys-color-on-tertiary-container: #230B3A;
+  --md-sys-color-error: #B3261E;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-error-container: #F9DEDC;
+  --md-sys-color-on-error-container: #410E0B;
+  --md-sys-color-surface: #FBFCF8;
+  --md-sys-color-on-surface: #1A1C19;
+  --md-sys-color-surface-variant: #DFE4DB;
+  --md-sys-color-on-surface-variant: #43483E;
+  --md-sys-color-surface-container-lowest: #FFFFFF;
+  --md-sys-color-surface-container-low: #F5F7F2;
+  --md-sys-color-surface-container: #EFF1EC;
+  --md-sys-color-surface-container-high: #E9EBE6;
+  --md-sys-color-surface-container-highest: #DDE0DB;
+  --md-sys-color-background: #FBFCF8;
+  --md-sys-color-on-background: #1A1C19;
+  --md-sys-color-outline: #74786D;
+  --md-sys-color-outline-variant: #C4C8BF;
+  --md-sys-color-inverse-surface: #2E312D;
+  --md-sys-color-inverse-on-surface: #F1F3EE;
+  --md-sys-color-inverse-primary: #A2D9B5;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-surface-tint: #1DA851;
+}
+
+/* ---- 2. TYPOGRAPHY SYSTEM ---- */
+:root {
+  --md-ref-typeface-brand: 'Roboto', system-ui, -apple-system, sans-serif;
+  --md-ref-typeface-plain: 'Roboto', system-ui, -apple-system, sans-serif;
+
+  /* Display */
+  --md-sys-typescale-display-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-large-weight: 400;
+  --md-sys-typescale-display-large-size: 57px;
+  --md-sys-typescale-display-large-line-height: 64px;
+  --md-sys-typescale-display-large-letter-spacing: -0.25px;
+
+  --md-sys-typescale-display-medium-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-medium-weight: 400;
+  --md-sys-typescale-display-medium-size: 45px;
+  --md-sys-typescale-display-medium-line-height: 52px;
+  --md-sys-typescale-display-medium-letter-spacing: 0;
+
+  --md-sys-typescale-display-small-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-small-weight: 400;
+  --md-sys-typescale-display-small-size: 36px;
+  --md-sys-typescale-display-small-line-height: 44px;
+  --md-sys-typescale-display-small-letter-spacing: 0;
+
+  /* Headline */
+  --md-sys-typescale-headline-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-large-weight: 400;
+  --md-sys-typescale-headline-large-size: 32px;
+  --md-sys-typescale-headline-large-line-height: 40px;
+  --md-sys-typescale-headline-large-letter-spacing: 0;
+
+  --md-sys-typescale-headline-medium-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-medium-weight: 400;
+  --md-sys-typescale-headline-medium-size: 28px;
+  --md-sys-typescale-headline-medium-line-height: 36px;
+  --md-sys-typescale-headline-medium-letter-spacing: 0;
+
+  --md-sys-typescale-headline-small-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-small-weight: 400;
+  --md-sys-typescale-headline-small-size: 24px;
+  --md-sys-typescale-headline-small-line-height: 32px;
+  --md-sys-typescale-headline-small-letter-spacing: 0;
+
+  /* Title */
+  --md-sys-typescale-title-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-title-large-weight: 400;
+  --md-sys-typescale-title-large-size: 22px;
+  --md-sys-typescale-title-large-line-height: 28px;
+  --md-sys-typescale-title-large-letter-spacing: 0;
+
+  --md-sys-typescale-title-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-title-medium-weight: 500;
+  --md-sys-typescale-title-medium-size: 16px;
+  --md-sys-typescale-title-medium-line-height: 24px;
+  --md-sys-typescale-title-medium-letter-spacing: 0.15px;
+
+  --md-sys-typescale-title-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-title-small-weight: 500;
+  --md-sys-typescale-title-small-size: 14px;
+  --md-sys-typescale-title-small-line-height: 20px;
+  --md-sys-typescale-title-small-letter-spacing: 0.1px;
+
+  /* Body */
+  --md-sys-typescale-body-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-large-weight: 400;
+  --md-sys-typescale-body-large-size: 16px;
+  --md-sys-typescale-body-large-line-height: 24px;
+  --md-sys-typescale-body-large-letter-spacing: 0.5px;
+
+  --md-sys-typescale-body-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-medium-weight: 400;
+  --md-sys-typescale-body-medium-size: 14px;
+  --md-sys-typescale-body-medium-line-height: 20px;
+  --md-sys-typescale-body-medium-letter-spacing: 0.25px;
+
+  --md-sys-typescale-body-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-small-weight: 400;
+  --md-sys-typescale-body-small-size: 12px;
+  --md-sys-typescale-body-small-line-height: 16px;
+  --md-sys-typescale-body-small-letter-spacing: 0.4px;
+
+  /* Label */
+  --md-sys-typescale-label-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-large-weight: 500;
+  --md-sys-typescale-label-large-size: 14px;
+  --md-sys-typescale-label-large-line-height: 20px;
+  --md-sys-typescale-label-large-letter-spacing: 0.1px;
+
+  --md-sys-typescale-label-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-medium-weight: 500;
+  --md-sys-typescale-label-medium-size: 12px;
+  --md-sys-typescale-label-medium-line-height: 16px;
+  --md-sys-typescale-label-medium-letter-spacing: 0.5px;
+
+  --md-sys-typescale-label-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-small-weight: 400;
+  --md-sys-typescale-label-small-size: 11px;
+  --md-sys-typescale-label-small-line-height: 16px;
+  --md-sys-typescale-label-small-letter-spacing: 0.5px;
+}
+
+/* ---- 3. SHAPE SYSTEM ---- */
+:root {
+  --md-sys-shape-corner-none: 0px;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-full: 9999px;
+}
+
+/* ---- 4. ELEVATION SYSTEM ---- */
+:root {
+  --md-sys-elevation-shadow-color: var(--md-sys-color-shadow);
+
+  --md-sys-elevation-level-0: none;
+
+  --md-sys-elevation-level-1: 
+    0px 1px 2px 0px var(--md-sys-color-shadow / 0.30),
+    0px 1px 3px 1px var(--md-sys-color-shadow / 0.15);
+
+  --md-sys-elevation-level-2: 
+    0px 1px 2px 0px var(--md-sys-color-shadow / 0.30),
+    0px 2px 6px 2px var(--md-sys-color-shadow / 0.15);
+
+  --md-sys-elevation-level-3: 
+    0px 4px 8px 3px var(--md-sys-color-shadow / 0.15),
+    0px 1px 3px 0px var(--md-sys-color-shadow / 0.30);
+
+  --md-sys-elevation-level-4: 
+    0px 6px 10px 4px var(--md-sys-color-shadow / 0.15),
+    0px 2px 3px 0px var(--md-sys-color-shadow / 0.30);
+
+  --md-sys-elevation-level-5: 
+    0px 8px 12px 6px var(--md-sys-color-shadow / 0.15),
+    0px 4px 4px 0px var(--md-sys-color-shadow / 0.30);
+}
+
+/* ---- 5. MOTION SYSTEM ---- */
+:root {
+  /* Durations */
+  --md-ref-motion-duration-short-1: 50ms;
+  --md-ref-motion-duration-short-2: 100ms;
+  --md-ref-motion-duration-medium-1: 250ms;
+  --md-ref-motion-duration-medium-2: 300ms;
+  --md-ref-motion-duration-long-1: 500ms;
+  --md-ref-motion-duration-long-2: 700ms;
+
+  /* Easing */
+  --md-ref-motion-easing-emphasized: cubic-bezier(0.2, 0.0, 0.0, 1.0);
+  --md-ref-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1.0);
+  --md-ref-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0.0, 0.8, 0.15);
+  --md-ref-motion-easing-standard: cubic-bezier(0.2, 0.0, 0.0, 1.0);
+  --md-ref-motion-easing-standard-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1.0);
+  --md-ref-motion-easing-standard-accelerate: cubic-bezier(0.3, 0.0, 1.0, 1.0);
+  --md-ref-motion-easing-linear: cubic-bezier(0.0, 0.0, 1.0, 1.0);
+}

@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /pricing
+Allow: /how-it-works
+
+# Job pages contain transient, user-specific processing state and
+# presigned download links — never crawlable or indexable.
+Disallow: /jobs/
+Disallow: /api/
+
+Sitemap: https://compr.app/sitemap.xml
+Crawl-delay: 1

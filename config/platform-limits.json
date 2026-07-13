@@ -1,0 +1,32 @@
+{
+  "_comment": "Config table for WhatsApp platform-dependent constants. Loaded at runtime, never hardcoded in pipeline code, because WhatsApp has changed the Status duration limit twice in under two years (30s -> 60s -> 90s). Update this file (or its DB-backed equivalent, PlatformLimit in schema.prisma) after each Milestone-2-style empirical re-validation pass.",
+  "STATUS": {
+    "maxDurationSec": 90,
+    "maxResolution": { "width": 1280, "height": 720 },
+    "maxSizeMB": 16,
+    "container": "mp4",
+    "videoCodec": "libx264",
+    "audioCodec": "aac",
+    "effectiveFrom": "2026-07-01",
+    "notes": "Raised from 30s -> 60s -> 90s over 2024-2026. Resolution ceiling commonly reported at 720p despite portrait display. Re-verify empirically before every major release."
+  },
+  "CHAT": {
+    "maxDurationSec": null,
+    "maxResolution": { "width": 1280, "height": 720 },
+    "maxSizeMB": 16,
+    "container": "mp4",
+    "videoCodec": "libx264",
+    "audioCodec": "aac",
+    "effectiveFrom": "2026-07-01",
+    "notes": "No app-enforced duration ceiling; practical ceiling driven by the 16MB re-encode trigger."
+  },
+  "CUSTOM": {
+    "minSizeMB": 1,
+    "maxSizeMB": 16,
+    "notes": "Bounded to WhatsApp's actual media-message compression trigger range, not an arbitrary ceiling."
+  },
+  "IMAGE": {
+    "STATUS": { "maxLongEdgePx": 1080 },
+    "CHAT": { "maxLongEdgePx": 1600 }
+  }
+}
