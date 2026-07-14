@@ -12,7 +12,7 @@ trigger: always_on
 
 ## 2. Mandatory PostHog Events (PRD §28)
 
-The following events MUST be captured, where applicable, to measure success metrics:
+The following 19 events MUST be captured, where applicable, to measure success metrics:
 
 - `upload_started`, `upload_completed`, `upload_failed`
 - `onboarding_answered`, `onboarding_skipped`

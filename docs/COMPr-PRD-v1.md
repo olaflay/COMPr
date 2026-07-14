@@ -11,7 +11,7 @@ COMPr is a mobile-first Progressive Web App (PWA) that prepares photos and video
 
 COMPr does not bypass, disable, or trick WhatsApp's compression. It never claims to. It pre-optimizes media so that whatever compression WhatsApp applies afterward has less damage to do.
 
-**Measurable quality bar:** "As good as possible" is defined concretely — COMPr's output, after passing through actual WhatsApp compression, must score at least 0.05 higher on SSIM than an unprocessed original sent at the same final delivered file size, measured against a fixed 20-clip reference test set before launch (Section 13, Section 36). This bar is enforced by a working SSIM verification step (`lib/pipeline.js`), not just a target on paper.
+**Measurable quality bar:** "As good as possible" is defined concretely — COMPr's output, after passing through actual WhatsApp compression, must score at least 0.05 higher on SSIM than an unprocessed original sent at the same final delivered file size, measured against a fixed 20-clip reference test set before launch (Section 13, Section 36). This bar is enforced by a working SSIM verification step (`lib/pipeline.ts`), not just a target on paper.
 
 ## 2. Product Summary
 
@@ -87,32 +87,33 @@ Sends birthday videos, family clips, memes. Wants zero-configuration: upload, do
 
 **FR-1 Upload:** Accept single or (premium) multi-file upload via file picker or drag-drop. Enforce format allowlist and size ceiling (Section 10). Upload must support resumable/chunked transfer.
 
-**FR-2 Smart Default Preset Selection:** On file analysis, the system pre-selects the most likely-correct preset — WhatsApp Status, WhatsApp Chat, or Custom Target Size — using the heuristic implemented in `lib/smart-defaults.js`: portrait video under the current Status duration ceiling defaults to Status; landscape or over-ceiling defaults to Chat; small portrait images default to Status, other images default to Chat. The user sees this as a pre-selected, one-tap-to-change chip rather than a blank decision (see Section 12, "Smart Defaults"). Custom Target Size is bounded **1–16MB**, matching WhatsApp's actual media-message compression trigger — not an arbitrary ceiling. UI copy explains: "For files larger than this, WhatsApp sends as a document instead of compressing — that's a different use case than what this tool optimizes for."
+**FR-2 Smart Default Preset Selection:** On file analysis, the system pre-selects the most likely-correct preset — WhatsApp Status, WhatsApp Chat, or Custom Target Size — using the heuristic implemented in `lib/smart-defaults.ts`: portrait video under the current Status duration ceiling defaults to Status; landscape or over-ceiling defaults to Chat; small portrait images default to Status, other images default to Chat. The user sees this as a pre-selected, one-tap-to-change chip rather than a blank decision (see Section 12, "Smart Defaults"). Custom Target Size is bounded **1–16MB**, matching WhatsApp's actual media-message compression trigger — not an arbitrary ceiling. UI copy explains: "For files larger than this, WhatsApp sends as a document instead of compressing — that's a different use case than what this tool optimizes for."
 
-**FR-3 Media Analysis:** System probes the file (via `ffprobe`) for resolution, duration, codec, bitrate, container, frame rate, and (for images) dimensions/format. Implemented in `lib/pipeline.js`'s `probe()`.
+**FR-3 Media Analysis:** System probes the file (via `ffprobe`) for resolution, duration, codec, bitrate, container, frame rate, and (for images) dimensions/format. Implemented in `lib/pipeline.ts`'s `probe()`.
 
 **FR-4 Automatic Parameter Selection:** System computes target resolution, bitrate, codec, and container from analysis + preset, per Section 14 logic and the Section 16 config table (`config/platform-limits.json`). No user-facing sliders for these values in MVP.
 
-**FR-5 Compression Execution:** FFmpeg job runs server-side in a worker process, queued via BullMQ. Implemented in `lib/pipeline.js`'s `encode()`.
+**FR-5 Compression Execution:** FFmpeg job runs server-side in a worker process, queued via BullMQ. Implemented in `lib/pipeline.ts`'s `encode()`.
 
 **FR-6 Video Splitting:** If preset is "WhatsApp Status" and source duration exceeds the current Status per-item duration ceiling (90 seconds, per `config/platform-limits.json`), the system automatically splits into sequential segments, each independently optimized. This is a secondary/minority-case feature, not a headline Phase 1 workflow, since most user clips fall under the current 90-second ceiling.
 
-**FR-7 Quality Verification — two distinct retry paths (implemented in `lib/pipeline.js`'s `runPipeline()`):**
-- **Size-triggered retry:** if output file size is outside tolerance (±10%) of target, adjust bitrate by the measured delta (`lib/bitrate.js`'s `adjustBitrateForSizeRetry`) and re-encode.
-- **Quality-triggered retry:** if the SSIM check (sampled at fixed 2-second intervals across the full duration, `lib/pipeline.js`'s `measureSSIM`) flags degradation below a 0.90 floor, drop one resolution tier (`lib/resolution.js`'s `dropOneResolutionTier`) and recompute bitrate — a different corrective lever than the size path, since re-encoding at the same bitrate would reproduce the same artifacts.
+**FR-7 Quality Verification — two distinct retry paths (implemented in `lib/pipeline.ts`'s `runPipeline()`):**
+
+- **Size-triggered retry:** if output file size is outside tolerance (±10%) of target, adjust bitrate by the measured delta (`lib/bitrate.ts`'s `adjustBitrateForSizeRetry`) and re-encode.
+- **Quality-triggered retry:** if the SSIM check (sampled at fixed 2-second intervals across the full duration, `lib/pipeline.ts`'s `measureSSIM`) flags degradation below a 0.90 floor, drop one resolution tier (`lib/resolution.ts`'s `dropOneResolutionTier`) and recompute bitrate — a different corrective lever than the size path, since re-encoding at the same bitrate would reproduce the same artifacts.
 - Maximum 2 retries total across both paths combined.
 
-**FR-8 Goal-Gradient Progress Indicator:** Client polls or subscribes (SSE/WebSocket) to job status: `queued → analyzing → encoding → verifying → done/failed`. The displayed percentage is intentionally front-loaded (`lib/progress-stages.js`) so early, fast stages visibly move the bar rather than sitting near 0%, and the final stretch shows a counting-down step indicator ("1 step left") rather than a raw percentage — exploiting the goal gradient effect without misrepresenting actual job state, which remains truthfully tracked server-side.
+**FR-8 Goal-Gradient Progress Indicator:** Client polls or subscribes (SSE/WebSocket) to job status: `queued → analyzing → encoding → verifying → done/failed`. The displayed percentage is intentionally front-loaded (`lib/progress-stages.ts`) so early, fast stages visibly move the bar rather than sitting near 0%, and the final stretch shows a counting-down step indicator ("1 step left") rather than a raw percentage — exploiting the goal gradient effect without misrepresenting actual job state, which remains truthfully tracked server-side.
 
 **FR-9 Download with Before/After Proof:** On completion, user is shown a download button **and a visual before/after frame comparison** (source frame vs. optimized output frame, side-by-side or slider) alongside the size comparison — the size number alone does not demonstrate the product's core value proposition. For Status splits, one button per segment plus a "download all as zip" option.
 
 **FR-10 Auto-Deletion:** Uploaded source and processed output files are deleted from storage after a fixed retention window (Section 22/24), via a single deletion code path (the cleanup cron job is the sole writer of `deletedAt`) rather than two uncoordinated mechanisms.
 
-**FR-11 Usage Limits with First-Job Reciprocity:** Free tier is limited to an initial 5 jobs/day (explicitly an initial value, to be tuned from real Phase 1 usage data). **The first job for any new fingerprint always runs the full pipeline and shows the full before/after comparison**, regardless of remaining quota (`lib/growth-ux.js`'s `isFirstJobExemptFromQuota`) — every new user experiences real value once before ever hitting a limit or an upsell screen. Premium tier has a high daily cap (initial: 100 jobs/day) rather than unbounded "unlimited," to bound compute cost, plus batch upload.
+**FR-11 Usage Limits with First-Job Reciprocity:** Free tier is limited to an initial 5 jobs/day (explicitly an initial value, to be tuned from real Phase 1 usage data). **The first job for any new fingerprint always runs the full pipeline and shows the full before/after comparison**, regardless of remaining quota (`lib/growth-ux.ts`'s `isFirstJobExemptFromQuota`) — every new user experiences real value once before ever hitting a limit or an upsell screen. Premium tier has a high daily cap (initial: 100 jobs/day) rather than unbounded "unlimited," to bound compute cost, plus batch upload.
 
-**FR-12 Loss-Aversion Upsell Framing:** When quota is exhausted, the upsell screen leads with what the user is giving up by staying on the free tier (`lib/growth-ux.js`'s `buildUpsellCopy`) — e.g., files sent at lower quality once the daily limit is hit — shown *before* the subscription price, so the price is judged against that cost rather than in isolation (contrast effect).
+**FR-12 Loss-Aversion Upsell Framing:** When quota is exhausted, the upsell screen leads with what the user is giving up by staying on the free tier (`lib/growth-ux.ts`'s `buildUpsellCopy`) — e.g., files sent at lower quality once the daily limit is hit — shown *before* the subscription price, so the price is judged against that cost rather than in isolation (contrast effect).
 
-**FR-13 Light Onboarding Preferences (IKEA Effect):** Before a new user's first upload, two lightweight, non-blocking preference questions (`lib/growth-ux.js`'s `ONBOARDING_QUESTIONS`) — what they mainly share, and what matters most to them — bias copy tone and default emphasis. Answers are never required and never gate functionality; this preserves the no-login constraint while giving the user a small stake in shaping their own experience.
+**FR-13 Light Onboarding Preferences (IKEA Effect):** Before a new user's first upload, two lightweight, non-blocking preference questions (`lib/growth-ux.ts`'s `ONBOARDING_QUESTIONS`) — what they mainly share, and what matters most to them — bias copy tone and default emphasis. Answers are never required and never gate functionality; this preserves the no-login constraint while giving the user a small stake in shaping their own experience.
 
 **FR-14 Error Surfacing:** Any failure (unsupported format, corrupt file, encode failure) surfaces a plain-language error with a retry option.
 
@@ -150,13 +151,14 @@ Sends birthday videos, family clips, memes. Wants zero-configuration: upload, do
 ## 12. UX Principles
 
 **Visual design system:**
+
 - **Material 3 (M3)** governs structural components and visual styling: buttons, sheets, elevation tokens, shape system, motion curves, color tokens. Followed as specified, not diluted.
 - **Apple-native simplicity** is scoped specifically to information architecture, not component styling: one primary decision per screen (softened further by smart defaults below), minimal screen count, restrained copy, no nested menus. It does not mean flattening M3's elevation or component style — those stay M3.
 - **WhatsApp visual familiarity:** Primary accent color drawn from WhatsApp's teal/green family (ASSUMPTION: `#25D366` accent, `#075E54` deep accent), applied within the M3 color token system.
 - **Zero jargon:** No mention of "bitrate," "codec," or "resolution" in the user-facing UI. Internally computed, never exposed, unless the user opts into an "Advanced" collapsed section (post-MVP).
 - **Trust signals:** Explicit, persistent microcopy near upload: "Files are deleted automatically after processing" and "We never post to WhatsApp for you."
 
-**Conversion & behavioral UX patterns (implemented, not just described — see `lib/growth-ux.js`, `lib/smart-defaults.js`, `lib/progress-stages.js`):**
+**Conversion & behavioral UX patterns (implemented, not just described — see `lib/growth-ux.ts`, `lib/smart-defaults.ts`, `lib/progress-stages.ts`):**
 
 - **Smart Defaults:** The preset decision is pre-made from file analysis (FR-2) so the user starts from an already-good choice instead of a blank state, which is where most onboarding drop-off happens.
 - **Goal Gradient Effect:** Progress display is front-loaded and finishes with a step countdown rather than a flat percentage (FR-8), so the app visibly speeds toward completion rather than reporting mechanically.
@@ -166,15 +168,16 @@ Sends birthday videos, family clips, memes. Wants zero-configuration: upload, do
 - **Contrast Effect:** The "cost of staying free" is shown before the subscription price, so the price is anchored against that cost rather than judged in isolation (FR-12).
 
 ## 13. Automated Processing Pipeline
+
 *(Named "Automated," not "AI" — the pipeline is deterministic rule-based logic and a bitrate formula, not machine learning or generative AI, consistent with Section 6's non-goals.)*
 
 1. **Upload:** Client obtains a presigned R2 upload URL (60-minute expiry, chosen to accommodate constrained-network users per Section 10) from the API, uploads directly to storage with resumable/chunked support.
 2. **File Validation:** Worker verifies real file type via magic-byte sniffing (not just extension), checks size ceiling, rejects corrupt/unreadable files.
-3. **Media Analysis:** `ffprobe` extracts duration, resolution, frame rate, codec, container, audio stream info (video) or dimensions/format/EXIF (images). Implemented and verified against a real generated 1080p/10s test clip in `lib/pipeline.js`.
-4. **Smart Default + Bitrate Calculation:** `lib/smart-defaults.js` selects the likely preset; `lib/bitrate.js` computes target video/audio bitrate from target size and duration (Section 14).
-5. **Resolution Optimization:** `lib/resolution.js` balances resolution vs. bitrate, never upscaling past source resolution, capped at the preset's config-table ceiling.
+3. **Media Analysis:** `ffprobe` extracts duration, resolution, frame rate, codec, container, audio stream info (video) or dimensions/format/EXIF (images). Implemented and verified against a real generated 1080p/10s test clip in `lib/pipeline.ts`.
+4. **Smart Default + Bitrate Calculation:** `lib/smart-defaults.ts` selects the likely preset; `lib/bitrate.ts` computes target video/audio bitrate from target size and duration (Section 14).
+5. **Resolution Optimization:** `lib/resolution.ts` balances resolution vs. bitrate, never upscaling past source resolution, capped at the preset's config-table ceiling.
 6. **Compression:** FFmpeg executes with computed parameters, using the adaptive preset/pass ladder (Section 19).
-7. **Quality Verification:** Output file size compared against target tolerance (±10%); SSIM is sampled at fixed 2-second intervals across the full duration (implemented in `lib/pipeline.js`'s `measureSSIM`, which scales the source to match output resolution via `scale2ref` before comparing). Size or quality failures trigger the two distinct retry paths defined in FR-7.
+7. **Quality Verification:** Output file size compared against target tolerance (±10%); SSIM is sampled at fixed 2-second intervals across the full duration (implemented in `lib/pipeline.ts`'s `measureSSIM`, which scales the source to match output resolution via `scale2ref` before comparing). Size or quality failures trigger the two distinct retry paths defined in FR-7.
 8. **Status Splitting:** Only triggered if duration exceeds the current Status per-item ceiling; split at fixed-interval cut points before final encode (scene-aware cuts are a Phase 2 enhancement).
 9. **Download:** Output pushed to R2, presigned download URL returned to client; source file marked for deletion via the single deletion code path.
 
@@ -182,34 +185,35 @@ Sends birthday videos, family clips, memes. Wants zero-configuration: upload, do
 
 Given a target output file size `S_target` (in megabytes) and media duration `D` (seconds):
 
-```
+```text
 BitrateTotal (kbps) = (S_target_MB * 8 * 1024) / D_seconds
 ```
 
 Split between video and audio streams:
 
-```
+```text
 AudioBitrate (kbps) = clamp(64, 128, based on source channels)
 VideoBitrate (kbps) = BitrateTotal - AudioBitrate
 ```
 
 A safety margin accounts for container/muxing overhead:
 
-```
+```text
 VideoBitrate_final = VideoBitrate * 0.92
 ```
 
-**Worked example (verified in `tests/bitrate.test.js` against real computation, not just on paper):** Target size 16 MB, duration 30s.
-```
+**Worked example (verified in `tests/bitrate.test.ts` against real computation, not just on paper):** Target size 16 MB, duration 30s.
+
+```text
 BitrateTotal = (16 * 8 * 1024) / 30 ≈ 4369 kbps
 AudioBitrate = 96 kbps (stereo, source has stereo audio)
 VideoBitrate = 4369 - 96 = 4273 kbps
 VideoBitrate_final = 4273 * 0.92 ≈ 3931 kbps
 ```
 
-**Note on the 8% margin:** this is a reasonable starting value for MP4/H.264/AAC muxing overhead but is not yet empirically validated at scale. It must be measured and tuned against real test encodes in Milestone 3 before being treated as a locked production constant — it is defined as a single named constant (`MUX_OVERHEAD_MARGIN` in `lib/bitrate.js`) specifically so it's a one-line change once that validation happens.
+**Note on the 8% margin:** this is a reasonable starting value for MP4/H.264/AAC muxing overhead but is not yet empirically validated at scale. It must be measured and tuned against real test encodes in Milestone 3 before being treated as a locked production constant — it is defined as a single named constant (`MUX_OVERHEAD_MARGIN` in `lib/bitrate.ts`) specifically so it's a one-line change once that validation happens.
 
-A minimum floor bitrate per resolution tier (`BITRATE_FLOORS_KBPS` in `lib/bitrate.js`) prevents the formula from producing an unusably low bitrate for long videos — if the computed bitrate falls below the floor for the current resolution, the system automatically downscales resolution instead of degrading bitrate further.
+A minimum floor bitrate per resolution tier (`BITRATE_FLOORS_KBPS` in `lib/bitrate.ts`) prevents the formula from producing an unusably low bitrate for long videos — if the computed bitrate falls below the floor for the current resolution, the system automatically downscales resolution instead of degrading bitrate further.
 
 ## 15. Image Optimization Pipeline
 
@@ -233,7 +237,7 @@ A minimum floor bitrate per resolution tier (`BITRATE_FLOORS_KBPS` in `lib/bitra
 | WhatsApp Status | 90 seconds per item | 720p | 16MB | WhatsApp raised this from 30s → 60s → 90s over 2024–2026; re-verify empirically before every major release (Milestone 2, and periodically post-launch). |
 | WhatsApp Chat | No app-enforced duration limit; practical ceiling driven by size | 720p | 16MB (compression trigger threshold) | Encoding at this ceiling avoids WhatsApp's own lossy downscale doing damage on top of ours. |
 
-1. Determine target resolution tier from the config table above based on preset + source resolution (`lib/resolution.js`'s `chooseInitialResolution`). Never upscale below source resolution.
+1. Determine target resolution tier from the config table above based on preset + source resolution (`lib/resolution.ts`'s `chooseInitialResolution`). Never upscale below source resolution.
 2. Select codec/container: H.264 (libx264) in MP4 container for maximum WhatsApp/device compatibility. H.265 rejected for MVP due to inconsistent WhatsApp/device decode support.
 3. Compute bitrate per Section 14.
 4. Encode settings follow the adaptive ladder defined in Section 19. `-profile:v high`, `-pix_fmt yuv420p` (universal compatibility).
@@ -241,11 +245,11 @@ A minimum floor bitrate per resolution tier (`BITRATE_FLOORS_KBPS` in `lib/bitra
 6. Frame rate: preserve source, unless source exceeds 30fps and preset is Status/Chat, in which case downsample to 30fps.
 7. **Status splitting:** only triggered if duration exceeds the 90-second config-table ceiling — understood as a secondary/minority-case feature (most user clips fall under 90s), not a Phase 1 headline workflow. When triggered, split at fixed intervals (scene-detection-based smart cuts deferred to Phase 2) and encode each segment independently with the same target-size-per-segment logic.
 
-**Empirical validation:** The full pipeline — analyze, compute bitrate/resolution, encode, verify via SSIM, retry — has been run end-to-end against a real generated 1080p/10-second test clip (`sample/source_1080p_10s.mp4`) using `lib/pipeline.js`, confirming the mechanism works before any WhatsApp-specific constant tuning. Tuning the constants themselves against real WhatsApp sends is Milestone 2.
+**Empirical validation:** The full pipeline — analyze, compute bitrate/resolution, encode, verify via SSIM, retry — has been run end-to-end against a real generated 1080p/10-second test clip (`sample/source_1080p_10s.mp4`) using `lib/pipeline.ts`, confirming the mechanism works before any WhatsApp-specific constant tuning. Tuning the constants themselves against real WhatsApp sends is Milestone 2.
 
 ## 17. System Architecture
 
-```
+```text
 [Client PWA (Next.js/React)]
         |
         | (1) request presigned upload URL (60-min expiry, resumable/chunked)
@@ -264,7 +268,7 @@ A minimum floor bitrate per resolution tier (`BITRATE_FLOORS_KBPS` in `lib/bitra
         v
 [Worker Pool (Railway/Render, FFmpeg + ffprobe, region chosen for launch-market latency)]
         |
-        | (5) analyze, encode, verify — lib/pipeline.js
+        | (5) analyze, encode, verify — lib/pipeline.ts
         v
 [Cloudflare R2 (output bucket)]
         |
@@ -273,7 +277,7 @@ A minimum floor bitrate per resolution tier (`BITRATE_FLOORS_KBPS` in `lib/bitra
 [Client downloads file]
 
 Monitoring: Sentry (errors, all services) + PostHog (product analytics, client + server events)
-SEO/marketing layer: Next.js SSR/SSG for /,/about,/pricing,/how-it-works — lib/seo.js, app/sitemap.js
+SEO/marketing layer: Next.js SSR/SSG for /,/about,/pricing,/how-it-works — lib/seo.ts, app/sitemap.ts
 ```
 
 - API server never touches raw file bytes — uploads/downloads go directly client↔R2 via presigned URLs, keeping the API stateless and cheap to scale.
@@ -295,7 +299,7 @@ Response: `{ jobId, status: "queued" }`
 
 **GET `/jobs/:jobId`**
 Response: `{ jobId, status, stage, progressPercent, stepsRemaining, outputs: [{ segmentIndex, downloadUrl, sizeBytes }], error? }`
-`progressPercent` and `stepsRemaining` are computed via `lib/progress-stages.js` for the goal-gradient display, not raw compute-time fractions.
+`progressPercent` and `stepsRemaining` are computed via `lib/progress-stages.ts` for the goal-gradient display, not raw compute-time fractions.
 
 **GET `/jobs/:jobId/stream`** (SSE)
 Streams status updates as the job progresses through stages; falls back to polling `GET /jobs/:jobId` if SSE unsupported.
@@ -494,8 +498,8 @@ model Payment {
 - File type verified by magic bytes server-side, not trusted from client-supplied MIME type or extension.
 - Rate limiting per IP on `/jobs` and `/uploads/presign` (20 requests/minute/IP) to prevent abuse.
 - Fingerprint + IP hashing (salted, one-way) for usage tracking — no raw IP stored.
-- Worker processes run FFmpeg in a sandboxed/isolated environment (containerized, no shell injection — all FFmpeg args passed as an argument array, never string-interpolated into a shell command) to prevent command injection via crafted filenames/metadata. Implemented this way in `lib/pipeline.js` (`execFileSync` with an argument array, no shell string).
-- **Content-Security-Policy** scoped to only the third parties COMPr actually uses (GA4/GTM, Sentry) — implemented in `next.config.js` — plus `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy` headers.
+- Worker processes run FFmpeg in a sandboxed/isolated environment (containerized, no shell injection — all FFmpeg args passed as an argument array, never string-interpolated into a shell command) to prevent command injection via crafted filenames/metadata. Implemented this way in `lib/pipeline.ts` (`execFileSync` with an argument array, no shell string).
+- **Content-Security-Policy** scoped to only the third parties COMPr actually uses (GA4/GTM, Sentry) — implemented in `next.config.ts` — plus `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy` headers.
 - Dependency and container image scanning in CI.
 
 ## 24. Privacy
@@ -539,7 +543,8 @@ model Payment {
 
 - **Free tier:** 5 jobs/day (an initial value, to be tuned from Phase 1 usage data), with the first job always exempt from the count itself being blocking (FR-11) — single-file upload only, max 100MB source file.
 - **Premium tier:** high daily cap — initial value 100 jobs/day — rather than unbounded "unlimited," to keep compute cost predictable while still feeling unlimited for any normal use case; batch upload, higher max source file size (500MB), priority queue placement.
-- **Pricing:** subscription model (monthly/annual); exact price point remains an open question pending market research.
+- **Currency:** All monetary values are denominated in **Nigerian Naira (NGN)**, stored in **kobo** (1 NGN = 100 kobo) as integer fields in the database (see `LedgerEntry.amount`, `Payment.amount` in Section 21). The primary launch market is Nigeria (Section 7 personas).
+- **Pricing:** Subscription model (monthly/annual) — **pricing is a Phase 2 concern**. No price point is set, displayed, or hard-coded in Phase 1 code or copy. The exact price point will be determined before Phase 2 billing integration begins (Section 32).
 - **Upsell moments:** Quota exhaustion screen (loss-aversion + contrast framing, FR-12), batch-upload attempt on free tier, large-file rejection on free tier.
 - **Quota enforcement — explicit tradeoff:** Fingerprint + IP-based quota enforcement is a soft, best-effort limit, not abuse-proof — it can be defeated by clearing site data or switching browsers. This is an accepted, deliberate MVP tradeoff because per-job compute cost is low and the resulting business risk is bounded; hard enforcement arrives with Phase 2 accounts.
 
@@ -559,7 +564,7 @@ model Payment {
 
 - **Activation:** % of visitors who complete at least one full job (upload → download).
 - **Quality perception:** two layers — (a) immediate post-download thumbs up/down, and (b) the delayed post-send prompt asking specifically about how it looked after being sent on WhatsApp, which is the metric that actually validates the core promise.
-- **Smart default accuracy:** % of jobs where the suggested preset was NOT overridden — a direct signal of whether the heuristic in `lib/smart-defaults.js` is actually saving users a decision.
+- **Smart default accuracy:** % of jobs where the suggested preset was NOT overridden — a direct signal of whether the heuristic in `lib/smart-defaults.ts` is actually saving users a decision.
 - **Retention:** % of free users returning within 7 days.
 - **Conversion:** Free-to-premium conversion rate, tracked specifically for users who saw the loss-aversion upsell screen vs. a control framing (A/B test recommended in Phase 2).
 - **Performance:** p50/p95 job completion time by media type/size, measured against the Section 5 test matrix.
@@ -580,7 +585,7 @@ Items marked ASSUMPTION: accent color hex values (Section 12), retention window 
 
 ## 32. Open Questions
 
-- Exact premium price point and billing cadence (monthly only, or annual discount)? Flutterwave is the locked payment provider — all checkout/subscription code integrates against Flutterwave's API only.
+- **Premium price point and billing cadence** — this is a **Phase 2 decision**, not Phase 1. Flutterwave is the locked payment provider (AGENTS.md Q2); all checkout/subscription code will integrate against Flutterwave's API only. No pricing is set, displayed, or hard-coded in Phase 1.
 - Should free tier be capped by fingerprint+IP only, or is a lightweight non-blocking email capture acceptable for MVP to reduce abuse, given the explicit tradeoff in Section 27?
 - Should Status splitting use fixed-interval cuts or invest in scene-detection cuts for MVP (currently deferred to Phase 2, and lower-priority given splitting is a minority-case feature)?
 - Legal review needed on WhatsApp trademark usage in app naming/marketing ("WhatsApp Status/Chat preset" terminology).
@@ -611,16 +616,16 @@ Additional destination presets (Instagram/Telegram), multi-region hosting for la
 
 ## 35. Development Milestones
 
-1. Repo scaffolding: Next.js frontend, Fastify API, Prisma schema, R2 buckets, Redis (with AOF persistence)/BullMQ wiring. *(Done in prototype: `lib/`, `config/`, `app/sitemap.js`, `next.config.js`.)*
+1. Repo scaffolding: Next.js frontend, Fastify API, Prisma schema, R2 buckets, Redis (with AOF persistence)/BullMQ wiring. *(Done in prototype: `lib/`, `config/`, `app/sitemap.ts`, `next.config.ts`.)*
 2. Empirical WhatsApp limits/behavior validation: manual test sends across Status/Chat on current device/OS versions, to lock real constants for resolution, duration, size, and compression thresholds into the `PlatformLimit` config table — before any pipeline code is built against guessed numbers.
-3. Analysis + bitrate engine: `ffprobe` integration, Section 14 formula implementation, unit tests against known inputs. *(Done in prototype: `lib/bitrate.js`, `lib/resolution.js`, `tests/bitrate.test.js` — 9/9 passing.)*
-4. Video pipeline: FFmpeg encode wrapper, resolution/codec rules from the validated config table, Status splitting logic, quality-vs-size dual retry paths. *(Done in prototype: `lib/pipeline.js`, verified against a real generated 1080p/10s clip.)*
+3. Analysis + bitrate engine: `ffprobe` integration, Section 14 formula implementation, unit tests against known inputs. *(Done in prototype: `lib/bitrate.ts`, `lib/resolution.ts`, `tests/bitrate.test.ts` — 9/9 passing.)*
+4. Video pipeline: FFmpeg encode wrapper, resolution/codec rules from the validated config table, Status splitting logic, quality-vs-size dual retry paths. *(Done in prototype: `lib/pipeline.ts`, verified against a real generated 1080p/10s clip.)*
 5. Image pipeline: binary-search quality encoder, dimension capping, EXIF stripping.
-6. Job status system: SSE/polling endpoint, progress UI with goal-gradient display, visual before/after comparison component. *(Progress-stage logic done in prototype: `lib/progress-stages.js`, `tests/growth-ux.test.js`.)*
-7. Growth/conversion layer: smart defaults, first-job reciprocity, onboarding preferences, loss-aversion upsell copy. *(Done in prototype: `lib/smart-defaults.js`, `lib/growth-ux.js`, fully unit-tested.)*
+6. Job status system: SSE/polling endpoint, progress UI with goal-gradient display, visual before/after comparison component. *(Progress-stage logic done in prototype: `lib/progress-stages.ts`, `tests/growth-ux.test.ts`.)*
+7. Growth/conversion layer: smart defaults, first-job reciprocity, onboarding preferences, loss-aversion upsell copy. *(Done in prototype: `lib/smart-defaults.ts`, `lib/growth-ux.ts`, fully unit-tested.)*
 8. Quota system: fingerprint/IP hashing, `UsageRecord` enforcement, upsell UI.
 9. Cleanup/retention: single-source-of-truth deletion cron (R2 delete + Postgres `deletedAt` atomically), R2 lifecycle rule configured only as backup.
-10. SEO layer: metadata/structured data component, sitemap, robots.txt, llms.txt, CSP headers. *(Done in prototype: `lib/seo.js`, `app/sitemap.js`, `public/robots.txt`, `public/llms.txt`, `next.config.js`.)*
+10. SEO layer: metadata/structured data component, sitemap, robots.txt, llms.txt, CSP headers. *(Done in prototype: `lib/seo.ts`, `app/sitemap.ts`, `public/robots.txt`, `public/llms.txt`, `next.config.ts`.)*
 11. Monitoring: Sentry + PostHog wired across client and server, including growth/UX events.
 12. Final QA pass: re-validate against real WhatsApp Status/Chat sends one more time before launch, confirming the Milestone 2 constants still hold and the SSIM quality bar is met on the 20-clip reference test set.
 
@@ -640,13 +645,13 @@ Additional destination presets (Instagram/Telegram), multi-region hosting for la
 
 ## 37. SEO & Discoverability
 
-**Meta tags & structured data:** Every marketing page (`/`, `/about`, `/pricing`, `/how-it-works`) is server-rendered with unique title, description, canonical URL, Open Graph, and Twitter Card tags via a shared metadata builder (`lib/seo.js`). Organization and SoftwareApplication JSON-LD structured data is rendered once in the root layout, describing COMPr's actual free/paid model accurately — structured data must never overstate pricing or capability beyond Section 27's real business model.
+**Meta tags & structured data:** Every marketing page (`/`, `/about`, `/pricing`, `/how-it-works`) is server-rendered with unique title, description, canonical URL, Open Graph, and Twitter Card tags via a shared metadata builder (`lib/seo.ts`). Organization and SoftwareApplication JSON-LD structured data is rendered once in the root layout, describing COMPr's actual free/paid model accurately — structured data must never overstate pricing or capability beyond Section 27's real business model.
 
-**Crawling & indexing:** `public/robots.txt` allows marketing pages and explicitly disallows `/jobs/*` and `/api/*`, since those hold transient, user-specific state. `app/sitemap.js` generates a dynamic sitemap covering only static, indexable routes. Job pages additionally carry `X-Robots-Tag: noindex, nofollow` and `Cache-Control: no-store` headers (`next.config.js`) as defense in depth beyond robots.txt.
+**Crawling & indexing:** `public/robots.txt` allows marketing pages and explicitly disallows `/jobs/*` and `/api/*`, since those hold transient, user-specific state. `app/sitemap.ts` generates a dynamic sitemap covering only static, indexable routes. Job pages additionally carry `X-Robots-Tag: noindex, nofollow` and `Cache-Control: no-store` headers (`next.config.ts`) as defense in depth beyond robots.txt.
 
 **AI crawler guidance:** `public/llms.txt` gives AI/LLM crawlers a concise, accurate summary of what COMPr is and does — explicitly stating that COMPr does not bypass WhatsApp compression, mirroring the product's own honesty commitment (Section 24) so AI-generated answers about COMPr don't misrepresent it.
 
-**Content Security Policy:** Scoped narrowly to the third parties COMPr actually uses — Google Tag Manager/Analytics (wildcarded subdomains per Google's own CSP guidance, since exact hostnames can change) and Sentry — implemented in `next.config.js`, tested by loading a page with GA4 enabled and confirming no CSP violations in the browser console before launch.
+**Content Security Policy:** Scoped narrowly to the third parties COMPr actually uses — Google Tag Manager/Analytics (wildcarded subdomains per Google's own CSP guidance, since exact hostnames can change) and Sentry — implemented in `next.config.ts`, tested by loading a page with GA4 enabled and confirming no CSP violations in the browser console before launch.
 
 **Google Search Console workflow (operational, not code):** verify the property via DNS TXT (domain property, covers all subdomains/protocols) at launch; submit the sitemap path once; use URL Inspection + Request Indexing only for individual new/changed high-value pages, not bulk; monitor the Pages/Indexing report weekly for "Crawled – currently not indexed" symptoms (a common signal for client-rendered pages that aren't actually server-rendering their content); validate structured data via the Rich Results Test after any schema change.
 
@@ -656,11 +661,11 @@ This section documents the specific behavioral UX patterns implemented in the pr
 
 | Pattern | Where applied | Implementation |
 |---|---|---|
-| Smart Defaults | Preset selection (FR-2) | `lib/smart-defaults.js` — heuristic based on aspect ratio, duration, and file size; tested in `tests/growth-ux.test.js`. |
-| Goal Gradient Effect | Progress indicator (FR-8) | `lib/progress-stages.js` — front-loaded display percentage, step countdown near completion. |
-| Reciprocity | First-job exemption (FR-11) | `lib/growth-ux.js`'s `isFirstJobExemptFromQuota` — guarantees full value shown before any limit. |
-| IKEA Effect | Onboarding preferences (FR-13) | `lib/growth-ux.js`'s `ONBOARDING_QUESTIONS` / `applyOnboardingPreferences` — light, skippable, never gating. |
-| Loss Aversion | Upsell copy (FR-12) | `lib/growth-ux.js`'s `buildUpsellCopy` — leads with cost of staying free. |
+| Smart Defaults | Preset selection (FR-2) | `lib/smart-defaults.ts` — heuristic based on aspect ratio, duration, and file size; tested in `tests/growth-ux.test.ts`. |
+| Goal Gradient Effect | Progress indicator (FR-8) | `lib/progress-stages.ts` — front-loaded display percentage, step countdown near completion. |
+| Reciprocity | First-job exemption (FR-11) | `lib/growth-ux.ts`'s `isFirstJobExemptFromQuota` — guarantees full value shown before any limit. |
+| IKEA Effect | Onboarding preferences (FR-13) | `lib/growth-ux.ts`'s `ONBOARDING_QUESTIONS` / `applyOnboardingPreferences` — light, skippable, never gating. |
+| Loss Aversion | Upsell copy (FR-12) | `lib/growth-ux.ts`'s `buildUpsellCopy` — leads with cost of staying free. |
 | Contrast Effect | Upsell copy ordering (FR-12) | Same function — the "cost" line is returned/rendered before the price line, anchoring perception. |
 
 **Guardrail:** every one of these patterns is implemented using real, specific, truthful data (actual jobs blocked, actual price, actual file characteristics) — never fabricated scarcity, invented counters, or misleading claims. This is a hard constraint, not a style preference (Section 30).

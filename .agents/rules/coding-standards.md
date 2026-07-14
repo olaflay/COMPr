@@ -2,44 +2,66 @@
 trigger: always_on
 ---
 
-# Coding Standards — COMPr
+Source of truth for *what* to build: `COMPr-PRD-v1.md`. Source of truth for
+locked stack/architecture: `AGENTS.md`. This file governs code shape and
+quality only — it does not restate rules already in AGENTS.md Q5, it adds to them.
 
-## 1. Language & Strictness
+## Language & typing
 
-- **TypeScript Strict Mode** is enforced. `tsc --noEmit` must pass without errors.
-- **No `any`** unless absolutely required (e.g., third-party library inference gaps). Always prefer `unknown` and narrow with type guards.
-- **No `@ts-ignore`** without a one-line comment explaining why the type system cannot satisfy the requirement.
+- TypeScript everywhere (frontend, `/lib`, `/server`, `/workers`). No implicit `any`.
+- `@ts-ignore` requires a one-line comment explaining why — an unexplained
+  suppression is treated as a bug, not a shortcut.
+- `tsc --noEmit` must pass with zero errors before a task is reported done.
 
-## 2. Architectural Separation (The Golden Rule)
+## Function and file shape
 
-- **`/lib`** contains framework-agnostic, pure business logic. **It MUST NOT import from `/server` or `/workers`.**
-- **`/server/routes`** are the thin HTTP layer. Route handlers MUST NOT contain FFmpeg calls, bitrate math, or Prisma queries inline. They call into `/lib` and the Prisma client only.
-- **`/workers`** MUST NOT parse raw HTTP requests. They react only via BullMQ job data.
+- `/lib` functions are small, pure, and named for what they compute
+  (`calculateBitrate`, `dropOneResolutionTier`) — never generic (`process`,
+  `handle`, `doStuff`).
+- No file in `/lib` exceeds ~200 lines. Split before it becomes a "pipeline god file."
+- Every exported `/lib` function has a corresponding unit test in `/tests`,
+  mirroring the `/lib` structure 1:1. Logic without a test is incomplete work,
+  not "good enough for now."
 
-## 3. Function & File Structure
+## Error handling
 
-- **Pure Functions:** Functions in `/lib` must be named for what they compute (e.g., `calculateBitrate`, `dropOneResolutionTier`). Avoid generic names like `process` or `handle`.
-- **File Size Limit:** No file in `/lib` should exceed **200 lines**. If it grows beyond, split responsibilities. If a valid technical reason requires exceeding 200 lines, justify it with a comment at the top of the file.
-- **Single Responsibility:** Each function should do one thing. Functions should be small and testable.
+- All API errors return the standard envelope: `{ error: { code, message } }`
+  (PRD §18). No route invents its own error shape.
+- Error `code` values are stable, documented strings (e.g. `INVALID_PRESET`,
+  `QUOTA_EXCEEDED`) — never a raw exception message leaked to the client.
+- User-facing error copy is plain-language (PRD §25 table). Internal error
+  detail (stack traces, file paths, DB errors) never reaches the client —
+  log it to Sentry, return the generic mapped message instead.
+- FFmpeg/ffprobe failures are classified before retry logic runs: transient
+  (OOM/signal-killed) vs. permanent (invalid data/decode error) — per PRD §19.
+  Never write a retry path that treats all failures the same way.
 
-## 4. Naming Conventions
+## Comments
 
-- **Variables/Functions:** `camelCase` (e.g., `targetSizeMB`).
-- **Classes/Components:** `PascalCase` (e.g., `JobStatus`, `UploadComponent`).
-- **Environment Variables:** `UPPER_SNAKE_CASE`.
-- **Exports:** Prefer named exports over default exports for clarity in imports.
+- Comments explain *why*, not *what* — especially for constants tied to a PRD
+  assumption (mux overhead margin, SSIM floor, retry counts, tolerance
+  percentages). Reference the PRD section number.
+- No magic numbers for anything WhatsApp-related. Pull from
+  `config/platform-limits.json` / `PlatformLimit` — never inline a `90` or `720`.
 
-## 5. Comments
+## Environment & secrets
 
-- Comments explain **why** (business logic, PRD assumptions), not **what** (the code already shows that).
-- Reference the PRD section number in comments for non-obvious constants (e.g., `// PRD §14 — 8% mux overhead margin`).
+- Secrets (Flutterwave keys, R2 credentials, DB URL) are read from
+  `process.env` only, validated at boot (fail fast if missing), never
+  hardcoded, never logged, never committed.
+- Any new environment variable is called out explicitly in the task summary,
+  not silently added.
 
-## 6. Linting & Formatting
+## Linting & formatting
 
-- Prettier and ESLint are configured. Run `eslint . --fix` and `prettier --write .` before committing.
-- CI pipeline MUST reject code that fails linting.
+- Prettier + ESLint run in CI. Do not hand-format around the linter, and do
+  not disable a lint rule to make a diff pass without flagging it.
 
-## 7. Secrets & Environment
+## Definition of done (code-level)
 
-- Never hardcode secrets. Read from `process.env` only.
-- Validate required environment variables at application boot (fail-fast). Never log environment variables.
+- [ ] `tsc --noEmit` passes, zero TS errors.
+- [ ] Lint passes, zero errors.
+- [ ] Every new `/lib` function has a passing unit test.
+- [ ] No magic WhatsApp constants introduced.
+- [ ] No secret hardcoded or logged.
+- [ ] Error responses conform to the standard envelope.

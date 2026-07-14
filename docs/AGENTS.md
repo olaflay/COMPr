@@ -18,7 +18,7 @@ COMPr is a mobile-first Progressive Web App that optimizes photos and videos bef
 These choices are already made. Do not change, swap, "improve," or replace any of them without an explicit instruction from a human. This includes not substituting a "simpler" or "more popular" alternative on your own judgment.
 
 **Stack**
-- Frontend: Next.js + React + TypeScript, styled with Tailwind CSS, built as a PWA.
+- Frontend: Next.js + React + TypeScript, styled with Tailwind CSS configured to reference Material 3 (M3) CSS custom properties (`styles/m3-tokens.css`), built as a PWA. Tailwind is the utility framework; M3 tokens are the single source of truth for all visual values (colors, typography, shape, elevation, motion).
 - Backend API: Node.js + Fastify.
 - Media processing: FFmpeg / ffprobe, invoked only via an argument array (`execFile`), never via a shell string.
 - Queue: BullMQ on Redis, with AOF persistence and a managed/backed-up Redis instance. Never run Redis with ephemeral/default persistence config.
@@ -74,8 +74,8 @@ Breaking any rule in this section means the task has failed, even if the code co
 
 ## Question 4: How Is The Work Arranged
 
-```
-/app                        # Next.js App Router — pages, layouts, sitemap.js
+```text
+/app                        # Next.js App Router — pages, layouts, sitemap.ts
   /app/(marketing)           # /, /about, /pricing, /how-it-works — SSR/SSG only
   /app/jobs/[id]              # job status/result page — noindex, client-rendered OK
 
@@ -86,12 +86,12 @@ Breaking any rule in this section means the task has failed, even if the code co
 /lib                         # Framework-agnostic core logic — pure functions,
                              #   unit-testable without a server or DB running.
   bitrate.ts                 #   Section 14 bitrate math
-  resolution.ts               #   resolution ladder, retry tier logic
-  pipeline.ts                 #   ffprobe/ffmpeg orchestration, SSIM verification
-  smart-defaults.ts            #   preset suggestion heuristic
-  progress-stages.ts            #   goal-gradient progress display mapping
-  growth-ux.ts                  #   reciprocity, onboarding, upsell copy builders
-  seo.ts                        #   metadata + structured data builders
+  resolution.ts              #   resolution ladder, retry tier logic
+  pipeline.ts                #   ffprobe/ffmpeg orchestration, SSIM verification
+  smart-defaults.ts          #   preset suggestion heuristic
+  progress-stages.ts         #   goal-gradient progress display mapping
+  growth-ux.ts               #   reciprocity, onboarding, upsell copy builders
+  seo.ts                     #   metadata + structured data builders
 
 /config                      # Non-secret, environment-agnostic config
   platform-limits.json         #   WhatsApp constants — dev/local mirror of
@@ -104,9 +104,9 @@ Breaking any rule in this section means the task has failed, even if the code co
   /server/services             #   shared services (storage, auth) — no HTTP concerns
 
 /workers                     # BullMQ worker processes — no HTTP surface.
-  encode-worker.js
-  analysis-worker.js
-  cleanup-cron.js               #   sole writer of MediaFile.deletedAt
+  encode-worker.ts
+  analysis-worker.ts
+  cleanup-cron.ts               #   sole writer of MediaFile.deletedAt
 
 /prisma
   schema.prisma
@@ -120,7 +120,7 @@ Breaking any rule in this section means the task has failed, even if the code co
 /tests                       # Mirrors /lib and /server structure 1:1.
                              #   Every file in /lib gets a corresponding test file.
 
-next.config.js               # Security headers, CSP
+next.config.ts               # Security headers, CSP
 package.json
 ```
 
@@ -128,7 +128,7 @@ Rules for this layout:
 - Business logic (`/lib`) must never import from `/server` or `/workers`. Dependency direction is one-way: `server` and `workers` import from `lib`, never the reverse.
 - HTTP concerns (request parsing, response shaping, status codes) stay in `/server/routes`. Route handlers must not contain FFmpeg calls, bitrate math, or Prisma queries inline — they call into `/lib` and Prisma client only.
 - A worker file must never accept or parse raw HTTP requests. If a worker needs to react to something, it does so via the queue, not a new endpoint.
-- Anything that touches an FFmpeg process, a filesystem path, or a child process lives in `/lib/pipeline.js` or its worker caller — never inline in a route handler or a React component.
+- Anything that touches an FFmpeg process, a filesystem path, or a child process lives in `/lib/pipeline.ts` or its worker caller — never inline in a route handler or a React component.
 
 ---
 

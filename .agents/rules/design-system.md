@@ -7,6 +7,7 @@ trigger: glob
 ## 1. Single Source of Truth
 
 - The file `styles/m3-tokens.css` (containing the complete M3 color, typography, shape, elevation, and motion variables) is the **single source of truth** for all visual styling.
+- Tailwind CSS is the utility framework, but it is configured to reference M3 CSS custom properties — Tailwind classes must map to `--md-sys-color-*`, `--md-sys-typescale-*`, etc., never to hardcoded values.
 - **Never** hardcode hex values (`#075E54`), raw font sizes (`32px`), or arbitrary radii (`12px`) directly in component files, Tailwind config overrides, or inline styles.
 - All styling must reference the CSS custom properties defined in `styles/m3-tokens.css`. This ensures theming consistency, maintainability, and future support for dark mode.
 

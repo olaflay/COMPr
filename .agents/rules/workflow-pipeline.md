@@ -2,40 +2,83 @@
 trigger: always_on
 ---
 
-# Media Processing Pipeline — COMPr
 
-## 1. FFmpeg Execution
+Governs the FFmpeg/ffprobe processing pipeline and the BullMQ queue that
+runs it (`lib/pipeline.ts`, `lib/bitrate.ts`, `lib/resolution.ts`,
+`workers/`). States constraints on agent behavior — not an FFmpeg tutorial.
 
-- All FFmpeg/ffprobe commands MUST use the argument array form (`execFile` or `execFileSync`).
-- **Shell strings are strictly forbidden** (prevents command injection).
-- Logging: `-loglevel error` should be used for standard encodes to keep logs clean; `-loglevel debug` for troubleshooting.
+## Retry paths — never conflate them
 
-## 2. Codec & Container (Locked)
+- There are exactly two retry paths (PRD FR-7):
+  - **Size-triggered:** output size outside ±10% tolerance → adjust bitrate
+    by the measured delta, re-encode.
+  - **Quality-triggered:** SSIM below the 0.90 floor → drop one resolution
+    tier and recompute bitrate, re-encode. Never re-encode at the same
+    bitrate on a quality failure — it reproduces the same artifact.
+- Maximum 2 retries total, combined across both paths, per job
+  (AGENTS.md #17, #18). A job that still fails tolerance after that shows
+  the user the actual achieved result transparently (PRD §25) — it does not
+  attempt a third retry to "get it right."
 
-- **Video:** H.264 (`libx264`). H.265/AV1 are explicitly rejected for MVP.
-- **Container:** MP4.
-- **Audio:** AAC. Mono = 64kbps, Stereo = 64–128kbps depending on source channels (per PRD §14/§16; exact mapping to be validated in Milestone 2).
+## Quality verification
 
-## 3. Resolution Rules
+- SSIM is sampled at fixed 2-second intervals across the full duration, with
+  the source scaled to output resolution via `scale2ref` before comparing
+  (PRD §13). Don't sample fewer points to save compute without flagging it.
+- VMAF is Phase 2. Do not implement it, wire it in as an optional flag, or
+  add a config value for it in Phase 1 (AGENTS.md, PRD §33).
 
-- **NEVER upscale** beyond the source resolution. (`chooseInitialResolution` ensures `Math.min(source, cap)`).
-- The resolution ladder is fixed: 1080p ➔ 720p ➔ 480p ➔ 360p ➔ 240p.
+## Resolution and bitrate
 
-## 4. The Dual Retry Paths (FR-7)
+- Never upscale a video or image beyond its source resolution, regardless
+  of the preset's resolution cap (PRD §16, AGENTS.md #16).
+- Codec/container is locked: H.264 (libx264), MP4, AAC audio. H.265/AV1
+  requires explicit instruction, not agent judgment (AGENTS.md, PRD §16).
+- All WhatsApp platform constants (duration, resolution, size ceilings) come
+  from `config/platform-limits.json` / `PlatformLimit` — never a hardcoded
+  `90` or `720` in pipeline code.
+- The mux overhead margin (`MUX_OVERHEAD_MARGIN` in `lib/bitrate.ts`) is a
+  single named constant specifically because it's flagged as empirically
+  unvalidated (PRD §14) — never inline it, and never treat it as locked
+  without a Milestone 3 validation note.
 
-A single job can have **maximum 2 retries** across both paths combined.
+## Status splitting
 
-- **Size-Triggered Retry:** If output file size is outside ±10% of the target, adjust video bitrate proportionally (`adjustBitrateForSizeRetry`) and re-encode.
-- **Quality-Triggered Retry:** If SSIM falls below the floor (0.90), **drop one resolution tier** (`dropOneResolutionTier`) and recalculate bitrate.
-- *Crucial:* Do NOT lower bitrate on a quality failure. Do NOT drop resolution on a size failure. These paths are distinct.
+- Only triggers when duration exceeds the config-table ceiling (currently
+  90s) — it's a minority-case feature, not a headline flow (PRD §16, §11).
+- Splitting uses fixed-interval cuts in MVP. Scene-aware/smart cuts are
+  Phase 2 — do not build them now even if it looks trivial to add
+  (AGENTS.md, PRD §33).
+- Boundary behavior at exactly the ceiling (89s/90s/91s) must be covered by
+  an explicit test — this is a named edge case in the PRD (§26), not an
+  incidental one.
 
-## 5. SSIM Verification (PRD §13)
+## Queue and failure handling
 
-- Compare source vs. output by scaling the source to the output resolution (`scale2ref`).
-- Sampling: **Fixed 2-second intervals** across the full video duration.
-- The SSIM score must meet the configurable floor (default: 0.90). If not, trigger the quality retry path.
+- Two separate BullMQ queues: `media-analysis`, `media-encode` — encode
+  concurrency is tuned independently of analysis (PRD §19).
+- Before retrying a failed FFmpeg job, classify the failure: transient
+  (OOM/signal-killed) → retry; permanent (invalid data/decode error) → fail
+  immediately, no retry (PRD §19, §25). Never write a single generic retry
+  path that treats both the same.
+- Job timeout: 5 minutes video, 30 seconds images. On timeout, mark failed
+  and notify — don't silently extend the timeout to let a stuck job "finish."
+- On a Redis/queue restart mid-job, rely on BullMQ's stalled-job recovery
+  and show the user "still processing" — never silently drop the job or
+  silently mark it failed without recovery attempt (PRD §17, §25).
 
-## 6. WhatsApp Platform Constants
+## Adaptive encode ladder
 
-- All duration/resolution/size ceilings MUST be read from `config/platform-limits.json` (or the DB `PlatformLimit` table).
-- **NEVER hardcode** values like `90` (seconds), `720` (resolution), or `16` (MB) in the pipeline code.
+- Preset/pass selection (`-preset slow` + two-pass at low queue depth down
+  to `-preset fast` + single-pass CRF-capped at high depth) is one
+  documented ladder, stepping down together — don't let individual settings
+  drift independently of queue depth (PRD §19).
+
+## Definition of done (pipeline-level)
+
+- [ ] Size and quality retry paths remain distinct code paths.
+- [ ] Combined retries never exceed 2 for a single job.
+- [ ] No hardcoded WhatsApp constant introduced anywhere in `/lib` or `/workers`.
+- [ ] No upscale-past-source-resolution path introduced.
+- [ ] Status-split boundary (89/90/91s) has an explicit test if splitting logic changed.
+- [ ] Failure classification (transient vs. permanent) is respected in any new retry code.

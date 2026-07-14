@@ -6,7 +6,7 @@ trigger: always_on
 
 ## 1. Unit Test Coverage
 
-- **Mirror structure:** Every file in `/lib` must have a corresponding test file in `/tests` (e.g., `bitrate.js` ➔ `bitrate.test.js`).
+- **Mirror structure:** Every file in `/lib` must have a corresponding test file in `/tests` (e.g., `bitrate.ts` ➔ `bitrate.test.ts`).
 - **Every exported function** in `/lib` MUST have at least one passing unit test that covers its core behavior.
 - Tests must be runnable using Node.js native test runner (`node --test`).
 

@@ -2,39 +2,39 @@
 trigger: always_on
 ---
 
-# Git & Version Control — COMPr
 
-## 1. Branching Strategy
+Kept deliberately short. This file only contains rules where breaking them
+causes real harm (a leak, an unauditable change) — not commit-message taste.
 
-- **`main`**: Always deployable. Protected branch. No direct commits.
-- **Feature Branches**: Named `feature/FR-<number>-<short-desc>` (e.g., `feature/FR-7-retry-logic`).
-- **Bugfix Branches**: Named `fix/<issue-number>-<short-desc>`.
+## Never commit
 
-## 2. Commit Messages (Conventional Commits)
+- `.env` files, R2 credentials, Redis connection strings, Flutterwave API
+  keys/webhook secrets, or any value that belongs in `process.env`.
+- Real uploaded media, test fixtures containing personal data, or database
+  dumps.
+- If a secret is accidentally staged, stop and flag it — do not commit and
+  "fix it in a follow-up."
 
-While the code must work regardless of message format, we strongly enforce the **Conventional Commits** standard for auditability:
+## Traceability for high-risk changes
 
-- `feat:` — New feature (correlates to a PRD FR).
-- `fix:` — Bug fix.
-- `chore:` — Build/tooling changes.
-- `docs:` — Documentation updates.
-- `test:` — Adding/fixing tests.
-- `refactor:` — Code restructuring with no behavior change.
+- Any commit touching the deletion path (`cleanup-cron.ts`,
+  `MediaFile.deletedAt`), the quota/reciprocity logic (`growth-ux.ts`,
+  `UsageRecord`), or billing code (once Phase 2 starts) references the
+  relevant PRD section or FR number in the commit message or PR description.
+  These are the paths where "what changed and why" must be greppable later
+  without re-reading the diff.
+- A PR that changes a WhatsApp platform constant states where the new value
+  came from (empirical test, PRD update) — never a silent number change.
 
-**Example:** `feat(FR-7): implement quality-triggered resolution drop`
+## Commits and branches (convention, not a hard gate)
 
-## 3. Pull Requests
+- Branch names: `feature/…`, `fix/…`, `chore/…`.
+- Commit subject line states the change in imperative mood, PRD/FR reference
+  in the body when applicable. This is a convention for readability — it
+  does not by itself make a task pass or fail.
 
-- Every PR must reference the specific PRD section(s) or FR number(s) it implements.
-- PRs are **incomplete** if `tsc --noEmit`, `eslint`, and the test suite (`node --test`) do not pass.
-- PRs must include a brief summary of how the changes were validated (manual or automated).
+## PR size
 
-## 4. CI/CD Checks
-
-The CI pipeline runs automatically on every PR:
-
-1. Install dependencies.
-2. Run `tsc --noEmit`.
-3. Run ESLint.
-4. Run tests (unit + integration).
-5. Build the Next.js application.s
+- Prefer PRs scoped to one PRD requirement or one `/lib` module at a time.
+  A PR that touches upload, pipeline, and billing simultaneously is a sign
+  scope crept beyond the assigned task — split it or flag it.

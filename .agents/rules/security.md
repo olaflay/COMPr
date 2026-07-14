@@ -2,35 +2,57 @@
 trigger: always_on
 ---
 
-# Security & Privacy — COMPr
 
-## 1. Input Validation (The Iron Rule)
+Operational checklist for security-sensitive code. Source rules live in
+AGENTS.md Q3 (10–19) and PRD §23; this file is how an agent verifies them
+while building, not a second copy of the same law.
 
-- **Never trust client-supplied MIME types or file extensions.**
-- All uploaded files MUST be validated server-side by **magic-byte sniffing** (e.g., using `file` command or `mmmagic` library) before any processing begins.
-- Reject files that mismatch their claimed type.
+## Input and file handling
 
-## 2. Data Privacy (PII & IP)
+- Never trust a client-supplied MIME type or file extension. Verify real
+  file type via magic-byte sniffing server-side before any processing
+  (PRD §23, AGENTS.md #14).
+- Never shell-interpolate a filename, path, or any user-derived string into
+  an FFmpeg/ffprobe command. Arguments are always passed as an array
+  (`execFile`/`execFileSync`), never a shell string (AGENTS.md #19, PRD §23).
+- Worker processes run FFmpeg in a sandboxed/containerized environment —
+  never assume the host filesystem is a safe place to write user-derived paths.
 
-- **NEVER store a raw IP address.**
-- Store only a salted, one-way hash of `fingerprint + IP` for quota and abuse tracking. Use a strong hashing algorithm (e.g., SHA-256 with a pepper).
-- File contents are used strictly to produce the requested output. They are never sent to analytics (PostHog/Sentry), used for training, or shared with third parties.
+## Network and transport
 
-## 3. Command Injection Prevention
+- All traffic over HTTPS/TLS; HSTS enabled.
+- Rate limiting on `/jobs` and `/uploads/presign`: 20 requests/minute/IP
+  (PRD §23). Don't relax this "temporarily" for testing in a way that ships.
+- `Content-Security-Policy` is scoped only to third parties COMPr actually
+  uses (GA4/GTM, Sentry) — never add a wildcard or a new third-party origin
+  without updating this rule and confirming with a human.
 
-- **NEVER shell-interpolate a filename, path, or any user-derived string into an FFmpeg or ffprobe command.**
-- Always pass arguments as an array via `execFile` or `execFileSync`.
-- *Violation:* `exec('ffmpeg -i ' + userInput)` ➔ ❌ **FAIL**
-- *Correct:* `execFile('ffmpeg', ['-i', userInput])` ➔ ✅ **PASS**
+## Presigned URLs
 
-## 4. Transport & Headers
+- Scoped to a single object. Upload URLs: 60-minute expiry. Download URLs:
+  24-hour expiry, matching retention (PRD §22, §23).
+- The API server never proxies raw file bytes — uploads and downloads go
+  client↔R2 directly. If a task seems to require the API to read/write file
+  bytes itself, that's a signal something is wrong with the approach — flag it.
 
-- **HTTPS/TLS is mandatory** everywhere (HSTS enabled).
-- **Content Security Policy (CSP):** Scoped strictly to required third parties. Must allow Google Analytics/GTM and Sentry only. Do not use `unsafe-eval` or broad `data:` wildcards unless strictly necessary.
-- **Job Pages (`/jobs/*`):** MUST carry `X-Robots-Tag: noindex, nofollow` and `Cache-Control: no-store` (configured in `next.config.js`).
+## Identity and privacy
 
-## 5. Secrets Management
+- Fingerprint and IP are hashed (salted, one-way) before storage. Never log,
+  store, or pass a raw IP address anywhere, including error logs sent to
+  Sentry (AGENTS.md #13).
+- Sentry error reports include job metadata, never file content or derived
+  thumbnails (PRD §25).
 
-- All secrets (Flutterwave keys, R2 credentials, DB URL) are read from `process.env`.
-- Validate all required secrets at boot time. Fail fast with a clear error if missing.
-- NEVER log environment variables, even in error traces.
+## Dependencies
+
+- Dependency and container image scanning runs in CI. A new dependency is
+  called out explicitly in the task summary, not silently added — especially
+  anything that shells out, touches the filesystem, or handles network input.
+
+## Definition of done (security-level)
+
+- [ ] No shell-interpolated FFmpeg/ffprobe command was introduced.
+- [ ] File type validated by magic bytes, not client-supplied MIME/extension.
+- [ ] No raw IP logged or stored anywhere in the change.
+- [ ] Presigned URL expiries match the PRD values (60min upload / 24hr download).
+- [ ] No new third-party origin added to CSP without explicit confirmation.
