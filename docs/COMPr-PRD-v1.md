@@ -39,6 +39,7 @@ Every WhatsApp user who has ever said "why does my video look so bad after I sen
   - 60s clip, 720p source → under 20s processing
   - 90s clip, 1080p source → under 35s processing
   (Targets for standard worker hardware; validated in Milestone 5.)
+- **Interaction responsiveness (addition):** Any user tap that does not require a network round trip (preset chip selection, onboarding skip button, file picker open) must respond with a visible UI change within **100ms** — the threshold below which a UI change feels instantaneous. Any tap that does require a network round trip (submit job, load usage) must show an optimistic UI update within **300ms**, with a loading state if the real response takes longer. These are initial targets, to be tuned from real RUM data in Phase 2 — not locked numbers.
 - Measurably reduce visible compression artifacts versus uploading the original file directly (Section 1's SSIM bar).
 - Support both video and image workflows with the same simple UX.
 - Build a sustainable freemium funnel (free daily quota → premium high-cap tier) using proven conversion patterns rather than a generic paywall (Section 12).
@@ -120,6 +121,7 @@ Sends birthday videos, family clips, memes. Wants zero-configuration: upload, do
 ## 10. Non-Functional Requirements
 
 - **Performance:** See the test matrix in Section 5.
+- **Interaction responsiveness (addition — initial values, tune from real RUM data in Phase 2):** Any user tap that does not require a network round trip (preset chip selection, onboarding skip, file picker open) must respond with a visible UI change within **100ms** — the threshold below which a UI change feels instantaneous (Miller 1968 / Nielsen 1993). Any tap that does require a network round trip (submit job, load usage) must show an optimistic UI update within **300ms**, with a loading state if the real response takes longer.
 - **Network resilience:** Primary launch market has variable 3G/4G connectivity. Upload must be resumable/chunked (e.g., tus protocol or multipart with resume support) as a **Phase 1 requirement**, not best-effort.
 - **Max upload size:** 100 MB per file, free tier; 500 MB premium (source file upload ceiling, distinct from the 1–16MB *output* custom-size range in FR-2).
 - **Availability:** 99.5% uptime target for MVP (single-region deployment acceptable), **plus an explicit queue-wait SLA:** p95 time from `queued` to `analyzing` under 30 seconds under normal load.

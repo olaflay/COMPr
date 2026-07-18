@@ -7,7 +7,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import platformLimits from '../../config/platform-limits.json' with { type: 'json' };
-import { isFirstJobExemptFromQuota, buildUpsellCopy } from '../../lib/growth-ux.js';
+import { buildUpsellCopy } from '../../lib/growth-ux.ts';
 
 const FREE_DAILY_LIMIT = 5;
 
@@ -31,7 +31,7 @@ export default async function jobsRoutes(app: FastifyInstance): Promise<void> {
       },
     },
   }, async (request, reply) => {
-    const { fileKey, preset, targetSizeMB, fingerprint } = request.body as {
+    const { preset, targetSizeMB, fingerprint } = request.body as {
       fileKey: string;
       preset: 'STATUS' | 'CHAT' | 'CUSTOM';
       targetSizeMB?: number;

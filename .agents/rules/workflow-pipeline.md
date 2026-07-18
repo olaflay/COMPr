@@ -74,6 +74,38 @@ runs it (`lib/pipeline.ts`, `lib/bitrate.ts`, `lib/resolution.ts`,
   documented ladder, stepping down together — don't let individual settings
   drift independently of queue depth (PRD §19).
 
+## Friction log — mandatory pre-signoff walkthrough (Stripe practice)
+
+Before any checkpoint in a build prompt may be marked done, the agent must:
+
+1. **Walk the built flow as a first-time user would** — no debug tools, no
+   pre-seeded data, no "I know what happens next" shortcuts. Use the actual
+   UI, the actual API, the actual error responses.
+2. **List every friction point found**, even small ones: a label that's
+   ambiguous, a tap target that's too small, a state that doesn't explain
+   itself, a transition that feels slow, a loading state that appears but
+   never resolves to anything visible, an empty state that leaves the user
+   unsure what to do next.
+3. **Include this friction log in the final checkpoint report.** The report
+   is not complete without it.
+
+A checkpoint with zero friction points listed is more suspicious than one with
+three real ones — it likely means the agent did not actually walk the flow.
+
+**Blocking-friction rule:** Any friction point found that touches a rule in
+`security.md`, `money-and-billing.md`, or `uploads-and-storage.md` must be
+treated as a blocking bug, not a polish note. For example:
+- A loading state that reveals a raw presigned URL in the address bar or
+  response body (touches `security.md`).
+- An upload failure that leaves a partial file visible to the next user
+  attempt (touches `uploads-and-storage.md`).
+- A quota-exhausted state that shows a non-functional upgrade button with no
+  billing integration wired (touches `money-and-billing.md`).
+
+In each case, cite the specific rule file and the rule number or heading it
+touches. The checkpoint cannot be marked done until the blocking friction is
+resolved or explicitly flagged to a human with a documented decision to defer.
+
 ## Definition of done (pipeline-level)
 
 - [ ] Size and quality retry paths remain distinct code paths.

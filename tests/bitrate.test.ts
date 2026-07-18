@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateBitrate, adjustBitrateForSizeRetry, resolutionTierFloor } from '../lib/bitrate.js';
-import { chooseInitialResolution, dropOneResolutionTier } from '../lib/resolution.js';
+import { calculateBitrate, adjustBitrateForSizeRetry, resolutionTierFloor } from '../lib/bitrate.ts';
+import { chooseInitialResolution, dropOneResolutionTier } from '../lib/resolution.ts';
 
 describe('bitrate.ts', () => {
   it('matches PRD Section 14 worked example (16MB / 30s / stereo)', () => {

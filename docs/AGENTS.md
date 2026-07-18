@@ -162,6 +162,67 @@ Before reporting a task complete, the agent must produce a checklist covering:
 
 ---
 
+## Craft Bar — Execution Quality Rules (beyond "does it work")
+
+Before any checkpoint in a build prompt may be reported done, the agent must
+also satisfy the three rules below. These codify named, sourced practices —
+they are not vague "make it feel premium" language.
+
+### 1. Opinionated Over Configurable — Zero Optional Toggles (Linear Method)
+
+Linear's published Method holds that "constraints produce better products than
+configurability." Every place the PRD already specifies a smart default —
+FR-2's preset suggestion, FR-13's onboarding preference questions — must ship
+with zero optional configuration beyond what the PRD explicitly lists for it.
+
+If an agent is tempted to add a settings toggle "for flexibility" (e.g. a
+"turn off smart defaults" checkbox, an "always show this" onboarding override,
+a configurable preset list), that is a rule violation, not a nice-to-have.
+Cite AGENTS.md #3 (no fabricated features, no "just in case" code) as the
+reason to refuse yourself.
+
+### 2. Speed Is a Feature — Perceived-Response Targets (Linear Method)
+
+Linear holds that every interaction should feel instant. This rule ties that
+principle to concrete, testable numbers:
+
+- Any user interaction that does not require a network round trip (tap on a
+  preset chip, tap to skip an onboarding step, tap to open a file picker)
+  must respond within **100ms** perceived latency — the threshold below which
+  a UI change feels instantaneous (Miller 1968 / Nielsen 1993).
+- Any interaction that does require a network round trip (submitting a job,
+  loading usage data) must show an optimistic UI update within **300ms**, with
+  a loading state if the real response takes longer.
+
+These numbers are initial targets, to be tuned from real RUM data in Phase 2,
+using the same "initial value, tune from real data" framing already used for
+unvalidated constants elsewhere in the PRD (see §27's job-count values). They
+are codified as new NFR bullet points in PRD §10 (Checkpoint 4 of the
+raise-the-bar prompt) so they are testable, not aspirational.
+
+### 3. Friction Logs — Walk the Flow Before Signing Off (Stripe Practice)
+
+Stripe's published practice for shipping quality: before shipping, use the
+product yourself as a first-time user would, and write down every point of
+friction. This rule makes that practice mandatory:
+
+Before any checkpoint in a build prompt is marked done, the agent must:
+1. Walk the built flow as a first-time user would — no debug tools, no
+   pre-seeded data, no "I know what happens next" shortcuts.
+2. List every friction point found, even small ones: a label that's ambiguous,
+   a tap target that's too small, a state that doesn't explain itself, a
+   transition that feels slow.
+3. Include this friction log in the final checkpoint report.
+
+A checkpoint with zero friction points listed is more suspicious than one with
+three real ones — it likely means the agent did not actually walk the flow.
+Any friction point that touches a rule in `security.md`, `money-and-billing.md`,
+or `uploads-and-storage.md` must be treated as a blocking bug, not a polish
+note (codified in `workflow-pipeline.md`, Checkpoint 3 of the raise-the-bar
+prompt).
+
+---
+
 ## Question 7: What Does The Agent Do When Unsure
 
 - The agent never invents a feature, a business rule, or a scope extension that isn't in the PRD or explicitly requested. If a task seems to imply something the PRD doesn't cover, stop and ask — do not guess and build it anyway.

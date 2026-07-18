@@ -1,0 +1,8 @@
+{
+  "version": "5.22.0",
+  "steps": [
+    { "tag": "CreateEnum", "enum": "JobStatus", "values": ["QUEUED", "ANALYZING", "ENCODING", "VERIFYING", "DONE", "FAILED"] },
+    { "tag": "CreateEnum", "enum": "PresetType", "values": ["STATUS", "CHAT", "CUSTOM"] },
+    { "tag": "CreateEnum", "enum": "MediaKind", "values": ["VIDEO", "IMAGE"] }
+  ]
+}

@@ -1,4 +1,4 @@
-import { defineConfig } from 'next/config';
+import type { NextConfig } from 'next';
 
 const cspHeader = [
   "default-src 'self'",
@@ -10,7 +10,7 @@ const cspHeader = [
   'upgrade-insecure-requests',
 ].join('; ');
 
-export default defineConfig({
+const nextConfig: NextConfig = {
   async headers() {
     return [
       {
@@ -32,4 +32,6 @@ export default defineConfig({
       },
     ];
   },
-});
+};
+
+export default nextConfig;

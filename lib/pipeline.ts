@@ -7,11 +7,11 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { statSync, readFileSync, writeFileSync } from 'node:fs';
+import { statSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { calculateBitrate, adjustBitrateForSizeRetry } from './bitrate.js';
-import { chooseInitialResolution, dropOneResolutionTier, type ResolutionTier } from './resolution.js';
+import { calculateBitrate, adjustBitrateForSizeRetry } from './bitrate.ts';
+import { chooseInitialResolution, dropOneResolutionTier, type ResolutionTier } from './resolution.ts';
 
 export interface ProbeResult {
   width: number;
@@ -112,7 +112,7 @@ export function fileSizeMB(p: string): number {
 export function measureSSIM(
   sourcePath: string,
   outputPath: string,
-  durationSec: number,
+  _durationSec: number,
   sourceFps: number = 30,
 ): SSIMResult {
   const ssimLogPath = outputPath + `.ssim.${randomBytes(8).toString('hex')}.log`;

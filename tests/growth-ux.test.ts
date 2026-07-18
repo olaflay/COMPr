@@ -1,8 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { suggestPreset } from '../lib/smart-defaults.js';
-import { cumulativeDisplayPercent, stepsRemaining } from '../lib/progress-stages.js';
-import { isFirstJobExemptFromQuota, buildUpsellCopy, applyOnboardingPreferences } from '../lib/growth-ux.js';
+import { suggestPreset } from '../lib/smart-defaults.ts';
+import { cumulativeDisplayPercent, stepsRemaining } from '../lib/progress-stages.ts';
+import { isFirstJobExemptFromQuota, buildUpsellCopy, applyOnboardingPreferences } from '../lib/growth-ux.ts';
 
 describe('smart-defaults.ts', () => {
   it('portrait short video -> STATUS', () => {

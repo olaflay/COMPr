@@ -1,0 +1,147 @@
+// PRD §21 — Complete Prisma Data Model
+// Phase 2 models (User, LedgerEntry, Payment) are forward-compat only,
+// not wired to any Phase 1 code.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum JobStatus {
+  QUEUED
+  ANALYZING
+  ENCODING
+  VERIFYING
+  DONE
+  FAILED
+}
+
+enum PresetType {
+  STATUS
+  CHAT
+  CUSTOM
+}
+
+enum MediaKind {
+  VIDEO
+  IMAGE
+}
+
+model Job {
+  id                       String      @id @default(cuid())
+  status                   JobStatus   @default(QUEUED)
+  preset                   PresetType
+  targetSizeMB             Int? // only set when preset = CUSTOM, validated 1-16 at API layer
+  mediaKind                MediaKind
+  sourceFile               MediaFile?  @relation("SourceFile", fields: [sourceFileId], references: [id])
+  sourceFileId             String?     @unique
+  outputs                  MediaFile[] @relation("OutputFiles")
+  errorMessage             String?
+  fingerprintHash          String
+  ipHash                   String
+  isPremium                Boolean     @default(false)
+  isFirstJobForFingerprint Boolean     @default(false) // drives FR-11 reciprocity exemption
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+  completedAt              DateTime?
+
+  @@index([fingerprintHash, createdAt])
+  @@index([status])
+}
+
+model MediaFile {
+  id           String    @id @default(cuid())
+  storageKey   String    @unique
+  mimeType     String
+  sizeBytes    Int
+  durationSec  Float?
+  width        Int?
+  height       Int?
+  segmentIndex Int? // only populated for Status videos over the duration ceiling
+  role         String // "source" | "output"
+  jobAsSource  Job?      @relation("SourceFile")
+  jobAsOutput  Job?      @relation("OutputFiles", fields: [jobOutputId], references: [id])
+  jobOutputId  String?
+  expiresAt    DateTime
+  deletedAt    DateTime? // written exclusively by the cleanup cron job
+  createdAt    DateTime  @default(now())
+
+  @@index([expiresAt])
+}
+
+model UsageRecord {
+  id              String   @id @default(cuid())
+  fingerprintHash String
+  ipHash          String
+  date            DateTime @db.Date
+  jobCount        Int      @default(0)
+
+  @@unique([fingerprintHash, date])
+  @@index([ipHash, date])
+}
+
+model PlatformLimit {
+  id             String     @id @default(cuid())
+  preset         PresetType
+  maxDurationSec Int?
+  maxResolutionW Int
+  maxResolutionH Int
+  maxSizeMB      Int
+  effectiveFrom  DateTime   @default(now())
+  notes          String?
+}
+
+model OnboardingPreference {
+  id              String   @id @default(cuid())
+  fingerprintHash String   @unique
+  primaryUse      String?
+  priority        String?
+  createdAt       DateTime @default(now())
+}
+
+// Phase 2+ (accounts/billing) — forward compatibility only, not active in MVP
+// PRD §21 schema omitted reverse relation fields on User for LedgerEntry and
+// Payment. Prisma requires both sides of a relation — these are added here so
+// the schema compiles. These are Phase 2+ forward-compat models; no Phase 1
+// code reads or writes them.
+model User {
+  id                    String        @id @default(cuid())
+  email                 String        @unique
+  isPremium             Boolean       @default(false)
+  flutterwaveCustomerId String?
+  balance               Int           @default(0)
+  premiumExpiresAt      DateTime?
+  createdAt             DateTime      @default(now())
+  ledgerEntries         LedgerEntry[]
+  payments              Payment[]
+}
+
+model LedgerEntry {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  amount     Int
+  oldBalance Int
+  newBalance Int
+  type       String // "CREDIT" | "DEBIT"
+  reference  String? // Flutterwave tx_ref for idempotency
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  reference String   @unique // Flutterwave tx_ref — idempotency key
+  status    String // "successful" | "failed" | "pending"
+  amount    Int
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
