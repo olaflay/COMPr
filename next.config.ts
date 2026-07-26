@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const cspHeader = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://*.googletagmanager.com",
-  "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.ingest.sentry.io",
+  "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.ingest.sentry.io https://*.i.posthog.com",
   "img-src 'self' data: https: blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
@@ -11,6 +11,23 @@ const cspHeader = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return [
+      {
+        source: '/ingest/static/:path*',
+        destination: 'https://eu-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ingest/array/:path*',
+        destination: 'https://eu-assets.i.posthog.com/array/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://eu.i.posthog.com/:path*',
+      },
+    ];
+  },
   async headers() {
     return [
       {
