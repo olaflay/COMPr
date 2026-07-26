@@ -8,6 +8,7 @@
 import type { FastifyInstance } from 'fastify';
 import platformLimits from '../../config/platform-limits.json' with { type: 'json' };
 import { buildUpsellCopy } from '../../lib/growth-ux.ts';
+import { getPostHogClient } from '../../lib/posthog-server.ts';
 
 const FREE_DAILY_LIMIT = 5;
 
@@ -80,6 +81,21 @@ export default async function jobsRoutes(app: FastifyInstance): Promise<void> {
           jobsBlockedThisMonth: usedToday,
           premiumPriceLabel: '$4.99/mo',
         });
+
+        const posthog = getPostHogClient();
+        if (posthog) {
+          posthog.capture({
+            distinctId: fingerprint,
+            event: 'quota_exceeded',
+            properties: {
+              preset,
+              jobs_used_today: usedToday,
+              daily_limit: FREE_DAILY_LIMIT,
+            },
+          });
+          await posthog.flush();
+        }
+
         return reply.code(429).send({
           error: { code: 'QUOTA_EXCEEDED', message: copy.anchorLine, upsell: copy },
         });
@@ -87,6 +103,30 @@ export default async function jobsRoutes(app: FastifyInstance): Promise<void> {
     }
 
     usageByFingerprint.set(fingerprint, (usageByFingerprint.get(fingerprint) ?? 0) + 1);
+
+    const posthog = getPostHogClient();
+    if (posthog) {
+      if (isFirstJob) {
+        posthog.capture({
+          distinctId: fingerprint,
+          event: 'first_job_submitted',
+          properties: {
+            preset,
+            ...(preset === 'CUSTOM' && { target_size_mb: targetSizeMB }),
+          },
+        });
+      }
+      posthog.capture({
+        distinctId: fingerprint,
+        event: 'job_submitted',
+        properties: {
+          preset,
+          is_first_job: isFirstJob,
+          ...(preset === 'CUSTOM' && { target_size_mb: targetSizeMB }),
+        },
+      });
+      await posthog.flush();
+    }
 
     return reply.code(202).send({ jobId: `job_${Date.now()}`, status: 'queued' });
   });
