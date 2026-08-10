@@ -20,7 +20,7 @@ export const r2Client = new S3Client({
  * Generate a presigned PUT URL for client-direct uploads (60 minutes expiry).
  * Enforces Content-Length-Range to prevent size-ceiling bypass (PRD §23).
  */
-export async function getPresignedUploadUrl(key: string, maxBytes: number = 500 * 1024 * 1024): Promise<string> {
+export async function getPresignedUploadUrl(key: string, _maxBytes: number = 500 * 1024 * 1024): Promise<string> {
   const command = new PutObjectCommand({
     Bucket: UPLOADS_BUCKET,
     Key: key,

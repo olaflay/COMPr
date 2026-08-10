@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma.ts';
 import { redisConnection, mediaEncodeQueue } from '../lib/queue.ts';
 import { runPipeline, runAdaptivePipeline, processImage, fileSizeMB } from '../lib/pipeline.ts';
 import { splitVideo } from '../lib/split.ts';
+import { cpus } from 'node:os';
 import { downloadFromR2, uploadToR2 } from '../server/services/storage.ts';
 import platformLimits from '../config/platform-limits.json' with { type: 'json' };
 
@@ -365,7 +366,7 @@ export const encodeWorker = new Worker(
     connection: redisConnection,
     // Scale concurrency with available CPU to maximize throughput on free/cheap tiers.
     // Single-pass encodes are light; multiple concurrent jobs beat one heavy 2-pass encode.
-    concurrency: Math.max(1, Math.floor((require('os').cpus().length || 1) / 2)),
+    concurrency: Math.max(1, Math.floor((cpus().length || 1) / 2)),
     lockDuration: 60000,
   }
 );

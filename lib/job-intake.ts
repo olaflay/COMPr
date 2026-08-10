@@ -151,6 +151,7 @@ async function createJobForFingerprintValidated(input: {
 
     const sourceFile = await tx.mediaFile.findUnique({
       where: { storageKey: fileKey },
+      include: { jobAsSource: true },
     });
 
     if (!sourceFile) {
