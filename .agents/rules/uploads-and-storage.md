@@ -43,8 +43,7 @@ the *database record* for a file lives in database-schema.md.)
 
 ## Content handling
 
-- EXIF/GPS metadata is stripped from output images by default; only the
-  orientation tag survives (PRD §15, §24, AGENTS.md #15).
+- EXIF/GPS metadata is stripped from output images by default (-map_metadata -1); FFmpeg auto-rotation ensures visual orientation is preserved (PRD §15, §24, AGENTS.md #15).
 - Uploaded content is used only to produce the requested job's output —
   never for training, analytics payloads, or shared with any third party
   (PRD §24, AGENTS.md #12).

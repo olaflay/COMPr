@@ -1,93 +1,136 @@
-/**
- * POST /api/v1/jobs — PRD 18.
- *
- * Validates preset, targetSizeMB, fileKey. Enforces reciprocity (FR-11)
- * and daily quota. All business logic delegated to /lib functions.
- */
-
-import type { FastifyInstance } from 'fastify';
+import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
+import { z } from 'zod';
 import platformLimits from '../../config/platform-limits.json' with { type: 'json' };
-import { buildUpsellCopy } from '../../lib/growth-ux.ts';
+import { prisma } from '../../lib/prisma.ts';
+import { cumulativeDisplayPercent, stepsRemaining } from '../../lib/progress-stages.ts';
+import { chooseInitialResolution } from '../../lib/resolution.ts';
+import { createJobForFingerprint, IntakeError } from '../../lib/job-intake.ts';
+import { getPresignedDownloadUrl } from '../services/storage.ts';
+import { hashString } from '../../lib/crypto.ts';
 
-const FREE_DAILY_LIMIT = 5;
+const PRESET_VALUES = ['STATUS', 'CHAT', 'CUSTOM'] as const;
+const DESTINATION_VALUES = ['WHATSAPP_NORMAL', 'WHATSAPP_HD', 'WHATSAPP_DOCUMENT', 'PREVIEW_WEB'] as const;
 
-/** In-memory stand-in for Prisma UsageRecord — replace with DB in production. */
-const usageByFingerprint = new Map<string, number>();
-/** In-memory stand-in for Prisma Job.isFirstJobForFingerprint — replace with DB. */
-const fingerprintsSeen = new Set<string>();
+const createJobBodySchema = z.object({
+  fileKey: z.string(),
+  preset: z.enum(PRESET_VALUES),
+  targetSizeMB: z.number().min(1).max(16).optional(),
+  prioritizeDetail: z.boolean().optional(),
+  destination: z.enum(DESTINATION_VALUES).optional(),
+  fingerprint: z.string(),
+});
 
-export default async function jobsRoutes(app: FastifyInstance): Promise<void> {
+const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
+  // POST /api/v1/jobs — Create job
   app.post('/api/v1/jobs', {
     schema: {
-      body: {
-        type: 'object',
-        required: ['fileKey', 'preset'],
-        properties: {
-          fileKey: { type: 'string' },
-          preset: { type: 'string', enum: ['STATUS', 'CHAT', 'CUSTOM'] },
-          targetSizeMB: { type: 'number', minimum: 1, maximum: 16 },
-          fingerprint: { type: 'string' },
-        },
-      },
+      body: createJobBodySchema,
     },
   }, async (request, reply) => {
-    const { preset, targetSizeMB, fingerprint } = request.body as {
-      fileKey: string;
-      preset: 'STATUS' | 'CHAT' | 'CUSTOM';
-      targetSizeMB?: number;
-      fingerprint: string;
-    };
+    const { fileKey, preset, targetSizeMB, prioritizeDetail, destination, fingerprint } = request.body;
 
-    // Validate preset
-    if (!['STATUS', 'CHAT', 'CUSTOM'].includes(preset)) {
-      return reply.code(400).send({
-        error: { code: 'INVALID_PRESET', message: 'preset must be STATUS, CHAT, or CUSTOM' },
+    try {
+      const result = await createJobForFingerprint({
+        fileKey,
+        preset,
+        targetSizeMB,
+        prioritizeDetail,
+        destination,
+        fingerprint,
+        ip: request.ip,
       });
-    }
-
-    // PRD 18: targetSizeMB only accepted when preset=CUSTOM, bounded 1-16MB
-    if (preset === 'CUSTOM') {
-      const { minSizeMB, maxSizeMB } = platformLimits.CUSTOM;
-      if (typeof targetSizeMB !== 'number' || targetSizeMB < minSizeMB || targetSizeMB > maxSizeMB) {
-        return reply.code(400).send({
+      return reply.code(202).send(result);
+    } catch (err) {
+      if (err instanceof IntakeError) {
+        return reply.code(err.statusCode).send({
           error: {
-            code: 'INVALID_TARGET_SIZE',
-            message: `targetSizeMB is required for CUSTOM preset and must be between ${minSizeMB} and ${maxSizeMB}`,
+            code: err.code,
+            message: err.message,
+            ...(err.upsell !== undefined ? { upsell: err.upsell } : {}),
           },
         });
       }
-    } else if (targetSizeMB !== undefined) {
-      return reply.code(400).send({
-        error: {
-          code: 'UNEXPECTED_TARGET_SIZE',
-          message: `targetSizeMB is only valid for preset=CUSTOM, not ${preset}`,
-        },
+      throw err;
+    }
+  });
+
+  // GET /api/v1/jobs/:jobId — Get job status
+  app.get('/api/v1/jobs/:jobId', async (request, reply) => {
+    const { jobId } = request.params as { jobId: string };
+
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      include: {
+        outputs: true,
+        sourceFile: true,
+      },
+    });
+
+    if (!job) {
+      return reply.code(404).send({
+        error: { code: 'JOB_NOT_FOUND', message: `Job with ID ${jobId} not found` },
       });
     }
 
-    // PRD FR-11, 26: First-job reciprocity — check DB flag, NOT "first job today."
-    // This exemption applies once per fingerprint at the database level.
-    const isFirstJob = !fingerprintsSeen.has(fingerprint);
-    if (isFirstJob) {
-      fingerprintsSeen.add(fingerprint);
+    const { fingerprint } = request.query as { fingerprint?: string };
+    if (!fingerprint || hashString(fingerprint) !== job.fingerprintHash) {
+      return reply.code(403).send({
+        error: { code: 'FORBIDDEN', message: 'You do not have permission to access this job' },
+      });
     }
 
-    // Daily quota check (skip if first-job reciprocity applies)
-    if (!isFirstJob) {
-      const usedToday = usageByFingerprint.get(fingerprint) ?? 0;
-      if (usedToday >= FREE_DAILY_LIMIT) {
-        const copy = buildUpsellCopy({
-          jobsBlockedThisMonth: usedToday,
-          premiumPriceLabel: '$4.99/mo',
-        });
-        return reply.code(429).send({
-          error: { code: 'QUOTA_EXCEEDED', message: copy.anchorLine, upsell: copy },
-        });
+    // queuePosition is denormalized on Job.queuePosition, updated by workers
+    const queuePosition = job.queuePosition || 0;
+
+    const stageKey = job.status.toLowerCase();
+    const isFailed = stageKey === 'failed';
+
+    const progressPercent = isFailed ? 0 : cumulativeDisplayPercent(stageKey);
+    const steps = isFailed ? 0 : stepsRemaining(stageKey);
+
+    // Generate presigned download URLs for output files
+    const outputs = await Promise.all(
+      job.outputs.map(async (out) => {
+        const downloadUrl = await getPresignedDownloadUrl(out.storageKey).catch(
+          () => '' // fallback if S3 SDK fails
+        );
+        return {
+          segmentIndex: out.segmentIndex,
+          downloadUrl,
+          sizeBytes: out.sizeBytes,
+        };
+      })
+    );
+
+    let resolutionDropped = false;
+    if (job.status === 'DONE' && job.mediaKind === 'VIDEO' && job.sourceFile && job.outputs.length > 0 && job.preset !== 'CUSTOM') {
+      const sourceHeight = job.sourceFile.height || 0;
+      const sourceWidth = job.sourceFile.width || 0;
+      // Same preset cap the encode worker applies — sourced from the config
+      // table, never hardcoded (AGENTS.md Q3).
+      const presetMaxHeight = platformLimits[job.preset].maxResolution.height;
+      const initialResolution = chooseInitialResolution(sourceWidth, sourceHeight, presetMaxHeight);
+
+      const outputHeights = job.outputs.map((out) => out.height || 0);
+      const hasDrop = outputHeights.some((h) => h > 0 && h < initialResolution.height);
+      if (hasDrop) {
+        resolutionDropped = true;
       }
     }
 
-    usageByFingerprint.set(fingerprint, (usageByFingerprint.get(fingerprint) ?? 0) + 1);
-
-    return reply.code(202).send({ jobId: `job_${Date.now()}`, status: 'queued' });
+    return reply.send({
+      jobId: job.id,
+      status: job.status,
+      stage: stageKey,
+      progressPercent,
+      stepsRemaining: steps,
+      outputs,
+      resolutionDropped,
+      prioritizeDetail: job.prioritizeDetail,
+      errorMessage: job.errorMessage,
+      queuePosition: queuePosition || undefined,
+    });
   });
-}
+};
+
+export default jobsRoutes;

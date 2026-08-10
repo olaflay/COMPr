@@ -9,7 +9,7 @@ describe('bitrate.ts', () => {
     assert.equal(r.bitrateTotalKbps, 4369.07);
     assert.equal(r.audioBitrateKbps, 96);
     assert.equal(r.videoBitrateKbps, 4273.07);
-    assert.ok(Math.abs(r.videoBitrateFinalKbps - 3931) < 1);
+    assert.ok(Math.abs(r.videoBitrateFinalKbps - 4209) < 1);
   });
 
   it('custom preset bound: 16MB/30s is the practical case; 1MB min holds', () => {

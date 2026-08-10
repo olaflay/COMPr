@@ -7,7 +7,7 @@
 export const SITE_NAME = 'COMPr';
 export const BASE_URL = 'https://compr.app';
 export const DEFAULT_DESCRIPTION =
-  'Upload your photo or video, pick WhatsApp Status, Chat, or a custom size, and download a version optimized to stay as sharp as possible after WhatsApp compresses it.';
+  'Pre-optimize your photos and videos to stay sharp and clear after sending them on WhatsApp. No account required.';
 
 export interface MetadataInput {
   title?: string;
@@ -36,6 +36,11 @@ export interface PageMetadata {
     images: string[];
   };
   robots: { index: boolean; follow: boolean };
+  icons: {
+    icon: string;
+    shortcut: string;
+    apple?: string;
+  };
 }
 
 export function buildMetadata({
@@ -45,8 +50,8 @@ export function buildMetadata({
   ogImage = '/og-default.jpg',
 }: MetadataInput = {}): PageMetadata {
   const fullTitle = title
-    ? `${title} — ${SITE_NAME}`
-    : `${SITE_NAME} — WhatsApp-ready photos and videos`;
+    ? `${title} | ${SITE_NAME}`
+    : `${SITE_NAME} | WhatsApp-ready photos and videos`;
   const url = `${BASE_URL}${path}`;
 
   return {
@@ -69,6 +74,11 @@ export function buildMetadata({
       images: [`${BASE_URL}${ogImage}`],
     },
     robots: { index: true, follow: true },
+    icons: {
+      icon: '/favicon.svg',
+      shortcut: '/favicon.ico',
+      apple: '/favicon.svg',
+    },
   };
 }
 
@@ -85,7 +95,7 @@ export function organizationSchema(): SchemaOrg {
     '@type': 'Organization',
     name: SITE_NAME,
     url: BASE_URL,
-    logo: `${BASE_URL}/logo.png`,
+    logo: `${BASE_URL}/favicon.svg`,
     description: DEFAULT_DESCRIPTION,
   };
 }

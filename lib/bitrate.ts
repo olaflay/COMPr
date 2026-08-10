@@ -6,9 +6,8 @@
  * being treated as a permanent constant. It lives here as one named export
  * so it's a single place to update once that validation happens.
  */
-export const MUX_OVERHEAD_MARGIN = 0.08;
+export const MUX_OVERHEAD_MARGIN = 0.02;
 
-/** Minimum viable bitrate floor per resolution tier (kbps). */
 export const BITRATE_FLOORS_KBPS: Record<number, number> = {
   240: 150,
   360: 300,
@@ -16,6 +15,18 @@ export const BITRATE_FLOORS_KBPS: Record<number, number> = {
   720: 800,
   1080: 1500,
 };
+
+/**
+ * Estimate container muxing overhead dynamically.
+ * For short clips, the container headers consume a larger percentage.
+ * For longer clips, the overhead scales down.
+ * Linked directly to MUX_OVERHEAD_MARGIN for easy unified tuning.
+ */
+export function estimateMuxOverhead(durationSec: number, _targetSizeMB: number): number {
+  if (durationSec < 5) return MUX_OVERHEAD_MARGIN * 2.5; // 0.05 (5%)
+  if (durationSec < 15) return MUX_OVERHEAD_MARGIN * 1.5; // 0.03 (3%)
+  return MUX_OVERHEAD_MARGIN * 0.75; // 0.015 (1.5%)
+}
 
 export interface BitrateResult {
   bitrateTotalKbps: number;
@@ -44,7 +55,9 @@ export function calculateBitrate(
   const bitrateTotalKbps = (targetSizeMB * 8 * 1024) / durationSec;
   const audioBitrateKbps = clampAudioBitrateKbps(audioChannels);
   const videoBitrateKbps = Math.max(0, bitrateTotalKbps - audioBitrateKbps);
-  const videoBitrateFinalKbps = videoBitrateKbps * (1 - MUX_OVERHEAD_MARGIN);
+  
+  const margin = estimateMuxOverhead(durationSec, targetSizeMB);
+  const videoBitrateFinalKbps = videoBitrateKbps * (1 - margin);
 
   return {
     bitrateTotalKbps: round(bitrateTotalKbps),

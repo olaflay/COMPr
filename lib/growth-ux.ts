@@ -1,5 +1,5 @@
 /**
- * Growth & Conversion UX — PRD FR-11, FR-12, FR-13, §38.
+ * Growth & Conversion UX, PRD FR-11, FR-12, FR-13, §38.
  *
  * Implements: reciprocity (first-job exemption), loss aversion + contrast
  * effect (upsell copy), and IKEA effect (onboarding preferences).
@@ -14,20 +14,20 @@ export interface OnboardingQuestion {
 export const ONBOARDING_QUESTIONS: OnboardingQuestion[] = [
   {
     id: 'primary_use',
-    question: 'What do you mainly share on WhatsApp?',
+    question: 'Wetin you dey mostly share for WhatsApp?',
     options: [
-      { value: 'products', label: 'Product photos & videos for customers' },
+      { value: 'products', label: 'Product photos and videos for customers' },
       { value: 'status', label: 'Status updates' },
-      { value: 'personal', label: 'Personal videos & memories' },
+      { value: 'personal', label: 'Personal videos and memories' },
     ],
   },
   {
     id: 'priority',
-    question: 'What matters most when you send media?',
+    question: 'Wetin dey matter most when you dey send media?',
     options: [
-      { value: 'quality', label: 'Looking as sharp as possible' },
-      { value: 'speed', label: 'Getting it sent quickly' },
-      { value: 'size', label: 'Keeping the file small' },
+      { value: 'quality', label: 'To dey look as sharp as possible' },
+      { value: 'speed', label: 'To send am quickly' },
+      { value: 'size', label: 'To keep the file small' },
     ],
   },
 ];
@@ -84,12 +84,12 @@ export function buildUpsellCopy({
 }): UpsellCopyResult {
   const lossLine =
     jobsBlockedThisMonth > 0
-      ? `You've had ${jobsBlockedThisMonth} file${jobsBlockedThisMonth === 1 ? '' : 's'} this month that couldn't be optimized once you hit today's limit -- sent at lower quality than they could have been.`
-      : `Once you hit today's free limit, any more files you send today go out without COMPr's optimization.`;
+      ? `You don get ${jobsBlockedThisMonth} file${jobsBlockedThisMonth === 1 ? '' : 's'} this month wey no fit optimize once you hit today limit, and dem send at lower quality than dem for don be.`
+      : `Once you hit today free limit, any more files wey you send today go go out without COMPr optimization.`;
 
   return {
     anchorLine: lossLine,
-    priceLine: `${premiumPriceLabel} removes the daily limit entirely.`,
-    ctaLabel: 'Never send a blurry file again',
+    priceLine: `${premiumPriceLabel} dey remove the daily limit completely.`,
+    ctaLabel: 'Never send blurry file again',
   };
 }

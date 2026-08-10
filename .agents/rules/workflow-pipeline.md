@@ -25,15 +25,21 @@ runs it (`lib/pipeline.ts`, `lib/bitrate.ts`, `lib/resolution.ts`,
 - SSIM is sampled at fixed 2-second intervals across the full duration, with
   the source scaled to output resolution via `scale2ref` before comparing
   (PRD §13). Don't sample fewer points to save compute without flagging it.
-- VMAF is Phase 2. Do not implement it, wire it in as an optional flag, or
-  add a config value for it in Phase 1 (AGENTS.md, PRD §33).
+- VMAF is the primary quality gate (PRD FR-16): both inputs are sought to
+  the middle of the clip and scored on a 5-second segment against the bundled
+  model; a score below the 80 floor triggers a single CRF-3 re-encode.
+  Do not disable it, and do not add a config toggle to bypass it in normal
+  jobs. SSIM remains the secondary verification (PRD §13).
 
 ## Resolution and bitrate
 
 - Never upscale a video or image beyond its source resolution, regardless
   of the preset's resolution cap (PRD §16, AGENTS.md #16).
-- Codec/container is locked: H.264 (libx264), MP4, AAC audio. H.265/AV1
-  requires explicit instruction, not agent judgment (AGENTS.md, PRD §16).
+- Codec selection is destination-driven through the policy engine
+  (PRD FR-16, AGENTS.md Q2): AV1 (libsvtav1) is primary on the WhatsApp
+  document/preview path, H.264 (libx264) on the WhatsApp chat path. H.265
+  remains locked out. Do not change the routing or add other codecs without
+  explicit instruction.
 - All WhatsApp platform constants (duration, resolution, size ceilings) come
   from `config/platform-limits.json` / `PlatformLimit` — never a hardcoded
   `90` or `720` in pipeline code.

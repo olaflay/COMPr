@@ -1,5 +1,15 @@
 version: "3.9"
+
+# COMPr — Multi-service architecture for adaptive media engine.
+# Usage:
+#   docker compose up -d                  # Start all services
+#   docker compose up -d postgres redis   # Start only infrastructure
+#   docker compose up analysis-worker     # Start analysis workers only
+#   docker compose scale analysis-worker=2  # Scale analysis workers
+
 services:
+  # ── Infrastructure ──────────────────────────────────────────────
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -10,6 +20,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U compr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -18,7 +33,140 @@ services:
       - "6379:6379"
     volumes:
       - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Web Application & API Server ────────────────────────────────
+
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://compr:compr@postgres:5432/compr
+      - REDIS_URL=redis://redis:6379
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_UPLOADS_BUCKET=${R2_UPLOADS_BUCKET:-compr-uploads}
+      - R2_OUTPUTS_BUCKET=${R2_OUTPUTS_BUCKET:-compr-outputs}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - POSTHOG_API_KEY=${POSTHOG_API_KEY:-}
+      - NEXT_PUBLIC_APP_URL=http://localhost
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_APP_URL=http://localhost
+      - NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY:-}
+      - NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+    depends_on:
+      - api-server
+
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - web
+      - api-server
+
+  # ── Workers ─────────────────────────────────────────────────────
+
+  analysis-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - DATABASE_URL=postgresql://compr:compr@postgres:5432/compr
+      - REDIS_URL=redis://redis:6379
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_UPLOADS_BUCKET=${R2_UPLOADS_BUCKET:-compr-uploads}
+      - R2_OUTPUTS_BUCKET=${R2_OUTPUTS_BUCKET:-compr-outputs}
+    command: ["node", "--experimental-strip-types", "workers/analysis-worker.ts"]
+    volumes:
+      - ./temp:/app/temp
+      - ./config:/app/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+      replicas: 2
+
+  encode-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - DATABASE_URL=postgresql://compr:compr@postgres:5432/compr
+      - REDIS_URL=redis://redis:6379
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_UPLOADS_BUCKET=${R2_UPLOADS_BUCKET:-compr-uploads}
+      - R2_OUTPUTS_BUCKET=${R2_OUTPUTS_BUCKET:-compr-outputs}
+      - VMAF_MODEL_PATH=/usr/share/model/vmaf_v0.6.1.json
+    command: ["node", "--experimental-strip-types", "workers/encode-worker.ts"]
+    volumes:
+      - ./temp:/app/temp
+      - ./config:/app/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+      replicas: 1
+
+  cleanup-cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - DATABASE_URL=postgresql://compr:compr@postgres:5432/compr
+      - REDIS_URL=redis://redis:6379
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_UPLOADS_BUCKET=${R2_UPLOADS_BUCKET:-compr-uploads}
+      - RUN_CLEANUP_LOOP=true
+    command: ["node", "--experimental-strip-types", "workers/cleanup-cron.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   pgdata:
   redisdata:
+

@@ -1,4 +1,4 @@
-# llms.txt — AI Crawler & Training Data Policy
+# llms.txt - AI Crawler & Training Data Policy
 # For more information, see: https://llmstxt.org/
 
 User-agent: *
@@ -8,9 +8,10 @@ Disallow: /jobs/
 # ORGANISATION
 # Name: COMPr
 # Website: https://compr.app
+# Language: Nigerian Pidgin (pcm) - the default UI language. Browsers auto-translate.
 # What we do: A free web tool that optimizes photos and videos before you
 #   send them on WhatsApp, so they look sharper after WhatsApp's own
-#   compression — without bypassing or disabling that compression.
+#   compression - without bypassing or disabling that compression.
 # Coverage / audience: WhatsApp users, online sellers, small businesses,
 #   marketers, and everyday users sending media on WhatsApp.
 # Contact: hello@compr.app

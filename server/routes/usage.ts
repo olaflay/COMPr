@@ -1,29 +1,72 @@
-/**
- * GET /api/v1/usage — PRD 18.
- *
- * Returns daily usage stats for the given fingerprint, including
- * isFirstJobToday to drive the reciprocity exemption (FR-11).
- */
+import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
+import { z } from 'zod';
+import { hashString } from '../../lib/crypto.ts';
+import { grantShareBonus, fetchUsage, FREE_DAILY_LIMIT, remainingJobs, allowanceFor, todayStart } from '../../lib/quota.ts';
 
-import type { FastifyInstance } from 'fastify';
+const fingerprintSchema = z.object({
+  fingerprint: z.string().optional(),
+});
 
-const FREE_DAILY_LIMIT = 5;
+const usageRoutes: FastifyPluginAsyncZod = async (app) => {
+  app.get('/api/v1/usage', {
+    schema: {
+      querystring: fingerprintSchema,
+    },
+  }, async (request, reply) => {
+    const { fingerprint } = request.query;
+    if (!fingerprint) {
+      return reply.code(400).send({
+        error: { code: 'MISSING_FINGERPRINT', message: 'fingerprint query parameter is required' },
+      });
+    }
 
-/** In-memory stand-in for Prisma UsageRecord — replace with DB in production. */
-const usageByFingerprint = new Map<string, number>();
-const fingerprintsSeen = new Set<string>();
+    const fingerprintHash = hashString(fingerprint);
+    const today = todayStart();
 
-export default async function usageRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/api/v1/usage', async (request) => {
-    const { fingerprint } = request.query as { fingerprint: string };
-    const used = usageByFingerprint.get(fingerprint) ?? 0;
-    const isFirstJob = !fingerprintsSeen.has(fingerprint);
+    const usage = await fetchUsage(fingerprintHash, today);
+    const used = usage ? usage.jobCount : 0;
+    const bonus = usage ? usage.bonusCount : 0;
+    const allowance = allowanceFor(bonus);
 
     return {
       jobsUsedToday: used,
-      jobsRemainingToday: Math.max(0, FREE_DAILY_LIMIT - used),
+      jobsRemainingToday: remainingJobs(used, bonus),
       isPremium: false,
-      isFirstJobToday: isFirstJob,
+      isFirstJobToday: used === 0,
+      shareBonusAvailable: bonus === 0 && used >= FREE_DAILY_LIMIT,
+      allowance,
     };
   });
-}
+
+  // Share = Credit: grant bonus compressions once per day for sharing COMPr
+  app.post('/api/v1/usage/share-bonus', {
+    schema: {
+      body: fingerprintSchema,
+    },
+  }, async (request, reply) => {
+    const { fingerprint } = request.body;
+    if (!fingerprint) {
+      return reply.code(400).send({
+        error: { code: 'MISSING_FINGERPRINT', message: 'fingerprint is required' },
+      });
+    }
+
+    const fingerprintHash = hashString(fingerprint);
+    const ipHash = hashString(request.ip);
+
+    const granted = await grantShareBonus(fingerprintHash, ipHash);
+
+    const usage = await fetchUsage(fingerprintHash, todayStart());
+    const used = usage ? usage.jobCount : 0;
+    const bonus = usage ? usage.bonusCount : 0;
+
+    return {
+      granted,
+      jobsUsedToday: used,
+      jobsRemainingToday: remainingJobs(used, bonus),
+      allowance: allowanceFor(bonus),
+    };
+  });
+};
+
+export default usageRoutes;

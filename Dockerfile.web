@@ -1,0 +1,40 @@
+# Dockerfile for Next.js web application frontend
+FROM node:22-slim AS builder
+
+WORKDIR /app
+
+# Install development dependencies to build the application
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy application files and build
+COPY . .
+RUN npm run build
+
+# Production runner stage
+FROM node:22-slim AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Install production dependencies only
+COPY package.json package-lock.json ./
+RUN npm ci --production
+
+# Copy built assets and configuration files
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.ts ./next.config.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/postcss.config.mjs ./postcss.config.mjs
+COPY --from=builder /app/tailwind.config.ts ./tailwind.config.ts
+COPY --from=builder /app/styles/ ./styles/
+COPY --from=builder /app/lib/ ./lib/
+COPY --from=builder /app/app/ ./app/
+COPY --from=builder /app/components/ ./components/
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start"]

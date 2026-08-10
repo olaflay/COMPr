@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Job" ADD COLUMN     "destination" TEXT NOT NULL DEFAULT 'WHATSAPP_NORMAL';

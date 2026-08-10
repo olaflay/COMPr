@@ -1,6 +1,6 @@
 ---
 name: growth-and-quota-engine
-description: Use for anything in lib/growth-ux.ts or lib/progress-stages.ts — quota/reciprocity decisions, upsell copy assembly, onboarding preference application, or the goal-gradient progress percentage mapping. Triggers on "quota," "reciprocity," "upsell," "onboarding," "progress indicator," "goal gradient."
+description: Use for anything in lib/growth-ux.ts, lib/progress-stages.ts, or lib/whatsapp-share.ts — quota/reciprocity decisions, upsell copy assembly, onboarding preference application, the goal-gradient progress percentage mapping, or the post-optimization share-to-WhatsApp flow. Triggers on "quota," "reciprocity," "upsell," "onboarding," "progress indicator," "goal gradient," "share," "WhatsApp."
 ---
 
 # Growth and Quota Engine

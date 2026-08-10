@@ -1,0 +1,31 @@
+# Dockerfile for Fastify API backend server
+FROM node:22-slim
+
+WORKDIR /app
+
+# Copy dependency configuration
+COPY package.json package-lock.json ./
+
+# Install all dependencies (development dependencies needed for building/prisma generate)
+RUN npm ci
+
+# Copy Prisma schema and generate Client
+COPY prisma/ ./prisma/
+RUN npx prisma generate
+
+# Copy application source files
+COPY server/ ./server/
+COPY lib/ ./lib/
+COPY config/ ./config/
+COPY tsconfig.json ./tsconfig.json
+
+# Clean up dev dependencies to keep production image smaller
+# Note: we need to keep prisma client and node modules intact.
+# npm prune --production removes devDependencies but keeps dependencies like @prisma/client
+RUN npm prune --production
+
+EXPOSE 5000
+
+ENV PORT=5000
+
+CMD ["node", "--experimental-strip-types", "server/index.ts"]
