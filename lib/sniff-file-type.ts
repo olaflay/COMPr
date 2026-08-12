@@ -61,7 +61,15 @@ export function sniffFileType(filePath: string): 'VIDEO' | 'IMAGE' | 'INVALID' {
     }
   }
 
-  // 4. HEIC check: ....ftypheic or ....ftypmif1
+  // 4. GIF check: "GIF87a" or "GIF89a" (ASCII header)
+  if (bytesRead >= 6) {
+    const gifMagic = buffer.toString('ascii', 0, 6);
+    if (gifMagic === 'GIF87a' || gifMagic === 'GIF89a') {
+      return 'IMAGE';
+    }
+  }
+
+  // 5. HEIC check: ....ftypheic or ....ftypmif1
   if (bytesRead >= 12) {
     const ftyp = buffer.toString('ascii', 4, 8);
     if (ftyp === 'ftyp') {
@@ -72,7 +80,7 @@ export function sniffFileType(filePath: string): 'VIDEO' | 'IMAGE' | 'INVALID' {
     }
   }
 
-  // 5. MP4/3GP check: has "ftyp" at offset 4
+  // 6. MP4/3GP check: has "ftyp" at offset 4
   if (bytesRead >= 8) {
     const ftyp = buffer.toString('ascii', 4, 8);
     if (ftyp === 'ftyp') {
@@ -80,7 +88,7 @@ export function sniffFileType(filePath: string): 'VIDEO' | 'IMAGE' | 'INVALID' {
     }
   }
 
-  // 6. WebM/MKV check: 1A 45 DF A3
+  // 7. WebM/MKV check: 1A 45 DF A3
   if (
     buffer[0] === 0x1A &&
     buffer[1] === 0x45 &&
@@ -90,7 +98,7 @@ export function sniffFileType(filePath: string): 'VIDEO' | 'IMAGE' | 'INVALID' {
     return 'VIDEO';
   }
 
-  // 7. QuickTime (MOV) check: ftypqt / moov / free / mdat
+  // 8. QuickTime (MOV) check: ftypqt / moov / free / mdat
   if (bytesRead >= 8) {
     const ftyp = buffer.toString('ascii', 4, 8);
     if (ftyp === 'moov' || ftyp === 'free' || ftyp === 'mdat' || ftyp === 'wide') {

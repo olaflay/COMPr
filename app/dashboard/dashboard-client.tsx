@@ -575,37 +575,84 @@ export default function DashboardPageClient() {
             {/* WhatsApp Demo: before/after preview strip */}
             <WhatsAppDemoStrip />
 
-            {/* Drag & Drop File Box */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              onDrop={handleFileDrop}
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
-              className={`border-2 border-dashed rounded-m3-md p-m3-x-large text-center cursor-pointer transition-all duration-m3-short-2 ${isDragging ? 'drop-zone-active border-primary scale-[1.01]' : 'border-outline hover:border-primary focus-within:border-primary'}`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="video/*,image/*"
-                onChange={handleFileChange}
-                className="hidden"
-                aria-label="Choose a video or image file to optimize"
-              />
-              <div className="text-display-medium mb-m3-x-small" aria-hidden="true">{isDragging ? '📥' : '📁'}</div>
-              {selectedFile ? (
-                <div className="text-body-large text-primary font-medium">{selectedFile.name}</div>
-              ) : (
-                <div className="text-body-large text-on-surface-variant">
-                  {isDragging ? 'Drop your file here' : 'Tap to select or drag a file here'}
-                </div>
-              )}
-              <div className="text-label-small text-on-surface-variant mt-m3-xx-small">
-                Videos and photos up to 100MB
+            {/* Drag & Drop File Box + Optimize CTA: stacked tight on mobile, side-by-side on desktop */}
+            <div className="flex flex-col md:flex-row md:items-stretch gap-m3-x-small">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDrop={handleFileDrop}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
+                className={`relative flex-1 border-2 border-dashed rounded-m3-md p-m3-x-large text-center cursor-pointer transition-all duration-m3-short-2 ${isDragging ? 'drop-zone-active border-primary scale-[1.01] select-none' : 'border-outline hover:border-primary focus-within:border-primary'}`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*,image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  aria-label="Choose a video or image file to optimize"
+                />
+
+                {selectedFile && sourceFileUrl ? (
+                  <div className="flex flex-col items-center gap-m3-x-small">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSelectedFile(null); setVideoDuration(null); setValidationErrors([]); }}
+                      aria-label="Remove selected file"
+                      className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-highest text-on-surface-variant hover:bg-error hover:text-on-error focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors duration-m3-short-2"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                        <path strokeLinecap="round" d="M18 6 6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                    <div className="w-20 h-20 rounded-m3-md overflow-hidden bg-surface-container-highest shadow-m3-1 flex items-center justify-center shrink-0">
+                      {selectedFile.type.startsWith('video/') ? (
+                        <video src={sourceFileUrl} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                      ) : (
+                        <Image src={sourceFileUrl} alt="" width={80} height={80} unoptimized className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                    <div className="text-body-large text-primary font-medium break-all leading-snug max-w-full px-m3-small">
+                      {selectedFile.name}
+                    </div>
+                    <div className="text-label-small text-on-surface-variant">
+                      {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB
+                      {selectedFile.type.startsWith('video/') && videoDuration ? ` · ${Math.round(videoDuration)}s` : ''}
+                      {' · tap to change'}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-display-medium mb-m3-x-small" aria-hidden="true">{isDragging ? '📥' : '📁'}</div>
+                    <div className="text-body-large text-on-surface-variant">
+                      {isDragging ? 'Drop your file here' : 'Tap to select or drag a file here'}
+                    </div>
+                    <div className="text-label-small text-on-surface-variant mt-m3-xx-small">
+                      Videos and photos up to 100MB
+                    </div>
+                  </>
+                )}
               </div>
+
+              <button
+                onClick={() => { if (!selectedFile) { fileInputRef.current?.click(); } else { triggerUpload(); } }}
+                disabled={isUploading}
+                className="bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] disabled:bg-surface-container-highest disabled:text-on-surface-variant py-m3-small rounded-b-m3-full md:rounded-b-none md:rounded-r-m3-full text-title-small md:text-title-large md:font-semibold transition-all duration-m3-short-2 shadow-m3-1 hover:shadow-m3-2 disabled:shadow-none disabled:scale-100 flex items-center justify-center w-full md:w-48 md:shrink-0 md:min-h-[44px]"
+              >
+                {isUploading ? (
+                  <span className="flex items-center justify-center gap-m3-x-small">
+                    <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {uploadProgress}%
+                  </span>
+                ) : selectedFile ? 'Optimize' : 'Choose file'}
+              </button>
             </div>
 
             {/* Validation Errors */}
@@ -644,6 +691,11 @@ export default function DashboardPageClient() {
                   </button>
                 ))}
               </div>
+              <p className="text-label-small text-on-surface-variant px-m3-xx-small" aria-live="polite">
+                {preset === 'STATUS' && 'Vertical, up to 30 seconds — sized to post straight to your Status'}
+                {preset === 'CHAT' && 'Fits WhatsApp’s 16MB chat limit without losing sharpness'}
+                {preset === 'CUSTOM' && 'Pick your own target size below'}
+              </p>
 
               {preset === 'CUSTOM' && (
                 <div className="mt-m3-small flex flex-col gap-m3-xx-small p-m3-small bg-surface-container rounded-m3-sm border border-outline-variant">
@@ -723,22 +775,6 @@ export default function DashboardPageClient() {
               </li>
             </ul>
 
-            <button
-              onClick={() => { if (!selectedFile) { fileInputRef.current?.click(); } else { triggerUpload(); } }}
-              disabled={isUploading}
-              className="w-full bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] disabled:bg-surface-container-highest disabled:text-on-surface-variant py-m3-small rounded-m3-full text-title-small transition-all duration-m3-short-2 shadow-m3-1 hover:shadow-m3-2 disabled:shadow-none disabled:scale-100"
-            >
-              {isUploading ? (
-                <span className="flex items-center justify-center gap-m3-x-small">
-                  <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Uploading {uploadProgress}%
-                </span>
-              ) : selectedFile ? 'Optimize' : 'Choose file'}
-            </button>
-
             {/* Required trust signals per PRD §12 */}
             <div className="text-label-small text-on-surface-variant space-y-1">
               <p className="text-center">🔒 Files deleted automatically after 24 hours</p>
@@ -753,7 +789,24 @@ export default function DashboardPageClient() {
         {/* Processing Job Progress UI */}
         {activeJob && activeJob.status !== 'DONE' && activeJob.status !== 'FAILED' && (
           <section className="bg-surface-container-low border border-outline-variant rounded-m3-lg p-m3-large shadow-m3-1 flex flex-col gap-m3-large text-center" aria-live="polite">
-            <h3 className="text-title-large text-on-surface">Optimizing your media</h3>
+            <div className="flex flex-col items-center gap-m3-small">
+              {sourceFileUrl && selectedFile && (
+                <div className="relative w-16 h-16 rounded-m3-md overflow-hidden bg-surface-container-highest shadow-m3-1">
+                  {selectedFile.type.startsWith('video/') ? (
+                    <video src={sourceFileUrl} className="w-full h-full object-cover opacity-60" muted playsInline preload="metadata" />
+                  ) : (
+                    <Image src={sourceFileUrl} alt="" width={64} height={64} unoptimized className="w-full h-full object-cover opacity-60" />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                    <svg className="w-6 h-6 animate-spin text-primary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                      <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+              <h3 className="text-title-large text-on-surface">Optimizing your media</h3>
+            </div>
 
             <div className="flex flex-col gap-m3-x-small">
               <div className="flex justify-between items-center text-label-medium text-on-surface-variant">

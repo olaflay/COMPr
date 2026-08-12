@@ -11,6 +11,14 @@ export interface ProbeResult {
   colorSpace?: string;
   colorTransfer?: string;
   colorPrimaries?: string;
+  /**
+   * Frame count, when ffprobe reports it (e.g. GIF). Used to distinguish a
+   * static (single-frame) GIF from an animated one — GIF duration is derived
+   * from frame count x per-frame delay, not a video `duration` field the way
+   * MP4 reports it, so a single-frame GIF can still carry a non-zero
+   * `format.duration` and must not be mistaken for animated on that basis alone.
+   */
+  frameCount?: number;
 }
 
 /**
@@ -21,7 +29,7 @@ export interface ProbeResult {
 export async function probe(inputPath: string): Promise<ProbeResult> {
   const out = await runFfprobe([
     '-v', 'error',
-    '-show_entries', 'stream=width,height,codec_name,codec_type,duration,rotation,color_space,color_transfer,color_primaries:stream_side_data=rotation:stream_tags=rotate',
+    '-show_entries', 'stream=width,height,codec_name,codec_type,duration,nb_frames,rotation,color_space,color_transfer,color_primaries:stream_side_data=rotation:stream_tags=rotate',
     '-show_entries', 'format=duration',
     '-of', 'json',
     inputPath,
@@ -54,7 +62,14 @@ export async function probe(inputPath: string): Promise<ProbeResult> {
   const codecName = vStream.codec_name || '';
   const aStream = streams.find((s: any) => s.codec_type === 'audio');
 
-  const isImageCodec = ['mjpeg', 'png', 'webp', 'heic', 'tiff'].includes(codecName);
+  // GIF's frame count (not its `duration` field) is what tells a static
+  // single-frame GIF apart from an animated one — a 1-frame GIF can still
+  // carry a non-zero duration (e.g. one long-held frame), so duration alone
+  // would misclassify it as animated/VIDEO.
+  const frameCount = vStream.nb_frames ? parseInt(vStream.nb_frames, 10) : undefined;
+  const isStaticGif = codecName === 'gif' && (frameCount === undefined || frameCount <= 1);
+
+  const isImageCodec = ['mjpeg', 'png', 'webp', 'heic', 'tiff'].includes(codecName) || isStaticGif;
   const formatDuration = json.format?.duration ? parseFloat(json.format.duration) : 0;
   const streamDuration = vStream.duration ? parseFloat(vStream.duration) : 0;
   const rawDuration = formatDuration || streamDuration || 0;
@@ -79,5 +94,6 @@ export async function probe(inputPath: string): Promise<ProbeResult> {
     colorSpace,
     colorTransfer,
     colorPrimaries,
+    frameCount,
   };
 }

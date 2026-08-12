@@ -89,4 +89,60 @@ describe('probe.ts - media metadata and color space probing', () => {
       resetProcessRunner();
     }
   });
+
+  it('classifies an animated GIF (nb_frames > 1) as VIDEO with real duration', async () => {
+    const ffprobeMock = mock.fn(async (_command: string) => JSON.stringify({
+      streams: [
+        {
+          codec_type: 'video',
+          codec_name: 'gif',
+          width: 320,
+          height: 240,
+          duration: '2.000000',
+          nb_frames: '20',
+        }
+      ],
+      format: { duration: '2.000000' },
+    }));
+    setProcessRunner(ffprobeMock);
+
+    try {
+      const result = await probe('animated.gif');
+      assert.equal(result.width, 320);
+      assert.equal(result.height, 240);
+      assert.equal(result.frameCount, 20);
+      assert.equal(result.mediaKind, 'VIDEO');
+      assert.equal(result.durationSec, 2.0);
+    } finally {
+      resetProcessRunner();
+    }
+  });
+
+  it('classifies a static single-frame GIF as IMAGE despite a non-zero duration field', async () => {
+    const ffprobeMock = mock.fn(async (_command: string) => JSON.stringify({
+      streams: [
+        {
+          codec_type: 'video',
+          codec_name: 'gif',
+          width: 100,
+          height: 100,
+          duration: '1.000000',
+          nb_frames: '1',
+        }
+      ],
+      format: { duration: '1.000000' },
+    }));
+    setProcessRunner(ffprobeMock);
+
+    try {
+      const result = await probe('static.gif');
+      assert.equal(result.width, 100);
+      assert.equal(result.height, 100);
+      assert.equal(result.frameCount, 1);
+      assert.equal(result.mediaKind, 'IMAGE');
+      assert.equal(result.durationSec, 0);
+    } finally {
+      resetProcessRunner();
+    }
+  });
 });

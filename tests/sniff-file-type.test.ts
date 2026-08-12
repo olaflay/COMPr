@@ -46,6 +46,16 @@ describe('sniff-file-type.ts - server-side magic-byte sniffing', () => {
     assert.equal(testSniff(heicBytes), 'IMAGE');
   });
 
+  it('detects GIF87a magic bytes correctly as IMAGE', () => {
+    const gif87Bytes = [0x47, 0x49, 0x46, 0x38, 0x37, 0x61];
+    assert.equal(testSniff(gif87Bytes), 'IMAGE');
+  });
+
+  it('detects GIF89a magic bytes correctly as IMAGE', () => {
+    const gif89Bytes = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x0A, 0x00];
+    assert.equal(testSniff(gif89Bytes), 'IMAGE');
+  });
+
   it('detects MP4 video signature correctly as VIDEO', () => {
     const mp4Bytes = [
       0x00, 0x00, 0x00, 0x18,

@@ -23,6 +23,16 @@ describe('file-validation.ts - client-side validation', () => {
     assert.deepEqual(errors, []);
   });
 
+  it('passes validation for valid GIF file', () => {
+    const file = {
+      name: 'anim.gif',
+      size: 3 * 1024 * 1024, // 3MB
+      type: 'image/gif'
+    };
+    const errors = validateFile(file as any);
+    assert.deepEqual(errors, []);
+  });
+
   it('fails validation for unsupported format type', () => {
     const file = {
       name: 'doc.pdf',

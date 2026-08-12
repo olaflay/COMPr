@@ -7,7 +7,7 @@
 export const SITE_NAME = 'COMPr';
 export const BASE_URL = 'https://compr.app';
 export const DEFAULT_DESCRIPTION =
-  'Pre-optimize your photos and videos to stay sharp and clear after sending them on WhatsApp. No account required.';
+  'Pre-optimize photos and videos so they stay sharp after WhatsApp compresses them — up to 90% smaller, 5 free daily, no account needed.';
 
 export interface MetadataInput {
   title?: string;

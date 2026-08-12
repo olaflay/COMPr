@@ -5,7 +5,7 @@ import SiteFooter from '../../../components/marketing/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'How It Works | COMPr',
-  description: 'Learn how COMPr dey optimize your photos and videos for WhatsApp.',
+  description: 'Learn how COMPr dey optimize your photos and videos for WhatsApp, up to 90% smaller with no visible quality loss.',
 };
 
 const STEPS = [
@@ -22,7 +22,7 @@ const STEPS = [
   {
     number: '3',
     title: 'We optimize it',
-    description: 'COMPr analyzes your file and prepares it to survive WhatsApp compression. Takes about 15 to 30 seconds.',
+    description: 'COMPr analyzes your file and prepares it to survive WhatsApp compression, up to 90% smaller with no visible quality loss. Takes about 15 to 30 seconds.',
   },
   {
     number: '4',

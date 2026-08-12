@@ -2,22 +2,25 @@
 """
 OpenCV face and text edge detection for COMPr adaptive engine.
 
-Usage: python3 opencv_analyze.py <frame_path>
+Usage: python3 opencv_analyze.py <frame_path> [<frame_path> ...]
 
-Outputs JSON to stdout:
-{
-  "face_score": 0.0-1.0,
-  "text_edge_score": 0.0-1.0,
-  "brightness_mean": 0-255,
-  "contrast_stddev": 0-128
-}
+Outputs a JSON array to stdout, one result object per input frame, in the
+same order the paths were given:
+[
+  {"face_score": 0.0-1.0, "text_edge_score": 0.0-1.0, "brightness_mean": 0-255, "contrast_stddev": 0-128},
+  ...
+]
 
 Face detection: Haar Cascade frontalface (haarcascade_frontalface_default.xml)
 Text detection: Canny edge + contour filtering for text-line aspect ratios.
 
 Resource constraints (adaptive-engine.md Rule 3):
-- Called per-frame on 1fps samples only, never on full-rate video.
-- Matrix buffers released immediately after scoring.
+- Called on 1fps samples only, never on full-rate video.
+- Matrix buffers released immediately after scoring each frame.
+
+Batched by design: cv2 import and Haar cascade loading are the dominant
+per-invocation cost, so every sampled frame for a video is scored in one
+process instead of spawning a fresh Python process per frame.
 """
 
 import sys
@@ -27,15 +30,18 @@ import numpy as np
 
 try:
     import cv2
+    _HAS_CV2 = True
 except ImportError:
-    # Fallback: return zero scores if OpenCV not installed
-    print(json.dumps({
-        "face_score": 0.0,
-        "text_edge_score": 0.0,
-        "brightness_mean": 0.0,
-        "contrast_stddev": 0.0
-    }))
-    sys.exit(0)
+    _HAS_CV2 = False
+
+_EMPTY_RESULT = {
+    "face_score": 0.0,
+    "text_edge_score": 0.0,
+    "brightness_mean": 0.0,
+    "contrast_stddev": 0.0,
+}
+
+_cascade_cache = None
 
 
 def get_haar_cascade_path():
@@ -56,14 +62,30 @@ def get_haar_cascade_path():
     return None
 
 
-def detect_faces(gray, frame_area):
-    """Detect faces using Haar Cascade. Returns score 0-1."""
+def get_cascade():
+    """Load the Haar cascade classifier once and reuse it across all frames."""
+    global _cascade_cache
+    if _cascade_cache is not None:
+        return _cascade_cache or None
+
     cascade_path = get_haar_cascade_path()
     if cascade_path is None:
-        return 0.0
+        _cascade_cache = False
+        return None
 
-    face_cascade = cv2.CascadeClassifier(cascade_path)
-    if face_cascade.empty():
+    classifier = cv2.CascadeClassifier(cascade_path)
+    if classifier.empty():
+        _cascade_cache = False
+        return None
+
+    _cascade_cache = classifier
+    return classifier
+
+
+def detect_faces(gray, frame_area):
+    """Detect faces using Haar Cascade. Returns score 0-1."""
+    face_cascade = get_cascade()
+    if face_cascade is None:
         return 0.0
 
     # detectMultiScale params: scaleFactor=1.1, minNeighbors=5, minSize=30x30
@@ -126,12 +148,7 @@ def analyze_frame(frame_path):
     """Full analysis of a single frame."""
     img = cv2.imread(frame_path)
     if img is None:
-        return {
-            "face_score": 0.0,
-            "text_edge_score": 0.0,
-            "brightness_mean": 0.0,
-            "contrast_stddev": 0.0
-        }
+        return dict(_EMPTY_RESULT)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     h, w = gray.shape
@@ -158,11 +175,18 @@ def analyze_frame(frame_path):
     }
 
 
+def analyze_all(frame_paths):
+    """Analyze every frame path in this single process invocation."""
+    if not _HAS_CV2:
+        return [dict(_EMPTY_RESULT) for _ in frame_paths]
+    return [analyze_frame(p) for p in frame_paths]
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print(json.dumps({"error": "Usage: python3 opencv_analyze.py <frame_path>"}))
+        print(json.dumps({"error": "Usage: python3 opencv_analyze.py <frame_path> [<frame_path> ...]"}))
         sys.exit(1)
 
-    frame_path = sys.argv[1]
-    result = analyze_frame(frame_path)
-    print(json.dumps(result))
+    frame_paths = sys.argv[1:]
+    results = analyze_all(frame_paths)
+    print(json.dumps(results))

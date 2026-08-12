@@ -5,6 +5,7 @@ import { prisma } from '../../lib/prisma.ts';
 import { cumulativeDisplayPercent, stepsRemaining } from '../../lib/progress-stages.ts';
 import { chooseInitialResolution } from '../../lib/resolution.ts';
 import { createJobForFingerprint, IntakeError } from '../../lib/job-intake.ts';
+import { createBatchJobForFingerprint, BatchNotImplementedError } from '../../lib/batch-intake.ts';
 import { getPresignedDownloadUrl } from '../services/storage.ts';
 import { hashString } from '../../lib/crypto.ts';
 
@@ -13,6 +14,17 @@ const DESTINATION_VALUES = ['WHATSAPP_NORMAL', 'WHATSAPP_HD', 'WHATSAPP_DOCUMENT
 
 const createJobBodySchema = z.object({
   fileKey: z.string(),
+  preset: z.enum(PRESET_VALUES),
+  targetSizeMB: z.number().min(1).max(16).optional(),
+  prioritizeDetail: z.boolean().optional(),
+  destination: z.enum(DESTINATION_VALUES).optional(),
+  fingerprint: z.string(),
+});
+
+// Scaffold only — see lib/batch-intake.ts. Body shape is settled ahead of
+// the real implementation so the client contract doesn't have to change later.
+const createBatchJobBodySchema = z.object({
+  fileKeys: z.array(z.string()).min(2).max(10),
   preset: z.enum(PRESET_VALUES),
   targetSizeMB: z.number().min(1).max(16).optional(),
   prioritizeDetail: z.boolean().optional(),
@@ -48,6 +60,36 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
             message: err.message,
             ...(err.upsell !== undefined ? { upsell: err.upsell } : {}),
           },
+        });
+      }
+      throw err;
+    }
+  });
+
+  // POST /api/v1/jobs/batch — SCAFFOLD ONLY, not functional yet.
+  // Always responds 501; see lib/batch-intake.ts for what real support needs.
+  app.post('/api/v1/jobs/batch', {
+    schema: {
+      body: createBatchJobBodySchema,
+    },
+  }, async (request, reply) => {
+    const { fileKeys, preset, targetSizeMB, prioritizeDetail, destination, fingerprint } = request.body;
+
+    try {
+      const result = await createBatchJobForFingerprint({
+        fileKeys,
+        preset,
+        targetSizeMB,
+        prioritizeDetail,
+        destination,
+        fingerprint,
+        ip: request.ip,
+      });
+      return reply.code(202).send(result);
+    } catch (err) {
+      if (err instanceof BatchNotImplementedError) {
+        return reply.code(err.statusCode).send({
+          error: { code: err.code, message: err.message },
         });
       }
       throw err;

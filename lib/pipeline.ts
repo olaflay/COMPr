@@ -12,12 +12,12 @@ import { analyzeScene } from './analysis.ts';
 import { selectProfile, buildFFmpegArgs, type EncodingPlan } from './policy-engine.ts';
 import { measureVmaf, qualityGate, type VmafResult } from './vmaf.ts';
 import { probe, type ProbeResult } from './probe.ts';
-import { encode, processImage, fileSizeMB, type EncodeParams, type ImageParams, type ImageResult } from './encode.ts';
+import { encode, processImage, processAnimatedGif, fileSizeMB, type EncodeParams, type ImageParams, type ImageResult, type AnimatedGifParams } from './encode.ts';
 import { measureSSIM, type SSIMResult } from './ssim.ts';
 import { runFfmpeg } from './media-process.ts';
 
-export { probe, encode, processImage, measureSSIM, fileSizeMB };
-export type { ProbeResult, EncodeParams, ImageParams, ImageResult, SSIMResult };
+export { probe, encode, processImage, processAnimatedGif, measureSSIM, fileSizeMB };
+export type { ProbeResult, EncodeParams, ImageParams, ImageResult, AnimatedGifParams, SSIMResult };
 
 export interface AttemptRecord {
   attempt: number;
@@ -72,7 +72,10 @@ export async function runPipeline({
   ssimFloor = 0.90,
   prioritizeDetail = false,
   cpuPreset = 'medium',
-  passCount = 2,
+  // Single-pass by default: 2-pass roughly doubles encode time for a size-
+  // accuracy gain the retry loop already recovers on the next attempt.
+  // Callers under light queue load can opt into passCount: 2 explicitly.
+  passCount = 1,
 }: {
   inputPath: string;
   outputDir: string;

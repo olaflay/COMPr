@@ -7,9 +7,9 @@ import SiteFooter from '../../components/marketing/SiteFooter';
 import MediaMessageDemo, { type WhatsAppMode } from '../../components/marketing/MediaMessageDemo';
 
 const MODE_SUB_COPY: Record<WhatsAppMode, string> = {
-  Status: 'COMPr prepares your video so it stays sharp after Status compression.',
-  Chat: 'COMPr prepares your video so it stays sharp after chat compression.',
-  Product: 'COMPr prepares your photos so they stay sharp in your catalog.',
+  Status: 'COMPr prepares your video so it stays sharp after Status compression — up to 90% smaller, zero blur.',
+  Chat: 'COMPr prepares your video so it stays sharp after chat compression — up to 90% smaller, still sends fast.',
+  Product: 'COMPr prepares your photos so they stay sharp in your catalog — up to 90% smaller, loads fast for buyers.',
 };
 
 export default function MarketingClient() {
@@ -22,6 +22,10 @@ export default function MarketingClient() {
       a: 'No. WhatsApp compresses every file you send. COMPr pre-optimizes your media so it survives that compression with maximum details intact.',
     },
     {
+      q: 'How is COMPr different from other WhatsApp compressors?',
+      a: 'Most tools only handle Status. COMPr tunes separately for Status, Chat, and product photos, and shows you a before-and-after comparison so you can see exactly how much sharper your file is before you send.',
+    },
+    {
       q: 'Is my media secure?',
       a: 'Yes. Every file you upload is automatically and permanently deleted from our servers within 24 hours.',
     },
@@ -31,7 +35,7 @@ export default function MarketingClient() {
     },
     {
       q: 'Is COMPr free to use?',
-      a: 'Yes, you get 5 free optimizations every day. You can upgrade to Premium if you need unlimited optimizations.',
+      a: 'Yes, you get 5 free optimizations every day, plus 3 more if you share COMPr to WhatsApp. A ₦2,500/month Premium plan for unlimited use is coming soon.',
     },
   ];
 
@@ -99,6 +103,12 @@ export default function MarketingClient() {
 
         {/* Trust Signal Strip */}
         <div className="w-full flex flex-wrap justify-center items-center gap-x-m3-x-large gap-y-m3-small py-m3-medium border-y border-outline-variant/40 mt-m3-xxx-large md:mt-m3-6xl">
+          <div className="flex items-center gap-m3-x-small text-body-small text-on-surface-variant">
+            <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span>Up to <span className="font-mono font-semibold text-on-surface">90%</span> smaller, same sharpness</span>
+          </div>
           <div className="flex items-center gap-m3-x-small text-body-small text-on-surface-variant">
             <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="10" />
@@ -182,7 +192,7 @@ export default function MarketingClient() {
             </div>
             <h3 className="text-title-large text-on-surface font-semibold">Tuned for WhatsApp</h3>
             <p className="text-body-medium text-on-surface-variant leading-relaxed">
-              Set up for WhatsApp&apos;s own limits, so your media survives at its best.
+              Built for WhatsApp&apos;s own limits on Status, Chat, and product photos, not just one surface.
             </p>
           </div>
           <div className="bg-surface-container-low border border-outline-variant p-m3-large rounded-m3-lg flex flex-col gap-y-m3-medium shadow-m3-1 hover:shadow-m3-2 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-m3-medium-1">
@@ -215,7 +225,7 @@ export default function MarketingClient() {
             Ready to send sharp media on WhatsApp?
           </h2>
           <p className="text-body-large text-on-primary/80 max-w-sm">
-            Start free. No account. 5 uses daily.
+            Up to 90% smaller, same sharpness. Free. No account. 5 uses daily.
           </p>
           <Link
             href="/dashboard"

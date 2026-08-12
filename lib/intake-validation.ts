@@ -18,7 +18,7 @@ export class IntakeValidationError extends Error {
   }
 }
 
-const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
 
 /**
  * Routing hint only — the authoritative media-kind check is the magic-byte

@@ -80,26 +80,39 @@ export function getFramePaths(frameDir: string): string[] {
 }
 
 /**
- * Run OpenCV analysis on a single frame via Python subprocess.
- * Returns face score, text edge score, brightness, and contrast.
+ * Run OpenCV analysis on every sampled frame via a single Python subprocess.
+ * Batched rather than one process per frame: cv2 import and Haar cascade
+ * loading dominate per-invocation cost, so scoring N frames in one process
+ * instead of N processes is the single biggest scene-analysis speed lever.
+ * Returns results in the same order as framePaths.
  */
-export async function analyzeFrame(framePath: string): Promise<OpenCVFrameResult> {
-  const scriptPath = join(process.cwd(), 'lib', 'opencv_analyze.py');
+export async function analyzeFramesBatch(framePaths: string[]): Promise<OpenCVFrameResult[]> {
+  if (framePaths.length === 0) return [];
 
+  const scriptPath = join(process.cwd(), 'lib', 'opencv_analyze.py');
   const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-  const out = (await runCommand(pythonCmd, [scriptPath, framePath], {
-    timeout: 10_000,
+  const out = (await runCommand(pythonCmd, [scriptPath, ...framePaths], {
+    timeout: 10_000 + framePaths.length * 2_000,
   })).trim();
 
-  const result = JSON.parse(out) as OpenCVFrameResult;
+  const results = JSON.parse(out) as OpenCVFrameResult[];
 
-  // Clamp scores to 0-1 range
-  return {
+  // Clamp scores to their valid ranges
+  return results.map((result) => ({
     face_score: clamp(result.face_score, 0, 1),
     text_edge_score: clamp(result.text_edge_score, 0, 1),
     brightness_mean: clamp(result.brightness_mean, 0, 255),
     contrast_stddev: clamp(result.contrast_stddev, 0, 128),
-  };
+  }));
+}
+
+/**
+ * Run OpenCV analysis on a single frame. Thin wrapper over the batched
+ * call for callers that only have one frame.
+ */
+export async function analyzeFrame(framePath: string): Promise<OpenCVFrameResult> {
+  const [result] = await analyzeFramesBatch([framePath]);
+  return result;
 }
 
 /**
@@ -156,19 +169,15 @@ export async function analyzeScene(
       return emptyAnalysis(durationSec);
     }
 
-    // 2. Analyze each frame for face/text/brightness
-    const frames: FrameAnalysis[] = await Promise.all(
-      framePaths.map(async (fp, idx) => {
-        const result = await analyzeFrame(fp);
-        return {
-          timestampSec: idx * (1 / ANALYSIS_FPS),
-          faceScore: result.face_score,
-          textEdgeScore: result.text_edge_score,
-          brightnessMean: result.brightness_mean,
-          contrastStdDev: result.contrast_stddev,
-        };
-      })
-    );
+    // 2. Analyze all frames for face/text/brightness in one batched process
+    const batchResults = await analyzeFramesBatch(framePaths);
+    const frames: FrameAnalysis[] = batchResults.map((result, idx) => ({
+      timestampSec: idx * (1 / ANALYSIS_FPS),
+      faceScore: result.face_score,
+      textEdgeScore: result.text_edge_score,
+      brightnessMean: result.brightness_mean,
+      contrastStdDev: result.contrast_stddev,
+    }));
 
     // 3. Compute motion scores between consecutive frames
     const motionScores: number[] = [];

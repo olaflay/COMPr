@@ -5,7 +5,7 @@ import SiteFooter from '../../../components/marketing/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'Pricing | COMPr',
-  description: 'COMPr pricing. Free daily optimization, upgrade when you need more.',
+  description: 'COMPr pricing: 5 free optimizations daily, up to 90% smaller files. Premium is ₦2,500/month for unlimited use.',
 };
 
 export default function PricingPage() {
@@ -37,7 +37,14 @@ export default function PricingPage() {
                     <circle cx="12" cy="12" r="10" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4" />
                   </svg>
-                  <span>Up to 5 optimizations per day</span>
+                  <span>5 optimizations per day, +3 more when you share to WhatsApp</span>
+                </li>
+                <li className="flex items-start gap-m3-x-small">
+                  <svg className="w-5 h-5 text-primary shrink-0 mt-m3-xxx-small" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4" />
+                  </svg>
+                  <span>Up to 90% smaller files, same sharpness</span>
                 </li>
                 <li className="flex items-start gap-m3-x-small">
                   <svg className="w-5 h-5 text-primary shrink-0 mt-m3-xxx-small" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
@@ -110,6 +117,10 @@ export default function PricingPage() {
               </ul>
             </div>
           </div>
+
+          <p className="text-body-small text-on-surface-variant text-center">
+            No card required for Free. Files are auto-deleted within 24 hours either way.
+          </p>
         </div>
 
         <SiteFooter />

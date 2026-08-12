@@ -23,6 +23,13 @@ export interface ImageParams {
   maxLongEdgePx?: number;
 }
 
+export interface AnimatedGifParams {
+  inputPath: string;
+  outputPath: string;
+  maxLongEdgePx?: number;
+  fps?: number;
+}
+
 export interface ImageResult {
   width: number;
   height: number;
@@ -207,6 +214,63 @@ export async function processImage({
     '-loglevel', 'error',
     outputPath,
   ], { timeout: 30_000 });
+
+  const outputProbe = await probe(outputPath);
+  const actualSizeMB = fileSizeMB(outputPath);
+
+  return {
+    width: outputProbe.width,
+    height: outputProbe.height,
+    actualSizeMB: Math.round(actualSizeMB * 1000) / 1000,
+    outputPath,
+  };
+}
+
+/**
+ * Process an animated GIF for WhatsApp transmission.
+ *
+ * Naive scaling of a GIF re-quantizes into a generic 256-color palette and
+ * produces visibly banded/dithered output. Instead this uses ffmpeg's
+ * standard two-pass palette workflow:
+ *  - Pass 1: `palettegen` (stats_mode=diff) builds an optimized palette
+ *    from the actual scaled/fps-limited frame stream.
+ *  - Pass 2: `paletteuse` applies that palette during the same scale/fps
+ *    filter chain, with error-diffusion dithering for smoother gradients.
+ * Both passes use array-based ffmpeg args — no shell strings.
+ */
+export async function processAnimatedGif({
+  inputPath,
+  outputPath,
+  maxLongEdgePx = 480,
+  fps = 15,
+}: AnimatedGifParams): Promise<ImageResult> {
+  const palettePath = `${outputPath}.palette.png`;
+  const scaleFilter = `scale='min(${maxLongEdgePx},iw)':'min(${maxLongEdgePx},ih)':force_original_aspect_ratio=decrease:flags=lanczos`;
+
+  try {
+    // Pass 1: generate an optimized palette from the down-scaled/fps-limited stream.
+    await runFfmpeg([
+      '-y',
+      '-i', inputPath,
+      '-vf', `fps=${fps},${scaleFilter},palettegen=stats_mode=diff`,
+      '-loglevel', 'error',
+      palettePath,
+    ], { timeout: 60_000 });
+
+    // Pass 2: apply the palette with the same scale/fps chain.
+    await runFfmpeg([
+      '-y',
+      '-i', inputPath,
+      '-i', palettePath,
+      '-lavfi', `fps=${fps},${scaleFilter}[x];[x][1:v]paletteuse=dither=sierra2_4a`,
+      '-loglevel', 'error',
+      outputPath,
+    ], { timeout: 60_000 });
+  } finally {
+    try {
+      unlinkSync(palettePath);
+    } catch (e) {}
+  }
 
   const outputProbe = await probe(outputPath);
   const actualSizeMB = fileSizeMB(outputPath);

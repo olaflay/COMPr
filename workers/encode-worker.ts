@@ -3,7 +3,7 @@ import { join, extname } from 'node:path';
 import { mkdirSync, unlinkSync, existsSync } from 'node:fs';
 import { prisma } from '../lib/prisma.ts';
 import { redisConnection, mediaEncodeQueue } from '../lib/queue.ts';
-import { runPipeline, runAdaptivePipeline, processImage, fileSizeMB } from '../lib/pipeline.ts';
+import { runPipeline, runAdaptivePipeline, processImage, processAnimatedGif, probe, fileSizeMB } from '../lib/pipeline.ts';
 import { splitVideo } from '../lib/split.ts';
 import { cpus } from 'node:os';
 import { downloadFromR2, uploadToR2 } from '../server/services/storage.ts';
@@ -246,15 +246,33 @@ export const encodeWorker = new Worker(
           });
         }
       } else {
-        // Run image pipeline via processImage (FR-15, PRD §15, §24)
-        finalLocalPath = join(localOutputDir, `output_image.jpg`);
-        const maxLongEdge = job.preset === 'STATUS' ? 1080 : 1600;
+        // Run image pipeline (FR-15, PRD §15, §24).
+        // An animated GIF (frame count > 1) needs the palette-aware GIF
+        // encoder to avoid banded/dithered output — a static (single-frame)
+        // GIF, or any other still image, goes through the regular JPEG path.
+        const sourceProbe = await probe(localInputPath);
+        const isAnimatedGif = sourceProbe.codecName === 'gif' && (sourceProbe.frameCount ?? 0) > 1;
 
-        const imgResult = await processImage({
-          inputPath: localInputPath,
-          outputPath: finalLocalPath,
-          maxLongEdgePx: maxLongEdge,
-        });
+        let imgResult;
+        if (isAnimatedGif) {
+          finalLocalPath = join(localOutputDir, `output_image.gif`);
+          const maxLongEdge = job.preset === 'STATUS' ? 480 : 640;
+
+          imgResult = await processAnimatedGif({
+            inputPath: localInputPath,
+            outputPath: finalLocalPath,
+            maxLongEdgePx: maxLongEdge,
+          });
+        } else {
+          finalLocalPath = join(localOutputDir, `output_image.jpg`);
+          const maxLongEdge = job.preset === 'STATUS' ? 1080 : 1600;
+
+          imgResult = await processImage({
+            inputPath: localInputPath,
+            outputPath: finalLocalPath,
+            maxLongEdgePx: maxLongEdge,
+          });
+        }
 
         outputWidth = imgResult.width;
         outputHeight = imgResult.height;
@@ -283,11 +301,15 @@ export const encodeWorker = new Worker(
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24-hour retention
 
       // Create output MediaFile records in DB
+      const outputMimeType =
+        job.mediaKind === 'IMAGE'
+          ? (extname(finalLocalPath).toLowerCase() === '.gif' ? 'image/gif' : 'image/jpeg')
+          : 'video/mp4';
       for (const out of outputsToCreate) {
         await prisma.mediaFile.create({
           data: {
             storageKey: out.storageKey,
-            mimeType: job.mediaKind === 'IMAGE' ? 'image/jpeg' : 'video/mp4',
+            mimeType: outputMimeType,
             sizeBytes: out.sizeBytes,
             role: 'output',
             expiresAt,

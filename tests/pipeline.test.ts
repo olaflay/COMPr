@@ -56,5 +56,10 @@ describe('pipeline.ts logic engine', () => {
     assert.equal(typeof pipeline.processImage, 'function');
     assert.equal(typeof pipeline.probe, 'function');
   });
+
+  it('imports processAnimatedGif from pipeline.ts cleanly', async () => {
+    const pipeline = await import('../lib/pipeline.ts');
+    assert.equal(typeof pipeline.processAnimatedGif, 'function');
+  });
 });
 

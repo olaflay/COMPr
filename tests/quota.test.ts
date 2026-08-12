@@ -35,6 +35,8 @@ describe('job-intake.ts - routing hint and target-size rules', () => {
   it('infers IMAGE for image extensions, VIDEO otherwise', () => {
     assert.equal(inferMediaKindFromFileKey('clip.jpg'), 'IMAGE');
     assert.equal(inferMediaKindFromFileKey('clip.PNG'), 'IMAGE');
+    assert.equal(inferMediaKindFromFileKey('clip.gif'), 'IMAGE');
+    assert.equal(inferMediaKindFromFileKey('clip.GIF'), 'IMAGE');
     assert.equal(inferMediaKindFromFileKey('clip.mp4'), 'VIDEO');
     assert.equal(inferMediaKindFromFileKey('clip'), 'VIDEO');
   });
