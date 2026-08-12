@@ -1,19 +1,23 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-const R2_ENDPOINT = process.env.R2_ENDPOINT;
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || 'dummy';
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || 'dummy';
-const UPLOADS_BUCKET = process.env.R2_UPLOADS_BUCKET || 'compr-uploads';
-const OUTPUTS_BUCKET = process.env.R2_OUTPUTS_BUCKET || 'compr-outputs';
+// Supabase Storage's S3-compatible endpoint (see /docs/guides/storage/s3/authentication).
+// Unlike R2 ('auto'), Supabase requires the project's real region and forcePathStyle.
+const SUPABASE_S3_ENDPOINT = process.env.SUPABASE_S3_ENDPOINT;
+const SUPABASE_S3_REGION = process.env.SUPABASE_S3_REGION || 'us-east-1';
+const SUPABASE_S3_ACCESS_KEY_ID = process.env.SUPABASE_S3_ACCESS_KEY_ID || 'dummy';
+const SUPABASE_S3_SECRET_ACCESS_KEY = process.env.SUPABASE_S3_SECRET_ACCESS_KEY || 'dummy';
+const UPLOADS_BUCKET = process.env.SUPABASE_UPLOADS_BUCKET || 'compr-uploads';
+const OUTPUTS_BUCKET = process.env.SUPABASE_OUTPUTS_BUCKET || 'compr-outputs';
 
 export const r2Client = new S3Client({
-  endpoint: R2_ENDPOINT,
+  endpoint: SUPABASE_S3_ENDPOINT,
+  forcePathStyle: true,
   credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY,
+    accessKeyId: SUPABASE_S3_ACCESS_KEY_ID,
+    secretAccessKey: SUPABASE_S3_SECRET_ACCESS_KEY,
   },
-  region: 'auto',
+  region: SUPABASE_S3_REGION,
 });
 
 /**

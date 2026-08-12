@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to COMPr are documented here. This project follows [Semantic Versioning](https://semver.org/).
+All notable changes to NoBlur are documented here. This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
@@ -173,7 +173,7 @@ npm install               # No new dependencies
 
 ## Versioning
 
-COMPr uses [Semantic Versioning](https://semver.org/):
+NoBlur uses [Semantic Versioning](https://semver.org/):
 - **MAJOR.MINOR.PATCH** (e.g., 1.1.0)
 - Increment PATCH for bug fixes
 - Increment MINOR for new features (backward compatible)

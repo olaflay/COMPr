@@ -1,4 +1,4 @@
-# COMPr — Product Requirements Document
+# NoBlur — Product Requirements Document
 
 **Version:** 1.1
 **Status:** Milestone Update — Adaptive Engine Implemented
@@ -9,15 +9,15 @@
 
 ## 1. Executive Summary
 
-COMPr is a mobile-first Progressive Web App (PWA) that prepares photos and videos for WhatsApp so they survive WhatsApp's own compression with the least possible visual quality loss. Users upload media, get a smart default destination pre-selected for them (WhatsApp Status, WhatsApp Chat, or a custom target size), and COMPr runs an automated FFmpeg-based optimization pipeline — resolution, bitrate, codec, and container selection — tuned specifically to how WhatsApp re-compresses media. The user downloads a file that is measurably sharper after being sent through WhatsApp than the unprocessed original would be.
+NoBlur is a mobile-first Progressive Web App (PWA) that prepares photos and videos for WhatsApp so they survive WhatsApp's own compression with the least possible visual quality loss. Users upload media, get a smart default destination pre-selected for them (WhatsApp Status, WhatsApp Chat, or a custom target size), and NoBlur runs an automated FFmpeg-based optimization pipeline — resolution, bitrate, codec, and container selection — tuned specifically to how WhatsApp re-compresses media. The user downloads a file that is measurably sharper after being sent through WhatsApp than the unprocessed original would be.
 
-COMPr does not bypass, disable, or trick WhatsApp's compression. It never claims to. It pre-optimizes media so that whatever compression WhatsApp applies afterward has less damage to do.
+NoBlur does not bypass, disable, or trick WhatsApp's compression. It never claims to. It pre-optimizes media so that whatever compression WhatsApp applies afterward has less damage to do.
 
-**Measurable quality bar:** "As good as possible" is defined concretely — COMPr's output, after passing through actual WhatsApp compression, must score at least 0.05 higher on SSIM than an unprocessed original sent at the same final delivered file size, measured against a fixed 20-clip reference test set before launch (Section 13, Section 36). This bar is enforced by a working SSIM verification step (`lib/pipeline.ts`), not just a target on paper.
+**Measurable quality bar:** "As good as possible" is defined concretely — NoBlur's output, after passing through actual WhatsApp compression, must score at least 0.05 higher on SSIM than an unprocessed original sent at the same final delivered file size, measured against a fixed 20-clip reference test set before launch (Section 13, Section 36). This bar is enforced by a working SSIM verification step (`lib/pipeline.ts`), not just a target on paper.
 
 ## 2. Product Summary
 
-- **Name:** COMPr
+- **Name:** NoBlur
 - **Form factor:** Mobile-first PWA (installable, offline-shell, no app store dependency)
 - **Core promise:** "Upload your media. Download a WhatsApp-ready version that looks as good as possible."
 - **Core mechanism:** Server-side FFmpeg pipeline that analyzes source media and re-encodes it with WhatsApp-aware settings (resolution caps, bitrate ladders, codec choice, container, and — for Status videos over the length ceiling — automatic splitting).
@@ -29,7 +29,7 @@ WhatsApp aggressively re-compresses every photo and video sent through Chat or S
 
 ## 4. Opportunity
 
-Generic compression tools — HandBrake, CapCut's social export presets, generic "video compressor" mobile apps — are not WhatsApp-aware. They compress to a size or a generic social-media preset but don't target WhatsApp's specific re-encode thresholds (its own resolution ceilings, bitrate behavior, and duration limits). No existing consumer product is built solely around "match your output to how WhatsApp itself will re-encode it." That specific, defensible gap is what COMPr is built on, and it is validated post-launch via the feedback loop in Section 29, not assumed indefinitely.
+Generic compression tools — HandBrake, CapCut's social export presets, generic "video compressor" mobile apps — are not WhatsApp-aware. They compress to a size or a generic social-media preset but don't target WhatsApp's specific re-encode thresholds (its own resolution ceilings, bitrate behavior, and duration limits). No existing consumer product is built solely around "match your output to how WhatsApp itself will re-encode it." That specific, defensible gap is what NoBlur is built on, and it is validated post-launch via the feedback loop in Section 29, not assumed indefinitely.
 
 Every WhatsApp user who has ever said "why does my video look so bad after I send it" is a potential user; small business owners and online sellers who depend on WhatsApp as a storefront are the most quality-sensitive segment, since blurry product media directly costs them sales.
 
@@ -59,7 +59,7 @@ Every WhatsApp user who has ever said "why does my video look so bad after I sen
 ## 7. User Personas
 
 **7.1 Amaka — Online Seller (primary)**
-Sells clothing via WhatsApp Status and Business chat broadcast lists. Records product videos on her phone. Cares about products looking sharp; has no video editing skill. Uses COMPr on mobile data on a mid-range Android device with variable 3G/4G connectivity — this constraint directly shapes the NFRs in Section 10.
+Sells clothing via WhatsApp Status and Business chat broadcast lists. Records product videos on her phone. Cares about products looking sharp; has no video editing skill. Uses NoBlur on mobile data on a mid-range Android device with variable 3G/4G connectivity — this constraint directly shapes the NFRs in Section 10.
 
 **7.2 Tunde — Small Business Owner**
 Sends promotional videos/flyers to customer broadcast lists. Occasionally batches multiple files (premium use case). Time-poor; wants a "just make it good" button.
@@ -123,18 +123,18 @@ Sends birthday videos, family clips, memes. Wants zero-configuration: upload, do
 
 **FR-14 Error Surfacing:** Any failure (unsupported format, corrupt file, encode failure) surfaces a plain-language error with a retry option.
 
-**FR-15 Share to WhatsApp:** On completion, the primary action is a "Send to WhatsApp" button that opens WhatsApp's share sheet (`https://wa.me/`) with a pre-filled message containing a branded COMPr link (`compr.app`) and a short, honest description of the tool. This reduces the tap count from 3 (download, open WhatsApp, attach) to 1 (tap, confirm send). A secondary "Download to device" button is always available for users who prefer to save first or share to other platforms. The share message must never claim COMPr bypasses or disables WhatsApp compression. Implemented in `lib/whatsapp-share.ts`.
+**FR-15 Share to WhatsApp:** On completion, the primary action is a "Send to WhatsApp" button that opens WhatsApp's share sheet (`https://wa.me/`) with a pre-filled message containing a branded NoBlur link (`compr.app`) and a short, honest description of the tool. This reduces the tap count from 3 (download, open WhatsApp, attach) to 1 (tap, confirm send). A secondary "Download to device" button is always available for users who prefer to save first or share to other platforms. The share message must never claim NoBlur bypasses or disables WhatsApp compression. Implemented in `lib/whatsapp-share.ts`.
 
 **FR-16 Adaptive Encoding Engine:** Before encoding, every video job runs a lightweight analysis pass that produces a scene profile: face presence, text-presence (edge density), and motion scores sampled at 1 fps (`workers/analysis-worker.ts` → `lib/opencv_analyze.py`), alongside `ffprobe` source metadata and magic-byte validation. A policy engine (`lib/policy-engine.ts`) then selects an encoding profile from `config/encoding-profiles.json` — 9 profiles across 3 families (`whatsapp_normal_*` H.264 Main @ L3.1 no-B-frames 1200 kbps cap, `whatsapp_hd_*` H.264 High @ L3.1 with B-frames 3000 kbps cap, `av1_document_*` SVT-AV1 with no bitrate cap), each with face/text/balanced variants — using hard-constraint filtering (face/text/motion thresholds) before CRF modifier selection. AV1 (`libsvtav1`) is the primary codec on the document/preview path; H.264 (`libx264`) remains the fallback on the WhatsApp chat path. The encoded output is scored with VMAF against the bundled model on a middle 5-second segment; a score below the floor (80) triggers a single re-encode at CRF reduced by 3 (`lib/vmaf.ts`, `Job.reencodeCount`). This supersedes the v1.0 "H.264 only" and "VMAF is Phase 2" constraints.
 
-**FR-17 Share = Credit:** Sharing COMPr on WhatsApp grants 3 bonus daily compressions, once per day, tracked via `UsageRecord.bonusCount` and surfaced through `POST /api/v1/usage/share-bonus` (idempotent per day). The bonus stack on top of the free daily quota; `shareBonusAvailable` is exposed in the usage response and drives the share prompt in the dashboard.
+**FR-17 Share = Credit:** Sharing NoBlur on WhatsApp grants 3 bonus daily compressions, once per day, tracked via `UsageRecord.bonusCount` and surfaced through `POST /api/v1/usage/share-bonus` (idempotent per day). The bonus stack on top of the free daily quota; `shareBonusAvailable` is exposed in the usage response and drives the share prompt in the dashboard.
 
 ## 10. Non-Functional Requirements
 
 - **Performance:** See the test matrix in Section 5.
 - **Interaction responsiveness (addition — initial values, tune from real RUM data in Phase 2):** Any user tap that does not require a network round trip (preset chip selection, onboarding skip, file picker open) must respond with a visible UI change within **100ms** — the threshold below which a UI change feels instantaneous (Miller 1968 / Nielsen 1993). Any tap that does require a network round trip (submit job, load usage) must show an optimistic UI update within **300ms**, with a loading state if the real response takes longer.
 - **Network resilience:** Primary launch market has variable 3G/4G connectivity. Upload must be resumable/chunked (e.g., tus protocol or multipart with resume support) as a **Phase 1 requirement**, not best-effort.
-- **Max upload size:** 100 MB per file, free tier; 500 MB premium (source file upload ceiling, distinct from the 1–16MB _output_ custom-size range in FR-2).
+- **Max upload size:** 50 MB per file, free tier; 500 MB premium (source file upload ceiling, distinct from the 1–16MB _output_ custom-size range in FR-2).
 - **Availability:** 99.5% uptime target for MVP (single-region deployment acceptable), **plus an explicit queue-wait SLA:** p95 time from `queued` to `analyzing` under 30 seconds under normal load.
 - **Hosting region:** selected for latency to the primary launch market, not defaulted to US/EU by convenience.
 - **Scalability:** Queue-based workers must scale horizontally (stateless workers, shared queue/storage).
@@ -147,7 +147,7 @@ Sends birthday videos, family clips, memes. Wants zero-configuration: upload, do
 
 ## 11. Complete User Flow
 
-1. User lands on COMPr (mobile web). Sees single primary CTA: "Upload Media."
+1. User lands on NoBlur (mobile web). Sees single primary CTA: "Upload Media."
 2. **(New user only, non-blocking)** Two light onboarding preference questions appear (FR-13); user can answer or skip.
 3. User selects/drops a file (or picks from camera roll on mobile).
 4. Client validates format/size client-side (fast fail) before upload.
@@ -157,7 +157,7 @@ Sends birthday videos, family clips, memes. Wants zero-configuration: upload, do
 8. Job is enqueued; client shows processing status (`analyzing → encoding → verifying`) with the goal-gradient progress indicator (FR-8) and plain-language stage labels.
 9. On completion, client shows: (a) a before/after size comparison (e.g., "42 MB → 15.8 MB"), and (b) a visual before/after frame comparison, so the user can see the quality difference, not just the size difference. If the quality-triggered retry path dropped the resolution, the client displays a non-intimidating notification offering to re-run in "Fine Detail" mode.
 10. If Status preset triggered splitting (only for clips over the current duration ceiling — a minority case), client shows a segmented list ("Part 1 of 2," etc.) each downloadable, plus "Download All."
-11. User taps "Send to WhatsApp" to share directly, or "Download to device" to save locally; can then manually share via WhatsApp or other apps (COMPr does not auto-post).
+11. User taps "Send to WhatsApp" to share directly, or "Download to device" to save locally; can then manually share via WhatsApp or other apps (NoBlur does not auto-post).
 12. **(If quota exhausted, and not the user's first-ever job — FR-11)** an upsell screen appears, leading with the loss-aversion framing (FR-12) before the price.
 13. Some time after download, an optional, non-blocking prompt may appear: "Did it look good after you sent it on WhatsApp?" (thumbs up/down) — closing the loop on the product's actual claimed outcome.
 
@@ -322,7 +322,7 @@ Streams status updates as the job progresses through stages; falls back to polli
 Response: `{ jobsUsedToday, jobsRemainingToday, isPremium, isFirstJobToday, shareBonusAvailable }` — keyed by device fingerprint + IP. `isFirstJobToday` drives the reciprocity exemption in FR-11; `shareBonusAvailable` surfaces whether the daily share bonus (FR-17) has not yet been claimed.
 
 **POST `/usage/share-bonus`** (FR-17)
-Grants 3 bonus compressions for sharing COMPr, once per day, idempotent per fingerprint. Response: `{ granted: boolean, bonusCount, jobsRemainingToday }`.
+Grants 3 bonus compressions for sharing NoBlur, once per day, idempotent per fingerprint. Response: `{ granted: boolean, bonusCount, jobsRemainingToday }`.
 
 **POST `/onboarding`**
 Request: `{ primary_use, priority }` (optional, non-blocking — FR-13)
@@ -560,7 +560,7 @@ model Payment {
 - Rate limiting per IP on `/jobs` and `/uploads/presign` (20 requests/minute/IP) to prevent abuse.
 - Fingerprint + IP hashing (salted, one-way) for usage tracking — no raw IP stored.
 - Worker processes run FFmpeg in a sandboxed/isolated environment (containerized, no shell injection — all FFmpeg args passed as an argument array, never string-interpolated into a shell command) to prevent command injection via crafted filenames/metadata. Implemented this way in `lib/pipeline.ts` (`execFileSync` with an argument array, no shell string).
-- **Content-Security-Policy** scoped to only the third parties COMPr actually uses (GA4/GTM, Sentry) — implemented in `next.config.ts` — plus `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy` headers.
+- **Content-Security-Policy** scoped to only the third parties NoBlur actually uses (GA4/GTM, Sentry) — implemented in `next.config.ts` — plus `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy` headers.
 - Dependency and container image scanning in CI.
 
 ## 24. Privacy
@@ -602,12 +602,12 @@ model Payment {
 
 ## 27. Business Model
 
-- **Free tier:** 5 jobs/day (an initial value, to be tuned from Phase 1 usage data), with the first job always exempt from the count itself being blocking (FR-11) — single-file upload only, max 100MB source file.
+- **Free tier:** 5 jobs/day (an initial value, to be tuned from Phase 1 usage data), with the first job always exempt from the count itself being blocking (FR-11) — single-file upload only, max 50MB source file.
 - **Premium tier:** high daily cap — initial value 100 jobs/day — rather than unbounded "unlimited," to keep compute cost predictable while still feeling unlimited for any normal use case; batch upload, higher max source file size (500MB), priority queue placement.
 - **Currency:** All monetary values are denominated in **Nigerian Naira (NGN)**, stored in **kobo** (1 NGN = 100 kobo) as integer fields in the database (see `LedgerEntry.amount`, `Payment.amount` in Section 21). The primary launch market is Nigeria (Section 7 personas).
 - **Pricing:** Subscription model (monthly/annual) — **pricing is a Phase 2 concern**. No price point is set, displayed, or hard-coded in Phase 1 code or copy. The exact price point will be determined before Phase 2 billing integration begins (Section 32).
 - **Upsell moments:** Quota exhaustion screen (loss-aversion + contrast framing, FR-12), batch-upload attempt on free tier, large-file rejection on free tier.
-- **Share = Credit (FR-17):** Sharing COMPr on WhatsApp grants 3 bonus compressions once per day (`UsageRecord.bonusCount`), a low-cost virality loop that stacks on the free quota without touching the premium tier's value proposition.
+- **Share = Credit (FR-17):** Sharing NoBlur on WhatsApp grants 3 bonus compressions once per day (`UsageRecord.bonusCount`), a low-cost virality loop that stacks on the free quota without touching the premium tier's value proposition.
 - **Quota enforcement — explicit tradeoff:** Fingerprint + IP-based quota enforcement is a soft, best-effort limit, not abuse-proof — it can be defeated by clearing site data or switching browsers. This is an accepted, deliberate MVP tradeoff because per-job compute cost is low and the resulting business risk is bounded; hard enforcement arrives with Phase 2 accounts.
 
 ## 28. Analytics Events (PostHog)
@@ -640,7 +640,7 @@ model Payment {
 
 - WhatsApp's internal compression behavior can and does change over time (its Status duration limit changed twice in under two years) — requires periodic empirical re-validation against real WhatsApp sends, not a one-time check. Mitigated by keeping all such constants in a config table (Section 16/21) rather than hardcoding them.
 - FFmpeg compute cost at scale could erode freemium unit economics if free-tier abuse isn't well throttled — mitigated but not eliminated by the fingerprint/IP quota tradeoff (Section 27).
-- Users may misunderstand the value proposition and expect COMPr to "bypass" WhatsApp compression despite explicit messaging — ongoing UX/copy risk requiring careful onboarding language.
+- Users may misunderstand the value proposition and expect NoBlur to "bypass" WhatsApp compression despite explicit messaging — ongoing UX/copy risk requiring careful onboarding language.
 - Presigned direct-upload approach requires correct CORS/bucket configuration; misconfiguration is a common launch blocker.
 - Behavioral UX techniques (loss aversion, contrast framing) must stay within honest, non-manipulative bounds — copy is always specific and truthful (Section 25's transparent-messaging pattern), never fabricated urgency or invented numbers.
 
@@ -703,7 +703,7 @@ Additional destination presets (Instagram/Telegram), multi-region hosting for la
 
 - A user can upload a video, get a correctly pre-selected preset from smart defaults, override it if needed, and receive a downloadable MP4 that scores at least 0.05 higher on SSIM than the unprocessed original would, at the same final delivered file size.
 - Every video job passes through the adaptive engine (FR-16): the analysis worker produces a scene profile, the policy engine selects a profile from `config/encoding-profiles.json`, and the output clears the VMAF floor of 80 (or triggers at most one CRF-3 re-encode that does).
-- A user who shares COMPr on WhatsApp receives 3 bonus compressions for the day, exactly once per day, and cannot claim the bonus twice (FR-17).
+- A user who shares NoBlur on WhatsApp receives 3 bonus compressions for the day, exactly once per day, and cannot claim the bonus twice (FR-17).
 - A user can upload a video longer than the current Status duration ceiling (90 seconds, sourced from the `PlatformLimit` config table, not hardcoded) and receive correctly split, independently downloadable segments.
 - A user can specify a custom target size within the 1–16MB range and receive output within ±10% of that target, or a transparent explanation if that wasn't achievable.
 - A user's first job always completes and shows the full before/after comparison, regardless of any quota state.
@@ -718,13 +718,13 @@ Additional destination presets (Instagram/Telegram), multi-region hosting for la
 
 ## 37. SEO & Discoverability
 
-**Meta tags & structured data:** Every marketing page (`/`, `/about`, `/pricing`, `/how-it-works`) is server-rendered with unique title, description, canonical URL, Open Graph, and Twitter Card tags via a shared metadata builder (`lib/seo.ts`). Organization and SoftwareApplication JSON-LD structured data is rendered once in the root layout, describing COMPr's actual free/paid model accurately — structured data must never overstate pricing or capability beyond Section 27's real business model.
+**Meta tags & structured data:** Every marketing page (`/`, `/about`, `/pricing`, `/how-it-works`) is server-rendered with unique title, description, canonical URL, Open Graph, and Twitter Card tags via a shared metadata builder (`lib/seo.ts`). Organization and SoftwareApplication JSON-LD structured data is rendered once in the root layout, describing NoBlur's actual free/paid model accurately — structured data must never overstate pricing or capability beyond Section 27's real business model.
 
 **Crawling & indexing:** `public/robots.txt` allows marketing pages and explicitly disallows `/jobs/*` and `/api/*`, since those hold transient, user-specific state. `app/sitemap.ts` generates a dynamic sitemap covering only static, indexable routes. Job pages additionally carry `X-Robots-Tag: noindex, nofollow` and `Cache-Control: no-store` headers (`next.config.ts`) as defense in depth beyond robots.txt.
 
-**AI crawler guidance:** `public/llms.txt` gives AI/LLM crawlers a concise, accurate summary of what COMPr is and does — explicitly stating that COMPr does not bypass WhatsApp compression, mirroring the product's own honesty commitment (Section 24) so AI-generated answers about COMPr don't misrepresent it.
+**AI crawler guidance:** `public/llms.txt` gives AI/LLM crawlers a concise, accurate summary of what NoBlur is and does — explicitly stating that NoBlur does not bypass WhatsApp compression, mirroring the product's own honesty commitment (Section 24) so AI-generated answers about NoBlur don't misrepresent it.
 
-**Content Security Policy:** Scoped narrowly to the third parties COMPr actually uses — Google Tag Manager/Analytics (wildcarded subdomains per Google's own CSP guidance, since exact hostnames can change) and Sentry — implemented in `next.config.ts`, tested by loading a page with GA4 enabled and confirming no CSP violations in the browser console before launch.
+**Content Security Policy:** Scoped narrowly to the third parties NoBlur actually uses — Google Tag Manager/Analytics (wildcarded subdomains per Google's own CSP guidance, since exact hostnames can change) and Sentry — implemented in `next.config.ts`, tested by loading a page with GA4 enabled and confirming no CSP violations in the browser console before launch.
 
 **Google Search Console workflow (operational, not code):** verify the property via DNS TXT (domain property, covers all subdomains/protocols) at launch; submit the sitemap path once; use URL Inspection + Request Indexing only for individual new/changed high-value pages, not bulk; monitor the Pages/Indexing report weekly for "Crawled – currently not indexed" symptoms (a common signal for client-rendered pages that aren't actually server-rendering their content); validate structured data via the Rich Results Test after any schema change.
 

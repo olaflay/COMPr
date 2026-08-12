@@ -1,9 +1,10 @@
+import * as Sentry from '@sentry/node';
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { prisma } from '../lib/prisma.ts';
 import { r2Client } from '../server/services/storage.ts';
 
-const OUTPUTS_BUCKET = process.env.R2_OUTPUTS_BUCKET || 'compr-outputs';
-const UPLOADS_BUCKET = process.env.R2_UPLOADS_BUCKET || 'compr-uploads';
+const OUTPUTS_BUCKET = process.env.SUPABASE_OUTPUTS_BUCKET || 'compr-outputs';
+const UPLOADS_BUCKET = process.env.SUPABASE_UPLOADS_BUCKET || 'compr-uploads';
 
 /**
  * Sweep expired MediaFiles:
@@ -48,6 +49,7 @@ export async function cleanupExpiredFiles(): Promise<void> {
       console.log(`[Cleanup Cron] Successfully cleaned up file ID: ${file.id}`);
     } catch (error) {
       console.error(`[Cleanup Cron] Failed to clean up file ID: ${file.id}:`, error);
+      Sentry.captureException(error);
       // Don't stop the loop if one file fails
     }
   }
@@ -60,6 +62,7 @@ if (process.env.RUN_CLEANUP_LOOP === 'true') {
       await cleanupExpiredFiles();
     } catch (e) {
       console.error('[Cleanup Cron] Error in periodic cleanup sweep', e);
+      Sentry.captureException(e);
     }
   }, 60 * 1000); // Check every minute
 }

@@ -2,7 +2,7 @@
 
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/3gpp', 'video/x-msvideo'];
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif'];
-const MAX_SIZE_BYTES = 100 * 1024 * 1024;
+const MAX_SIZE_BYTES = 50 * 1024 * 1024;
 
 export interface ValidationError {
   field: string;
@@ -25,7 +25,7 @@ export function validateFile(file: File): ValidationError[] {
     const sizeMB = Math.round(file.size / (1024 * 1024));
     errors.push({
       field: 'size',
-      message: `"${file.name}" is ${sizeMB}MB. Maximum file size is 100MB.`,
+      message: `"${file.name}" is ${sizeMB}MB. Maximum file size is 50MB.`,
     });
   }
 

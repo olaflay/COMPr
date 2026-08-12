@@ -7,8 +7,8 @@ import { getPresignedUploadUrl, startMultipartUpload, getPresignedPartUploadUrl,
 const startUploadBodySchema = z.object({
   filename: z.string(),
   mimeType: z.string(),
-  sizeBytes: z.number().int().positive().max(100 * 1024 * 1024, {
-    message: 'Maximum file size is 100MB.',
+  sizeBytes: z.number().int().positive().max(50 * 1024 * 1024, {
+    message: 'Maximum file size is 50MB.',
   }),
 });
 

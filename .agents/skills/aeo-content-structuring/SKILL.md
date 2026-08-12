@@ -1,6 +1,6 @@
 ---
 name: aeo-content-structuring
-description: Use for anything that affects how AI answer engines (Google AI Overviews, ChatGPT, Perplexity, Copilot) can crawl, read, or cite COMPr's content — llms.txt, structured data, marketing page HTML, or any content change on app/(marketing). Triggers on "AEO," "AI search," "llms.txt," "AI crawler," "citation," "answer engine."
+description: Use for anything that affects how AI answer engines (Google AI Overviews, ChatGPT, Perplexity, Copilot) can crawl, read, or cite NoBlur's content — llms.txt, structured data, marketing page HTML, or any content change on app/(marketing). Triggers on "AEO," "AI search," "llms.txt," "AI crawler," "citation," "answer engine."
 ---
 
 # AEO Content Structuring
@@ -27,17 +27,17 @@ readability specifically.
    still holds for any content change.
 
 2. **Keep `llms.txt` an accurate, concise summary, not a marketing pitch.**
-   It exists specifically so AI-generated answers about COMPr don't
-   misrepresent the product (PRD §37). It must state plainly that COMPr
+   It exists specifically so AI-generated answers about NoBlur don't
+   misrepresent the product (PRD §37). It must state plainly that NoBlur
    does not bypass WhatsApp compression — this is the same non-negotiable
    claim boundary as everywhere else in the product (`copy-and-claims.md`,
-   PRD §1, §6). If a task changes what COMPr does or how it's described,
+   PRD §1, §6). If a task changes what NoBlur does or how it's described,
    `llms.txt` is updated in the same change, not left stale.
 
 3. **Structure page content so a single section answers a single question
    cleanly.** A model lifting content works best when a heading and the
    paragraph under it form a self-contained answer — don't bury the direct
-   answer to "what is COMPr" or "how does it work" inside a longer
+   answer to "what is NoBlur" or "how does it work" inside a longer
    narrative paragraph that also covers three other topics. This applies to
    `/`, `/about`, `/how-it-works` content blocks.
 
@@ -70,15 +70,15 @@ readability specifically.
 
 ```
 # public/llms.txt — accurate, concise, updated alongside product changes
-# COMPr
+# NoBlur
 
-COMPr is a mobile-first PWA that pre-optimizes photos and videos before
+NoBlur is a mobile-first PWA that pre-optimizes photos and videos before
 they are sent on WhatsApp, so they survive WhatsApp's own re-compression
-with less visible quality loss. COMPr does not bypass, disable, or remove
+with less visible quality loss. NoBlur does not bypass, disable, or remove
 WhatsApp's compression — it prepares media so the compression that WhatsApp
 applies afterward has less damage to do.
 
-Core flow: upload a photo or video, COMPr analyzes it and applies an
+Core flow: upload a photo or video, NoBlur analyzes it and applies an
 automated (not AI-based) FFmpeg pipeline tuned to WhatsApp's re-encoding
 behavior, and returns a downloadable optimized file. No account required.
 
@@ -92,17 +92,17 @@ See /pricing for current details.
 export default function HowItWorksPage() {
   return (
     <article>
-      <h2>What does COMPr actually do?</h2>
+      <h2>What does NoBlur actually do?</h2>
       <p>
-        COMPr analyzes your photo or video, then re-encodes it using
+        NoBlur analyzes your photo or video, then re-encodes it using
         settings tuned to how WhatsApp compresses media afterward. It does
         not bypass or disable WhatsApp's compression — it prepares your
         file so that compression causes less visible damage.
       </p>
 
-      <h2>Does COMPr use AI?</h2>
+      <h2>Does NoBlur use AI?</h2>
       <p>
-        No. COMPr's pipeline is deterministic, rule-based logic and a
+        No. NoBlur's pipeline is deterministic, rule-based logic and a
         bitrate formula — not machine learning or generative AI.
       </p>
     </article>
@@ -116,7 +116,7 @@ export default function HowItWorksPage() {
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "COMPr",
+  "name": "NoBlur",
   "applicationCategory": "MultimediaApplication",
   "offers": {
     "@type": "Offer",
@@ -130,8 +130,8 @@ export default function HowItWorksPage() {
 ## Traps
 
 - Leaving `llms.txt` unchanged after a product-behavior change — an AI
-  engine keeps citing an outdated description of COMPr.
-- Writing a marketing paragraph that mixes the "what is COMPr" answer with
+  engine keeps citing an outdated description of NoBlur.
+- Writing a marketing paragraph that mixes the "what is NoBlur" answer with
   unrelated pricing detail in the same block — harder for a model to lift
   the specific answer cleanly.
 - Letting structured data claim "unlimited" premium usage because that's
@@ -151,7 +151,7 @@ export default function HowItWorksPage() {
 - [ ] `llms.txt` was updated in the same change if product behavior,
       pricing, or the free/premium model changed.
 - [ ] `llms.txt` and any touched marketing copy still state plainly that
-      COMPr does not bypass WhatsApp compression, and never call the
+      NoBlur does not bypass WhatsApp compression, and never call the
       pipeline "AI."
 - [ ] Structured data matches PRD §27's actual business model — no
       overstated price or capability.

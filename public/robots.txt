@@ -5,7 +5,7 @@ Allow: /pricing
 Allow: /how-it-works
 
 # Job pages contain transient, user-specific processing state and
-# presigned download links — never crawlable or indexable.
+# presigned download links | never crawlable or indexable.
 Disallow: /jobs/
 Disallow: /api/
 

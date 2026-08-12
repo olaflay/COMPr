@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { trackEvent } from '../providers';
+import { apiFetch } from '../../lib/api-client';
 
 export default function OnboardingPageClient() {
   const [step, setStep] = useState(1);
@@ -49,7 +50,7 @@ export default function OnboardingPageClient() {
     });
 
     try {
-      await fetch('/api/v1/onboarding', {
+      await apiFetch('/api/v1/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -65,7 +66,7 @@ export default function OnboardingPageClient() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col justify-between items-center bg-background text-on-background p-m3-large">
+    <main className="min-h-screen min-h-[100dvh] w-full flex-1 flex flex-col justify-between items-center bg-background text-on-background p-m3-large">
       <header className="w-full max-w-lg flex justify-between items-center pt-m3-x-small">
         <Link href="/" className="text-label-large text-on-surface-variant hover:text-on-surface font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
           &larr; Home
@@ -103,7 +104,7 @@ export default function OnboardingPageClient() {
 
             <div className="flex flex-col gap-m3-medium">
               <h1 ref={headingRef} tabIndex={-1} className="focus:outline-none text-headline-large text-on-surface leading-tight">
-                Welcome to <span className="text-primary">COMPr</span>
+                Welcome to <span className="text-primary">NoBlur</span>
               </h1>
               <p className="text-body-large text-on-surface-variant leading-relaxed">
                 Send sharper photos and videos on WhatsApp. We optimize your media so it survives compression and stays clear.

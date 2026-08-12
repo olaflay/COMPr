@@ -1,6 +1,12 @@
 # Dockerfile for Fastify API backend server
 FROM node:22-slim
 
+# Prisma's query engine dynamically links against libssl at runtime — without
+# this, node:22-slim (Debian 12/bookworm) has no libssl.so present at all,
+# regardless of which binaryTarget Prisma was generated for.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy dependency configuration

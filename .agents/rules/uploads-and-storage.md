@@ -2,7 +2,7 @@
 trigger: always_on
 ---
 
-# .agents/rules/uploads-and-storage.md — COMPr
+# .agents/rules/uploads-and-storage.md — NoBlur
 
 Governs bytes in transit and bytes at rest — R2 buckets, presigned URLs,
 upload behavior, retention. (File-*type validation* rules live in security.md;
@@ -25,7 +25,7 @@ the *database record* for a file lives in database-schema.md.)
   support) — this is a **Phase 1 requirement**, not best-effort, because the
   primary launch market has variable 3G/4G connectivity (PRD §10). Don't
   ship a naive single-shot upload and call resumability "Phase 2."
-- Max upload size: 100MB free tier, 500MB premium (PRD §10). Enforced
+- Max upload size: 50MB free tier, 500MB premium (PRD §10). Enforced
   client-side (fast fail) and server-side (authoritative).
 - Upload presigned URL expiry: 60 minutes, chosen specifically to
   accommodate slow-network users (PRD §13, §23) — don't shorten this for

@@ -76,7 +76,7 @@ export default function SiteHeader() {
     <header className="flex md:grid md:grid-cols-3 justify-between items-center w-full max-w-[1120px] mx-auto py-m3-medium px-m3-x-small md:px-0">
       <Link
         href="/"
-        aria-label="COMPr home"
+        aria-label="NoBlur home"
         className="flex items-center gap-m3-x-small hover:opacity-85 transition-opacity duration-m3-short-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary justify-self-start p-m3-xx-small rounded-m3-sm"
       >
         <Image
@@ -86,7 +86,7 @@ export default function SiteHeader() {
           height={32}
           className="rounded-m3-md select-none"
         />
-        <span className="text-title-large tracking-tight select-none">COMPr</span>
+        <span className="text-title-large tracking-tight select-none">NoBlur</span>
       </Link>
 
       <nav className="hidden md:flex justify-center items-center gap-m3-x-small justify-self-center" aria-label="Main navigation">
@@ -143,7 +143,7 @@ export default function SiteHeader() {
                   height={32}
                   className="rounded-m3-md"
                 />
-                <span className="text-title-large tracking-tight">COMPr</span>
+                <span className="text-title-large tracking-tight">NoBlur</span>
               </div>
               <button
                 onClick={() => setIsDrawerOpen(false)}

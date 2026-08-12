@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Toast from '../../../components/ui/Toast';
 import { buildWhatsAppShareUrl, buildWhatsAppStatusShareUrl } from '../../../lib/whatsapp-share';
+import { apiFetch } from '../../../lib/api-client';
 
 interface JobState {
   jobId: string;
@@ -37,7 +38,7 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
 
     const fetchJob = async () => {
       try {
-        const res = await fetch(`/api/v1/jobs/${jobId}?fingerprint=${fp}`);
+        const res = await apiFetch(`/api/v1/jobs/${jobId}?fingerprint=${fp}`);
         if (!res.ok) {
           setErrorStatus(res.status);
           setLoading(false);
@@ -81,7 +82,7 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-background text-on-background p-m3-large flex flex-col justify-center items-center">
+      <main className="min-h-screen min-h-[100dvh] w-full flex-1 bg-background text-on-background p-m3-large flex flex-col justify-center items-center">
         <div className="skeleton h-32 w-full max-w-md rounded-m3-lg" />
       </main>
     );
@@ -89,9 +90,14 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
 
   if (errorStatus === 403) {
     return (
-      <main className="min-h-screen bg-background text-on-background p-m3-large flex flex-col justify-center items-center text-center">
-        <div className="max-w-md flex flex-col gap-m3-medium">
-          <div className="text-display-medium" aria-hidden="true">🔒</div>
+      <main className="min-h-screen min-h-[100dvh] w-full flex-1 bg-background text-on-background p-m3-large flex flex-col justify-center items-center text-center">
+        <div className="max-w-md flex flex-col gap-m3-medium items-center">
+          <div className="select-none text-primary" aria-hidden="true">
+            <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
           <h1 className="text-headline-large text-on-surface">Access Denied</h1>
           <p className="text-body-large text-on-surface-variant leading-relaxed">
             For your privacy, job downloads and progress are tied to the browser session that uploaded the file.
@@ -109,9 +115,14 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
 
   if (errorStatus === 404 || !activeJob) {
     return (
-      <main className="min-h-screen bg-background text-on-background p-m3-large flex flex-col justify-center items-center text-center">
-        <div className="max-w-md flex flex-col gap-m3-medium">
-          <div className="text-display-medium" aria-hidden="true">🔍</div>
+      <main className="min-h-screen min-h-[100dvh] w-full flex-1 bg-background text-on-background p-m3-large flex flex-col justify-center items-center text-center">
+        <div className="max-w-md flex flex-col gap-m3-medium items-center">
+          <div className="select-none text-on-surface-variant" aria-hidden="true">
+            <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
           <h1 className="text-headline-large text-on-surface">Job Not Found</h1>
           <p className="text-body-large text-on-surface-variant leading-relaxed">
             This job does not exist or has expired. Optimizations are deleted automatically after 24 hours.
@@ -131,12 +142,12 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
   const isDone = activeJob.status === 'DONE';
 
   return (
-    <main className="min-h-screen bg-background text-on-background p-m3-medium md:p-m3-x-large">
-      <div className="max-w-xl mx-auto flex flex-col gap-m3-large">
+    <main className="min-h-screen min-h-[100dvh] w-full flex-1 flex flex-col bg-background text-on-background p-m3-medium md:p-m3-x-large">
+      <div className="max-w-xl w-full mx-auto flex-1 flex flex-col gap-m3-large">
         <header className="flex justify-between items-center pb-m3-medium border-b border-outline-variant">
           <Link href="/dashboard" className="flex items-center gap-m3-x-small hover:opacity-85 transition-opacity duration-m3-short-2">
-            <Image src="/favicon.svg" alt="COMPr logo" width={28} height={28} className="rounded-m3-md select-none" />
-            <span className="text-title-medium">COMPr</span>
+            <Image src="/favicon.svg" alt="NoBlur logo" width={28} height={28} className="rounded-m3-md select-none" />
+            <span className="text-title-medium">NoBlur</span>
           </Link>
           <div className="text-label-medium text-on-surface-variant font-mono">
             Job: {jobId.substring(0, 8)}
@@ -167,8 +178,14 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
 
         {/* Failed state */}
         {isFailed && (
-          <section className="bg-surface-container-low border border-outline-variant rounded-m3-lg p-m3-large shadow-m3-1 flex flex-col gap-m3-medium text-center">
-            <div className="text-display-medium" aria-hidden="true">❌</div>
+          <section className="bg-surface-container-low border border-outline-variant rounded-m3-lg p-m3-large shadow-m3-1 flex flex-col gap-m3-medium text-center items-center">
+            <div className="select-none text-error" aria-hidden="true">
+              <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            </div>
             <h2 className="text-title-large text-on-surface">Optimization failed</h2>
             <p className="text-body-medium text-error leading-relaxed">
               {activeJob.errorMessage || 'An error occurred during processing.'}
@@ -185,8 +202,13 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
         {/* Success Results comparison state */}
         {isDone && activeJob.outputs.length > 0 && (
           <section className="flex flex-col gap-m3-large">
-            <div className="bg-surface-container-low border border-outline-variant rounded-m3-lg p-m3-large shadow-m3-1 text-center">
-              <div className="text-display-medium mb-m3-x-small" aria-hidden="true">🎉</div>
+            <div className="bg-surface-container-low border border-outline-variant rounded-m3-lg p-m3-large shadow-m3-1 text-center flex flex-col items-center gap-m3-small">
+              <div className="select-none text-primary" aria-hidden="true">
+                <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              </div>
               <h2 className="text-title-large text-on-surface">File ready!</h2>
               <p className="text-body-medium text-on-surface-variant mt-m3-xx-small">
                 Your pre-optimized file is ready for download and sharing.

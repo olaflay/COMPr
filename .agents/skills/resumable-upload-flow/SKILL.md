@@ -13,7 +13,7 @@ and this is a Phase 1 hard requirement, not best-effort. Laws live in
 ## Procedure
 
 1. **Client-side validation happens before any network call.** Check format
-   and size against the tier ceiling (100MB free / 500MB premium) locally,
+   and size against the tier ceiling (50MB free / 500MB premium) locally,
    fast-fail with a plain-language message before upload begins (PRD §11
    step 4, §25's error table).
 

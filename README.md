@@ -1,4 +1,4 @@
-# COMPr — WhatsApp Media Optimizer
+# NoBlur — WhatsApp Media Optimizer
 
 Compress photos and videos so they stay sharp after WhatsApp's re-compression. A mobile-first PWA that pre-optimizes media for WhatsApp's specific encoding behavior.
 
@@ -199,7 +199,7 @@ npm run test:e2e
 
 ## 📚 Documentation
 
-- [**PRD**](./docs/COMPr-PRD-v1.md) — Full product spec + architecture
+- [**PRD**](./docs/NoBlur-PRD-v1.md) — Full product spec + architecture
 - [**DEPLOYMENT**](./docs/DEPLOYMENT.md) — Step-by-step setup & scaling
 - [**OPERATIONS**](./docs/OPERATIONS.md) — Monitoring, troubleshooting, runbooks
 - [**SECURITY**](./docs/SECURITY.md) — Audit findings & remediation

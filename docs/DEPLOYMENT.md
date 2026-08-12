@@ -1,133 +1,141 @@
 # Deployment Guide
 
-Deploy COMPr to production with 1000+ concurrent user capacity on free/cheap tiers (Railway, Render, Vercel, Neon).
+Deploy NoBlur to production. The frontend (Next.js) deploys to **Vercel**; the Fastify API server and BullMQ workers are long-running Node processes that Vercel serverless functions cannot host, so they need separate hosting (Railway, Render, and Fly.io are all reasonable — pick whichever fits your budget/ops preference).
 
 ---
 
 ## §1. Pre-Deployment Checklist
 
-- [ ] GitHub repo cloned & on `main` branch (commit `026722c` or later)
-- [ ] `.env` file created locally with all secrets filled in
-- [ ] FFmpeg 6+ installed on worker machines
-- [ ] PostgreSQL 14+, Redis 7+, Node 18+ available
-- [ ] Cloudflare R2 account with 2 buckets created (`compr-uploads`, `compr-outputs`)
-- [ ] Flutterwave account (Phase 2 billing; placeholder OK for MVP)
-- [ ] Sentry DSN (optional but recommended)
-- [ ] PostHog API key (optional but recommended for analytics)
+- [ ] GitHub repo cloned & on `main` branch
+- [ ] `.env` file created locally from `.env.example` with all secrets filled in
+- [ ] FFmpeg 6+ (with libsvtav1) and Python3 + OpenCV (`cv2`) installed on worker machines — see §2C, `Dockerfile.worker` already provisions these
+- [ ] Supabase project created (Postgres + Storage)
+- [ ] Supabase Storage buckets created (`compr-uploads`, `compr-outputs` by default, or your own names)
+- [ ] Upstash Redis database created (TLS/`rediss://` endpoint)
+- [ ] Flutterwave: **not required for launch** — billing routes are stubbed (see §3B / §9)
+- [ ] Sentry DSN — optional; note that Sentry is currently installed as a dependency but **not yet initialized in code** (tracked separately)
+- [ ] PostHog API key (optional, for analytics)
 
 ---
 
 ## §2. Infrastructure Setup
 
-### Option A: Railway (Recommended for Hobby)
+NoBlur's runtime has three deployable pieces, plus two managed services:
 
-**PostgreSQL Service:**
-1. Create new project
-2. Add PostgreSQL plugin
-3. Copy connection string to `.env` as `DATABASE_URL`
-4. Run migrations (see §4)
+| Piece | What it is | Where it runs |
+|---|---|---|
+| Frontend | Next.js app (`npm run build` / `npm run start`) | **Vercel** |
+| API server | Fastify server, `npm run start:server`, listens on `PORT` (default 5000) | Railway / Render / Fly.io (long-running process) |
+| Workers | BullMQ workers, `npm run start:workers` | Railway / Render / Fly.io (long-running process, needs ffmpeg + Python/OpenCV — see §2C) |
+| Database | Supabase Postgres | Supabase (managed) |
+| Queue backend | Upstash Redis | Upstash (managed) |
+| Object storage | Supabase Storage (S3-compatible) | Supabase (managed) |
 
-**Redis Service:**
-1. Add Redis plugin
-2. Copy connection string as `REDIS_URL`
-3. Enable AOF persistence (Settings → "Save Configuration")
+### A. Database — Supabase Postgres
 
-**API Service (Fastify + Workers):**
-1. Link GitHub repo `COMPr`
-2. Set environment variables (see §3)
-3. Build command: `npm run build`
-4. Start command: `node dist/server/index.js` + background worker via `npm run worker`
-5. Enable autoscaling (≥2 replicas, max 4 for free tier)
+1. Create a Supabase project (or use an existing one).
+2. From Project Settings → Database, grab:
+   - The **pooled connection string** (for `DATABASE_URL`, used by the app at runtime — goes through Supabase's connection pooler).
+   - The **direct connection string** (for `DIRECT_URL`, used only for running migrations — `prisma/schema.prisma`'s `datasource` block requires both `url` and `directUrl`).
+3. Set both in your environment (see §3). Note: `DIRECT_URL` is required by `prisma/schema.prisma` but is not currently listed in `.env.example` — add it yourself alongside `DATABASE_URL` when you fill in `.env`.
+4. Run migrations (§4).
 
-**Frontend Service (Next.js):**
-1. Add new service, link same repo
-2. Set `NEXT_PUBLIC_API_URL=https://api-prod.railway.app`
-3. Build: `npm run build`
-4. Start: `npm run start`
-5. Set custom domain (Settings)
+### B. Queue Backend — Upstash Redis
 
-### Option B: Render (Free Tier Alternative)
+1. Create an Upstash Redis database.
+2. Copy the `rediss://` (TLS) connection string into `REDIS_URL`. `lib/queue.ts` passes this directly to `ioredis`/BullMQ — no other Redis-specific config is required.
 
-**PostgreSQL:**
-1. Create Managed Database
-2. Copy DSN to `DATABASE_URL`
+### C. Object Storage — Supabase Storage (S3-compatible)
 
-**Redis:**
-1. Create Redis instance
-2. Enable persistence (toggle in Settings)
+1. In the same Supabase project, go to Storage and create two buckets (default names used by the app: `compr-uploads`, `compr-outputs`).
+2. Go to Project Settings → Storage → S3 Access Keys and generate an access key pair.
+3. Note your project's storage endpoint: `https://<project-ref>.storage.supabase.co/storage/v1/s3`, and your project's region.
+4. Fill in `SUPABASE_S3_ENDPOINT`, `SUPABASE_S3_REGION`, `SUPABASE_S3_ACCESS_KEY_ID`, `SUPABASE_S3_SECRET_ACCESS_KEY`, `SUPABASE_UPLOADS_BUCKET`, `SUPABASE_OUTPUTS_BUCKET` (see §3). `server/services/storage.ts` is the authoritative implementation — it uses `forcePathStyle: true` and the project's real region (unlike Cloudflare R2, Supabase does not accept `region: "auto"`).
+5. This has been verified end-to-end (presigned multipart upload + real PUT) as working with this configuration.
 
-**Web Services:**
-1. Create web service from GitHub
-2. Set environment vars
-3. Deploy
+### D. Frontend — Vercel
 
-### Option C: Vercel (Frontend Only) + Railway (API)
-
-**Frontend on Vercel:**
 ```bash
-npx vercel deploy --prod
-# Set env: NEXT_PUBLIC_API_URL=https://your-railway-api.com
+npm i -g vercel
+vercel deploy --prod
 ```
 
-**API on Railway** (same as §2A)
+Set environment variables in Vercel (Project Settings → Environment Variables) — see §3. Set `NEXT_PUBLIC_API_URL` to wherever you deploy the API server (§2E).
+
+No custom domain has been decided yet. Vercel will assign something like `<project>.vercel.app` — use that (or a placeholder `<YOUR_DOMAIN>`) until a real domain is chosen. Once you do pick a domain (even a temporary `.vercel.app` one), update:
+- `CORS_ORIGINS` in `.env` / your API host's env vars
+- The hardcoded `https://compr.app` references in `lib/seo.ts` and `lib/whatsapp-share.ts` (not covered by this doc — these are code changes, not deploy config)
+
+### E. API Server + Workers — Railway / Render / Fly.io
+
+These cannot run on Vercel (no long-running processes / background workers in serverless functions). Pick one host and deploy two services from it: the API server and the workers. `Dockerfile.api` and `Dockerfile.worker` in the repo root are set up for exactly this split — see §8 for build/run instructions.
+
+General steps on any of the three platforms:
+1. Link the GitHub repo (or point at the Dockerfiles directly).
+2. **API service:** build `Dockerfile.api`, expose port `5000` (or whatever `PORT` is set to), set env vars (§3).
+3. **Worker service:** build `Dockerfile.worker` — this image installs ffmpeg (with libsvtav1), Python3, and OpenCV; do **not** deploy the worker as a bare Node buildpack, it will fail on missing `ffmpeg`/`ffprobe`/`cv2`. Set the same env vars minus frontend-only ones.
+4. Point `NEXT_PUBLIC_API_URL` (Vercel) at the API service's public URL.
 
 ---
 
 ## §3. Environment Variables
 
-Copy `.env.example` to `.env` and fill in each variable:
+Copy `.env.example` to `.env` and fill in each variable. This list is pulled directly from `.env.example` (the authoritative source) plus `DIRECT_URL`, which the Prisma schema requires but which is currently missing from `.env.example`:
 
 ```bash
-# DATABASE (PostgreSQL)
-# Format: postgresql://user:password@host:port/dbname?schema=public
-DATABASE_URL="postgresql://compr:PASSWORD@db.railway.internal:5432/compr?schema=public"
+# Database (Supabase Postgres)
+DATABASE_URL="postgresql://compr:compr@localhost:5432/compr?schema=public"   # pooled connection, used at runtime
+DIRECT_URL="postgresql://compr:compr@localhost:5432/compr?schema=public"     # direct connection, used only for `prisma migrate deploy` — NOT in .env.example yet, add manually
 
-# REDIS (for BullMQ queue)
-# Format: redis://default:password@host:port
-REDIS_URL="redis://default:PASSWORD@redis.railway.internal:6379"
+# Redis (Upstash — BullMQ queue backend)
+# Use the rediss:// (TLS) URL Upstash gives you
+REDIS_URL="rediss://default:PASSWORD@your-db.upstash.io:6379"
 
-# CLOUDFLARE R2 (Object Storage)
-# Get from R2 → Settings → API tokens
-R2_ENDPOINT="https://ACCOUNT-ID.r2.cloudflarestorage.com"
-R2_ACCESS_KEY_ID="your-access-key"
-R2_SECRET_ACCESS_KEY="your-secret-key"
-R2_UPLOADS_BUCKET="compr-uploads"      # Created bucket #1
-R2_OUTPUTS_BUCKET="compr-outputs"      # Created bucket #2
+# Supabase Storage (S3-compatible object storage)
+# Endpoint format: https://<project-ref>.storage.supabase.co/storage/v1/s3
+# Get access keys + region from: Project Settings > Storage > S3 Access Keys
+SUPABASE_S3_ENDPOINT="https://<project-ref>.storage.supabase.co/storage/v1/s3"
+SUPABASE_S3_REGION="<your-project-region, e.g. us-east-1>"
+SUPABASE_S3_ACCESS_KEY_ID="<your-supabase-s3-access-key>"
+SUPABASE_S3_SECRET_ACCESS_KEY="<your-supabase-s3-secret-key>"
+SUPABASE_UPLOADS_BUCKET="compr-uploads"
+SUPABASE_OUTPUTS_BUCKET="compr-outputs"
 
-# SECURITY (Cryptography)
-# Generate: openssl rand -base64 32
-CRYPTO_SALT="YOUR-RANDOM-BASE64-SALT-HERE"
+# Flutterwave (payment provider — NOT YET IMPLEMENTED, see §9. Dummy values are fine.)
+FLUTTERWAVE_PUBLIC_KEY="<your-flutterwave-public-key>"
+FLUTTERWAVE_SECRET_KEY="<your-flutterwave-secret-key>"
+FLUTTERWAVE_WEBHOOK_SECRET="<your-flutterwave-webhook-secret>"
 
-# CORS (Frontend origins)
-CORS_ORIGINS="https://compr.app,https://www.compr.app"
+# Sentry (error monitoring — installed but NOT YET INITIALIZED in code, see §9)
+SENTRY_DSN="<your-sentry-dsn>"
+SENTRY_AUTH_TOKEN="<your-sentry-auth-token>"
 
-# FLUTTERWAVE (Payment provider — Phase 2, use dummy values for MVP)
-FLUTTERWAVE_PUBLIC_KEY="pk_test_xxxxxxx"
-FLUTTERWAVE_SECRET_KEY="sk_test_xxxxxxx"
-FLUTTERWAVE_WEBHOOK_SECRET="whsec_xxxxxxx"
+# PostHog (product analytics)
+NEXT_PUBLIC_POSTHOG_KEY="<your-posthog-public-key>"
+NEXT_PUBLIC_POSTHOG_HOST="<your-posthog-host-or-https://app.posthog.com>"
+POSTHOG_API_KEY="<your-posthog-personal-api-key>"
 
-# SENTRY (Error tracking — optional)
-SENTRY_DSN="https://xxx@sentry.io/PROJECT_ID"
-SENTRY_AUTH_TOKEN="your-auth-token"
+# Cryptography (fingerprint/IP hashing)
+# Generate a strong salt: openssl rand -base64 32
+CRYPTO_SALT="<your-random-base64-salt>"
 
-# POSTHOG (Product analytics — optional)
-NEXT_PUBLIC_POSTHOG_KEY="phc_xxx"
-NEXT_PUBLIC_POSTHOG_HOST="https://app.posthog.com"
-POSTHOG_API_KEY="your-personal-api-key"
+# CORS (comma-separated list of allowed origins)
+# Update once a real domain (even a temporary .vercel.app one) is chosen
+CORS_ORIGINS="<YOUR_DOMAIN>,http://localhost:3000"
 
-# NEXT.JS
-NEXT_PUBLIC_APP_URL="https://compr.app"
-NEXT_PUBLIC_API_URL="https://api.compr.app"
+# Next.js
+NEXT_PUBLIC_APP_URL="<YOUR_DOMAIN>"          # e.g. https://<project>.vercel.app
+NEXT_PUBLIC_API_URL="<YOUR_API_HOST_URL>"    # e.g. https://compr-api.up.railway.app
 NODE_ENV="production"
 
-# PORT (for API server)
+# PORT (API server only, default 5000)
 PORT="5000"
 ```
 
 **Keep secrets safe:**
 - Never commit `.env` to git
-- Use platform secrets (Railway Settings, Render Environment, Vercel Secrets)
-- Rotate `CRYPTO_SALT` annually
+- Use platform secrets (Vercel Environment Variables, Railway/Render/Fly.io secrets)
+- Rotate `CRYPTO_SALT` if it's ever exposed
 
 ---
 
@@ -135,26 +143,21 @@ PORT="5000"
 
 ### First Time (Fresh DB)
 
-```bash
-# Run all pending migrations
-npx prisma migrate deploy
+Run migrations against `DIRECT_URL` (the non-pooled connection), matching the `db:deploy` script in `package.json`:
 
-# Expected output:
-# ✓ Already applied: 20260720091650_add_job_prioritize_detail
-# ✓ Already applied: 20260727000000_add_encoding_profiles
-# ✓ Already applied: 20260727153336_add_job_destination
-# ✓ Already applied: 20260731152137_add_share_bonus_credits
-# ✓ Already applied: 20260810063007_add_queue_position
+```bash
+npm run db:deploy
+# equivalent to: npx prisma migrate deploy
 ```
 
 ### Verify Schema
 
 ```bash
-# List all tables
-psql $DATABASE_URL -c "\dt"
+psql $DIRECT_URL -c "\dt"
 
-# Expected tables: Job, MediaFile, UsageRecord, PlatformLimit, 
+# Expected tables: Job, MediaFile, UsageRecord, PlatformLimit,
 #                  EncodingProfile, OnboardingPreference, User, LedgerEntry, Payment
+# (User, LedgerEntry, Payment are Phase 2 forward-compat models, not wired to app code yet)
 ```
 
 ### Create Initial Platform Limits (WhatsApp Constants)
@@ -170,162 +173,69 @@ EOF
 
 ---
 
-## §5. Redis Configuration
+## §5. Running the Three Processes
 
-**Critical for Production:** Enable AOF (Append-Only File) persistence.
-
-### Railway/Render Dashboard
-
-```
-Redis Service → Settings → Persistence
-☑ Enable AOF (Append Only File)
-```
-
-### Self-Hosted Redis
+NoBlur is three separate long-running things once deployed. Locally (or on any of the API/worker hosts):
 
 ```bash
-# redis.conf
-appendonly yes
-appendfsync everysec  # fsync every 1s (balance durability + performance)
-maxmemory 1gb
-maxmemory-policy allkeys-lru
+# Frontend (Next.js) — Vercel handles this in production; locally:
+npm run build && npm run start
+
+# API server (Fastify) — listens on $PORT, default 5000
+npm run start:server
+
+# Workers (BullMQ: analysis, encode, cleanup-cron — see workers/run-all.ts)
+npm run start:workers
 ```
 
-**Why AOF?** If Redis restarts during a load spike, BullMQ's stalled-job recovery can reconcile job state. Without AOF, jobs vanish silently.
+All three read from `.env` (via `--env-file=.env`) when run with the `start:*` scripts.
 
 ---
 
-## §6. Object Storage (Cloudflare R2)
+## §6. Docker Builds
 
-### Create Buckets
-
-1. **Cloudflare Dashboard → R2**
-2. Create bucket: `compr-uploads`
-3. Create bucket: `compr-outputs`
-
-### Bucket Lifecycle Rules
-
-**Uploads bucket** (delete after 1 hour of inactivity):
-```
-Rule name: "cleanup-stale-uploads"
-Apply to path: "uploads/*"
-Delete object versions older than: 1 day
-```
-
-**Outputs bucket** (delete after 24 hours):
-```
-Rule name: "cleanup-stale-outputs"
-Apply to path: "outputs/*"
-Delete object versions older than: 1 day
-```
-
-**Note:** COMPr's cleanup cron is the primary deletion authority (updates `MediaFile.deletedAt` atomically). R2 lifecycle rules are a secondary safety net only.
-
-### CORS Configuration (R2)
-
-Restrict upload/download URLs to your domain:
-
-```json
-{
-  "AllowedOrigins": ["https://compr.app", "https://www.compr.app"],
-  "AllowedMethods": ["GET", "PUT", "POST"],
-  "AllowedHeaders": ["*"],
-  "MaxAgeSeconds": 3600
-}
-```
-
----
-
-## §7. Deploy Frontend
-
-### Vercel (Recommended)
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel deploy --prod
-
-# Set environment variable
-vercel env add NEXT_PUBLIC_API_URL
-# Value: https://api.compr.app
-```
-
-### Railway / Self-Hosted
-
-```bash
-# Build
-npm run build
-
-# Start
-npm run start
-```
-
-**Custom domain:**
-1. Point DNS `compr.app` to your platform's nameservers
-2. Enable SSL/TLS (auto-renewal via Let's Encrypt or platform default)
-
----
-
-## §8. Deploy API & Workers
-
-### Railway
-
-```bash
-# Commit & push to main
-git add -A && git commit -m "deploy: production release"
-git push origin main
-
-# Railway auto-deploys on push (if linked to GitHub)
-# Check deployment status: Railway Dashboard → Deployments
-```
-
-### Render / Self-Hosted
-
-```bash
-# Build
-npm run build
-
-# Start API server (foreground)
-# OR in background: npm run worker &
-npm run dev
-```
-
-### Docker (Self-Hosted / Any Platform)
+`Dockerfile.api` and `Dockerfile.worker` already exist in the repo root and are the recommended way to deploy the API and workers to Railway/Render/Fly.io.
 
 ```bash
 # Build images
 docker build -f Dockerfile.api -t compr-api .
 docker build -f Dockerfile.worker -t compr-worker .
-docker build -f Dockerfile.web -t compr-web .
 
 # Run API
-docker run -e DATABASE_URL=$DATABASE_URL -e REDIS_URL=$REDIS_URL \
+docker run -e DATABASE_URL=$DATABASE_URL -e DIRECT_URL=$DIRECT_URL -e REDIS_URL=$REDIS_URL \
+  -e SUPABASE_S3_ENDPOINT=$SUPABASE_S3_ENDPOINT -e SUPABASE_S3_REGION=$SUPABASE_S3_REGION \
+  -e SUPABASE_S3_ACCESS_KEY_ID=$SUPABASE_S3_ACCESS_KEY_ID -e SUPABASE_S3_SECRET_ACCESS_KEY=$SUPABASE_S3_SECRET_ACCESS_KEY \
+  -e SUPABASE_UPLOADS_BUCKET=$SUPABASE_UPLOADS_BUCKET -e SUPABASE_OUTPUTS_BUCKET=$SUPABASE_OUTPUTS_BUCKET \
+  -e CORS_ORIGINS=$CORS_ORIGINS -e CRYPTO_SALT=$CRYPTO_SALT \
   -p 5000:5000 compr-api
 
-# Run workers (multiple replicas)
+# Run workers (multiple replicas as needed)
 docker run -e DATABASE_URL=$DATABASE_URL -e REDIS_URL=$REDIS_URL \
-  compr-worker
-docker run -e DATABASE_URL=$DATABASE_URL -e REDIS_URL=$REDIS_URL \
+  -e SUPABASE_S3_ENDPOINT=$SUPABASE_S3_ENDPOINT -e SUPABASE_S3_REGION=$SUPABASE_S3_REGION \
+  -e SUPABASE_S3_ACCESS_KEY_ID=$SUPABASE_S3_ACCESS_KEY_ID -e SUPABASE_S3_SECRET_ACCESS_KEY=$SUPABASE_S3_SECRET_ACCESS_KEY \
+  -e SUPABASE_UPLOADS_BUCKET=$SUPABASE_UPLOADS_BUCKET -e SUPABASE_OUTPUTS_BUCKET=$SUPABASE_OUTPUTS_BUCKET \
   compr-worker
 ```
 
+`Dockerfile.worker` installs `ffmpeg` (verified to include `libsvtav1`), `libopencv-dev`, `python3`, `python3-opencv`, and `python3-numpy`, and validates at build time that `cv2` imports correctly — this is what `lib/opencv_analyze.py` needs at runtime via `python3`/`python`. Whatever platform you choose to host the worker on must run this image (or an equivalent environment with ffmpeg + ffprobe + Python/OpenCV installed) — a bare Node buildpack will not work.
+
+There is no `Dockerfile.web` in the repo; the frontend is deployed to Vercel directly (§2D), not via Docker.
+
 ---
 
-## §9. Health Checks & Initial Tests
+## §7. Health Checks & Initial Tests
 
 ### API Health
 
 ```bash
-curl -v https://api.compr.app/health
+curl -v https://<YOUR_API_HOST_URL>/health
 # Expected: 200 OK (or 503 if unhealthy)
 ```
 
 ### Job Queue Status
 
 ```bash
-curl https://api.compr.app/api/v1/queue-stats | jq .
+curl https://<YOUR_API_HOST_URL>/api/v1/queue-stats | jq .
 # Expected: { "analysisQueue": { "waiting": 0, "active": 0 }, "encodeQueue": { ... } }
 ```
 
@@ -333,7 +243,7 @@ curl https://api.compr.app/api/v1/queue-stats | jq .
 
 ```bash
 # 1. Get presigned upload URL
-UPLOAD_RESPONSE=$(curl -X POST https://api.compr.app/api/v1/uploads/presign \
+UPLOAD_RESPONSE=$(curl -X POST https://<YOUR_API_HOST_URL>/api/v1/uploads/presign \
   -H 'Content-Type: application/json' \
   -d '{"filename": "test.mp4", "mimeType": "video/mp4", "sizeBytes": 5242880}')
 
@@ -344,7 +254,7 @@ FILE_KEY=$(echo $UPLOAD_RESPONSE | jq -r '.fileKey')
 curl -X PUT -T test.mp4 "$UPLOAD_URL"
 
 # 3. Create job
-JOB_RESPONSE=$(curl -X POST https://api.compr.app/api/v1/jobs \
+JOB_RESPONSE=$(curl -X POST https://<YOUR_API_HOST_URL>/api/v1/jobs \
   -H 'Content-Type: application/json' \
   -d "{\"fileKey\": \"$FILE_KEY\", \"preset\": \"CHAT\", \"fingerprint\": \"test_fp_001\"}")
 
@@ -352,195 +262,67 @@ JOB_ID=$(echo $JOB_RESPONSE | jq -r '.jobId')
 
 # 4. Poll status (wait for completion)
 for i in {1..30}; do
-  STATUS=$(curl https://api.compr.app/api/v1/jobs/$JOB_ID?fingerprint=test_fp_001 | jq -r '.status')
+  STATUS=$(curl https://<YOUR_API_HOST_URL>/api/v1/jobs/$JOB_ID?fingerprint=test_fp_001 | jq -r '.status')
   echo "Job $JOB_ID: $STATUS"
   [ "$STATUS" = "DONE" ] && break
   sleep 2
 done
 
 # 5. Download result
-curl $(curl https://api.compr.app/api/v1/jobs/$JOB_ID?fingerprint=test_fp_001 | jq -r '.outputs[0].downloadUrl') \
+curl $(curl https://<YOUR_API_HOST_URL>/api/v1/jobs/$JOB_ID?fingerprint=test_fp_001 | jq -r '.outputs[0].downloadUrl') \
   -o optimized.mp4
 ```
 
 **Success criteria:**
-- ✅ Upload completes in <30s
-- ✅ Job queues immediately
-- ✅ Status progresses: QUEUED → ANALYZING → ENCODING → VERIFYING → DONE
-- ✅ Output file is 50-90% smaller than input
-- ✅ Download URL works and serves the optimized file
+- Upload completes in <30s
+- Job queues immediately
+- Status progresses: QUEUED → ANALYZING → ENCODING → VERIFYING → DONE
+- Output file is meaningfully smaller than input
+- Download URL works and serves the optimized file
 
 ---
 
-## §10. Monitoring & Alerting
+## §8. Payment — Not Yet Implemented
 
-### Database Metrics
-
-```sql
--- Connection pool usage
-SELECT datname, count(*) FROM pg_stat_activity GROUP BY datname;
-
--- Slow queries
-SELECT query, mean_time, calls FROM pg_stat_statements 
-  WHERE mean_time > 1000 ORDER BY mean_time DESC LIMIT 10;
-
--- Table bloat
-SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) 
-  FROM pg_tables WHERE schemaname != 'pg_catalog' ORDER BY 3 DESC;
-```
-
-### Redis Metrics
-
-```bash
-# Memory usage
-redis-cli info memory
-
-# Slow commands
-redis-cli CONFIG GET slowlog-max-len
-redis-cli SLOWLOG GET 10
-
-# Queue depth
-redis-cli LLEN bull:media-analysis:waiting
-redis-cli LLEN bull:media-encode:waiting
-```
-
-### Application Metrics (Sentry / PostHog)
-
-- **Error rate:** Track encode failures, validation errors
-- **Queue latency:** p50, p95 time from queued → analyzing
-- **Upload time:** Track resumable upload resume count + duration
-- **Job completion rate:** % of jobs DONE vs FAILED
-- **Scaling events:** Worker spin-up/down, queue depth spikes
+Flutterwave integration is a deliberate stub, not a deploy step. `server/routes/billing.ts` routes return HTTP 501, and `FLUTTERWAVE_PUBLIC_KEY` / `FLUTTERWAVE_SECRET_KEY` / `FLUTTERWAVE_WEBHOOK_SECRET` in `.env` are placeholder values only — there is nothing to configure here for launch. Do not treat these as a deployment blocker or expect billing to function until this is built out.
 
 ---
 
-## §11. Scaling to 1000+ Concurrent Users
-
-**Configuration Adjustments:**
-
-1. **Worker Concurrency:**
-   - Set `workers/encode-worker.ts` concurrency to `Math.min(vCPU_count / 2, 8)`
-   - Add more worker replicas when queue depth > 10
-
-2. **Database Connection Pool:**
-   - Add to `DATABASE_URL`: `?connection_limit=20` (adjust based on free tier)
-   - Use PgBouncer if hitting connection exhaustion
-
-3. **Redis:**
-   - Increase `maxmemory` to 2-4GB
-   - Monitor `used_memory_rss` and `evicted_keys`
-
-4. **Job Timeouts:**
-   - Encode timeout: 5 minutes (typical video)
-   - Image processing: 30 seconds
-   - Analysis: 60 seconds
-
-5. **Rate Limiting:**
-   - `/api/v1/jobs`: 20 req/min/IP (enforced by rate-limit plugin)
-   - `/api/v1/uploads/presign`: 20 req/min/IP
-   - Consider fingerprint-based fallback if proxy rotates IPs
-
-**Load Testing:**
-
-```bash
-npm run test:load -- --users 1000 --duration 300 --ramp-up 60
-```
-
-Expected results:
-- Median job completion: 15-30s
-- p95 completion: 45-90s
-- p99 queue wait: <30s (from queued to analyzing)
-- Worker CPU: 60-80% sustained
-- Database connections: <15 active
-
----
-
-## §12. Rollback & Recovery
+## §9. Rollback & Recovery
 
 ### If Deployment Fails
 
 ```bash
-# Roll back to previous commit
 git revert <bad-commit-hash>
 git push origin main
-
-# Platform auto-redeploys (Railway/Render)
-# OR manually redeploy if self-hosted
+# Vercel / Railway / Render / Fly.io auto-redeploy on push if linked to GitHub
 ```
 
 ### If Database Migration Fails
 
 ```bash
-# Check migration status
 npx prisma migrate status
-
-# Resolve in interactive mode
 npx prisma migrate resolve --rolled-back <migration-name>
-
-# OR rollback to previous schema version
-# (consult Prisma docs for your DB; usually manual SQL)
-```
-
-### If Redis is Corrupted
-
-```bash
-# Save backup
-redis-cli BGSAVE /backup/dump.rdb
-
-# Restart Redis (discard corrupted data)
-# Note: Any in-flight jobs will be reconciled by BullMQ on next worker restart
+# or roll back to a previous schema version manually (consult Prisma docs)
 ```
 
 ---
 
-## §13. Post-Launch Checklist
+## §10. Post-Launch Checklist
 
-- [ ] All 5 services deployed (Frontend, API, Workers, Postgres, Redis)
-- [ ] Custom domain DNS pointing to correct IP/CNAME
-- [ ] SSL/TLS certificate issued and auto-renewing
-- [ ] Environment variables set on all services
-- [ ] Database migrations applied successfully
-- [ ] Health checks passing (API /health, queue-stats)
+- [ ] Frontend deployed to Vercel
+- [ ] API server deployed (Railway/Render/Fly.io)
+- [ ] Workers deployed (Railway/Render/Fly.io), using `Dockerfile.worker` or equivalent with ffmpeg + Python/OpenCV
+- [ ] Supabase Postgres + Storage buckets provisioned
+- [ ] Upstash Redis provisioned
+- [ ] Environment variables set on all three services (frontend/API/workers)
+- [ ] `DIRECT_URL` set and migrations applied via `npm run db:deploy`
+- [ ] Health checks passing (`/health`, `/api/v1/queue-stats`)
 - [ ] Sample upload → compress → download flow tested end-to-end
-- [ ] Monitoring dashboard set up (Sentry, PostHog)
-- [ ] Alerting configured (CPU >80%, DB connections >20, Redis memory >80%)
-- [ ] Backup strategy documented (DB snapshots daily, R2 lifecycle rules enabled)
-- [ ] Documentation links updated (README, OPERATIONS)
-- [ ] Support contact set up (support@compr.app or feedback form)
-- [ ] Analytics tracking verified (PostHog events firing)
+- [ ] `CORS_ORIGINS`, `NEXT_PUBLIC_APP_URL` updated once a real (or temporary `.vercel.app`) domain is chosen; `lib/seo.ts` and `lib/whatsapp-share.ts` updated separately in code
+- [ ] Sentry — pending: dependency is installed but not yet initialized (separate task)
+- [ ] Analytics tracking verified (PostHog events firing), if configured
 
 ---
 
-## §14. Support & Troubleshooting
-
-**Common Issues:**
-
-| Problem | Cause | Solution |
-|---------|-------|----------|
-| **Jobs stuck in QUEUED** | Workers not running or no CPU | Scale workers, check concurrency |
-| **Upload fails: 403 Forbidden** | Presigned URL expired or wrong R2 credentials | Check R2 keys, ensure 60min expiry |
-| **Download URL 404** | File deleted before download | Increase retention window (currently 24h) |
-| **CORS errors** | Origin not in allow-list | Update CORS_ORIGINS in .env |
-| **OOM on workers** | Too many concurrent encodes | Reduce worker concurrency, add replicas |
-| **Slow encoding** | Slow/2-pass running during load | Verify queue depth logic, check CPU |
-| **VMAF failures** | Quality gate too strict | Lower floor from 80 to 75, or skip gate |
-
-**Debug Commands:**
-
-```bash
-# Check worker logs
-docker logs compr-worker-1
-
-# Inspect job in queue
-redis-cli HGETALL "bull:media-encode:active:job:123"
-
-# List failed jobs
-redis-cli LRANGE "bull:media-encode:failed" 0 -1
-
-# Force retry of failed job
-redis-cli LPUSH "bull:media-encode:waiting" "<job-id>"
-```
-
----
-
-See [OPERATIONS.md](./OPERATIONS.md) for runbooks, monitoring dashboards, and scaling procedures.
+See [OPERATIONS.md](./OPERATIONS.md) for runbooks, monitoring, and scaling procedures.

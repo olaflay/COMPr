@@ -1,3 +1,15 @@
+import * as Sentry from '@sentry/node';
+
+const sentryDsn = process.env.SENTRY_DSN;
+const isDummySentryDsn = !sentryDsn || sentryDsn === 'https://dummy-dsn@sentry.io/12345';
+
+Sentry.init({
+  dsn: sentryDsn,
+  environment: process.env.NODE_ENV || 'development',
+  tracesSampleRate: 0.1,
+  enabled: !isDummySentryDsn,
+});
+
 import Fastify from 'fastify';
 import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import {
@@ -10,6 +22,8 @@ import onboardingRoutes from './routes/onboarding.ts';
 import uploadsRoutes from './routes/uploads.ts';
 import billingRoutes from './routes/billing.ts';
 import contactRoutes from './routes/contact.ts';
+import healthRoutes from './routes/health.ts';
+import queueStatsRoutes from './routes/queue-stats.ts';
 import rateLimitPlugin from './plugins/rate-limit.ts';
 
 const app = Fastify({
@@ -22,10 +36,10 @@ app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
 
 // CORS: lock to frontend origins only. Prevents cross-origin quota-burn attacks.
-const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || 'https://compr.app,http://localhost:3000').split(',');
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || 'https://com-pr.vercel.app,http://localhost:3000').split(',');
 app.addHook('onRequest', async (request, reply) => {
   const origin = request.headers.origin || '';
-  if (ALLOWED_ORIGINS.some(o => origin.includes(o.trim()))) {
+  if (ALLOWED_ORIGINS.some(o => origin === o.trim())) {
     reply.header('Access-Control-Allow-Origin', origin);
     reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
     reply.header('Access-Control-Allow-Headers', 'Content-Type');
@@ -45,6 +59,8 @@ app.register(onboardingRoutes);
 app.register(uploadsRoutes);
 app.register(billingRoutes);
 app.register(contactRoutes);
+app.register(healthRoutes);
+app.register(queueStatsRoutes);
 
 // Error handling envelope mapping - PRD §18, coding-standards.md
 app.setErrorHandler((error, _request, reply) => {
@@ -55,6 +71,7 @@ app.setErrorHandler((error, _request, reply) => {
     : (err.code || 'INTERNAL_SERVER_ERROR');
 
   app.log.error(err);
+  Sentry.captureException(err);
 
   return reply.code(statusCode).send({
     error: {

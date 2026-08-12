@@ -52,7 +52,12 @@ export default function ProcessingHistory() {
     return (
       <section className="bg-surface-container-low border border-outline-variant rounded-m3-lg shadow-m3-1">
         <EmptyState
-          icon="🕐"
+          icon={
+            <svg className="w-12 h-12 text-on-surface-variant" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          }
           title="No recent files"
           description="Files you optimize will show up here so you can re-download them later."
           action={

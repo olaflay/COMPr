@@ -160,7 +160,7 @@ ffmpeg -y -threads 0 -i input.mp4 \
 
 ---
 
-## 7. COMPr Quality & Processing Standards
+## 7. NoBlur Quality & Processing Standards
 
 The engine must strictly adhere to the following delivery and optimization standards:
 

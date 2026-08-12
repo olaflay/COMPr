@@ -4,9 +4,10 @@
  */
 
 import type { MetadataRoute } from 'next';
+import { BASE_URL } from '../lib/seo';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://compr.app';
+  const baseUrl = BASE_URL;
   const staticRoutes = ['', '/about', '/pricing', '/how-it-works'];
 
   return staticRoutes.map((route) => ({

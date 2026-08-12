@@ -12,12 +12,12 @@ inside any one technical rules file.
 ## Never claim to bypass WhatsApp
 
 - No copy anywhere: UI string, marketing page, error message, code comment
-  intended for user-facing text: may say COMPr "bypasses," "removes,"
+  intended for user-facing text: may say NoBlur "bypasses," "removes,"
   "disables," or "defeats" WhatsApp's compression (PRD §1, §6, §36;
-  AGENTS.md #1). COMPr pre-optimizes before compression happens. It never
+  AGENTS.md #1). NoBlur pre-optimizes before compression happens. It never
   claims to stop compression from happening.
 - `public/llms.txt` carries the same constraint: it must state plainly that
-  COMPr does not bypass WhatsApp compression, so AI-generated answers about
+  NoBlur does not bypass WhatsApp compression, so AI-generated answers about
   the product don't misrepresent it (PRD §24, §37).
 
 ## Never call the pipeline "AI"
@@ -54,7 +54,7 @@ inside any one technical rules file.
 
 ## Structured data and pricing claims
 
-- Organization/SoftwareApplication JSON-LD must describe COMPr's actual
+- Organization/SoftwareApplication JSON-LD must describe NoBlur's actual
   free/paid model accurately. It must never overstate pricing or capability
   beyond what Section 27's real business model supports (PRD §37).
 - Pricing is a Phase 2 concern: structured data in Phase 1 describes the

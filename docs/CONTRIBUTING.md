@@ -1,6 +1,6 @@
 # Contributing Guide
 
-How to set up a development environment, contribute code, and follow COMPr's standards.
+How to set up a development environment, contribute code, and follow NoBlur's standards.
 
 ---
 
@@ -417,7 +417,7 @@ npm run test -- my-feature
 
 ## Resources
 
-- **PRD:** [docs/COMPr-PRD-v1.md](./COMPr-PRD-v1.md) — Full spec
+- **PRD:** [docs/NoBlur-PRD-v1.md](./NoBlur-PRD-v1.md) — Full spec
 - **Architecture:** [docs/DEPLOYMENT.md](./DEPLOYMENT.md) §2 — System design
 - **Prisma Docs:** https://www.prisma.io/docs
 - **Next.js Docs:** https://nextjs.org/docs

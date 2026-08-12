@@ -5,7 +5,7 @@ description: Use for anything a user sees — React components, screens, styling
 
 # UI Component Builder
 
-Teaches how to build a screen or component so it matches COMPr's locked
+Teaches how to build a screen or component so it matches NoBlur's locked
 visual system and doesn't violate its accessibility/performance floor.
 Laws live in `coding-standards.md`, `copy-and-claims.md`, and PRD §10, §12.
 

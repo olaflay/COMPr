@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { Worker } from 'bullmq';
 import { join, extname } from 'node:path';
 import { mkdirSync, unlinkSync, existsSync } from 'node:fs';
@@ -341,6 +342,7 @@ export const encodeWorker = new Worker(
 
     } catch (error: any) {
       console.error(`[Encode Worker] Error processing job ${jobId}:`, error);
+      Sentry.captureException(error);
 
       // Set source file retention to 1 hour grace period on failure
       if (job.sourceFile) {

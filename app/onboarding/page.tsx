@@ -11,7 +11,7 @@ export const metadata = buildMetadata({
 
 function OnboardingSkeleton() {
   return (
-    <main className="min-h-screen flex flex-col justify-between items-center bg-background text-on-background p-m3-large">
+    <main className="min-h-screen min-h-[100dvh] w-full flex-1 flex flex-col justify-between items-center bg-background text-on-background p-m3-large">
       <header className="w-full max-w-lg flex justify-between items-center pt-m3-x-small">
         <div className="skeleton h-5 w-16 rounded-m3-sm animate-pulse" />
         <div className="skeleton h-5 w-12 rounded-m3-sm animate-pulse" />

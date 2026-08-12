@@ -1,5 +1,5 @@
 const SHARE_MESSAGE = 'Make your media look sharp on WhatsApp';
-const SHARE_URL = 'https://compr.app';
+const SHARE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://com-pr.vercel.app';
 
 /**
  * Build a WhatsApp share URL that opens WhatsApp directly on mobile
@@ -25,7 +25,7 @@ export function buildWhatsAppShareUrl(downloadUrl?: string): string {
  */
 export function buildWhatsAppStatusShareUrl(downloadUrl?: string): string {
   const message = downloadUrl
-    ? `Check out this sharp video I optimized with COMPr ${downloadUrl}`
+    ? `Check out this sharp video I optimized with NoBlur ${downloadUrl}`
     : `${SHARE_MESSAGE} ${SHARE_URL}`;
   const encoded = encodeURIComponent(message);
 

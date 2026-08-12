@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { Worker } from 'bullmq';
 import { join } from 'node:path';
 import { mkdirSync, unlinkSync, existsSync } from 'node:fs';
@@ -71,6 +72,7 @@ export const analysisWorker = new Worker(
       await mediaEncodeQueue.add(jobId, { jobId });
     } catch (error: any) {
       console.error(`[Analysis Worker] Error processing job ${jobId}:`, error);
+      Sentry.captureException(error);
 
       // Set source file retention to 1 hour grace period on failure
       if (job.sourceFile) {

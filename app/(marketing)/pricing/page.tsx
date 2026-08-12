@@ -4,14 +4,14 @@ import SiteHeader from '../../../components/marketing/SiteHeader';
 import SiteFooter from '../../../components/marketing/SiteFooter';
 
 export const metadata: Metadata = {
-  title: 'Pricing | COMPr',
-  description: 'COMPr pricing: 5 free optimizations daily, up to 90% smaller files. Premium is ₦2,500/month for unlimited use.',
+  title: 'Pricing | NoBlur',
+  description: 'NoBlur pricing: 5 free optimizations daily, up to 90% smaller files. Premium (₦2,500/month, unlimited use) is coming soon.',
 };
 
 export default function PricingPage() {
   return (
-    <main className="min-h-screen bg-background text-on-background px-m3-large md:px-m3-xxx-large pt-m3-medium md:pt-m3-x-large pb-m3-xxx-large md:pb-m3-6xl">
-      <div className="max-w-[1120px] mx-auto">
+    <main className="min-h-screen min-h-[100dvh] w-full flex-1 flex flex-col justify-between bg-background text-on-background px-m3-large md:px-m3-xxx-large pt-m3-medium md:pt-m3-x-large pb-m3-xxx-large md:pb-m3-6xl">
+      <div className="max-w-[1120px] w-full mx-auto flex-1 flex flex-col justify-between">
         <SiteHeader />
 
         <div className="max-w-2xl mx-auto flex flex-col gap-m3-xxx-large md:gap-m3-6xl py-m3-xxxx-large md:py-m3-6xl">
@@ -44,7 +44,7 @@ export default function PricingPage() {
                     <circle cx="12" cy="12" r="10" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4" />
                   </svg>
-                  <span>Up to 90% smaller files, same sharpness</span>
+                  <span>Up to 90% smaller files, still sharp</span>
                 </li>
                 <li className="flex items-start gap-m3-x-small">
                   <svg className="w-5 h-5 text-primary shrink-0 mt-m3-xxx-small" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">

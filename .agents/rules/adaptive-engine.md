@@ -1,4 +1,4 @@
-# Rules for Adaptive Engine Development — COMPr
+# Rules for Adaptive Engine Development — NoBlur
 
 Governs the design, implementation, and code shape of the self-hosted adaptive media optimization engine.
 

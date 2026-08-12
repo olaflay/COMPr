@@ -9,7 +9,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   return (
-    <main className="min-h-screen bg-background text-on-background flex flex-col items-center justify-center p-m3-large text-center gap-m3-large">
+    <main className="min-h-screen min-h-[100dvh] w-full flex-1 bg-background text-on-background flex flex-col items-center justify-center p-m3-large text-center gap-m3-large">
       <div className="text-display-medium" aria-hidden="true">⚠️</div>
       <h1 className="text-headline-large text-on-surface">Something went wrong</h1>
       <p className="text-body-large text-on-surface-variant max-w-md leading-relaxed">

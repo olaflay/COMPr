@@ -4,10 +4,10 @@
  * description, canonical URL, Open Graph, and Twitter Card tags.
  */
 
-export const SITE_NAME = 'COMPr';
-export const BASE_URL = 'https://compr.app';
+export const SITE_NAME = 'NoBlur';
+export const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://com-pr.vercel.app';
 export const DEFAULT_DESCRIPTION =
-  'Pre-optimize photos and videos so they stay sharp after WhatsApp compresses them — up to 90% smaller, 5 free daily, no account needed.';
+  'Pre-optimize photos and videos so they stay sharp after WhatsApp compresses them | up to 90% smaller, 5 free daily, no account needed.';
 
 export interface MetadataInput {
   title?: string;
@@ -111,7 +111,7 @@ export function softwareApplicationSchema(): SchemaOrg {
     offers: {
       '@type': 'Offer',
       price: '0',
-      priceCurrency: 'USD',
+      priceCurrency: 'NGN',
       description: 'Free tier with a daily usage limit; paid tier removes the daily cap.',
     },
   };

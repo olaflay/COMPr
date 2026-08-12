@@ -1,13 +1,13 @@
-# COMPr UI/UX Design System Practices
+# NoBlur UI/UX Design System Practices
 
-This document outlines the specific human-computer interaction (HCI), user psychology, and usability principles implemented in the COMPr landing page and design tokens. These practices form the baseline for our design and layout decisions.
+This document outlines the specific human-computer interaction (HCI), user psychology, and usability principles implemented in the NoBlur landing page and design tokens. These practices form the baseline for our design and layout decisions.
 
 ## I. Usability Laws
 
 - **Jakob's Law**: The landing page follows standard, recognizable web layouts:
   - Header: Logo on the left, primary navigation centered, and CTA on the right.
   - Mobile: A familiar top-right hamburger icon that opens a clean drawer overlay.
-  - Users do not have to learn a new interface structure to navigate COMPr.
+  - Users do not have to learn a new interface structure to navigate NoBlur.
 - **Hick's Law (Decision Time)**: We minimize cognitive choices to reduce user fatigue. The landing page has one dominant, high-contrast action ("Start Optimizing"). Other secondary navigation routes (Testimonials, Contact) are clearly secondary.
 - **Fitts's Law (Target Size & Placement)**:
   - All interactive buttons on mobile (such as "Start Optimizing" and the drawer's "Get Started" buttons) expand to full width (`w-full`) to maximize target area and make them extremely easy to tap.

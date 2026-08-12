@@ -87,7 +87,7 @@ discipline for the same components.
   srcset="/images/hero-800.avif 800w, /images/hero-1400.avif 1400w"
   sizes="100vw" width="1400" height="900"
   fetchpriority="high"
-  alt="COMPr before/after comparison"
+  alt="NoBlur before/after comparison"
 >
 
 <!-- Non-critical scripts off the blocking path -->

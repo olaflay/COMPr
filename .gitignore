@@ -26,3 +26,10 @@ appendonlydir/
 temp/
 test_clip.mp4
 test/
+
+# stray files from Windows/Git Bash redirecting to NUL instead of /dev/null
+/NUL
+/error
+
+# Sentry Config File
+.env.sentry-build-plugin

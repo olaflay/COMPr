@@ -7,9 +7,9 @@ import SiteFooter from '../../components/marketing/SiteFooter';
 import MediaMessageDemo, { type WhatsAppMode } from '../../components/marketing/MediaMessageDemo';
 
 const MODE_SUB_COPY: Record<WhatsAppMode, string> = {
-  Status: 'COMPr prepares your video so it stays sharp after Status compression — up to 90% smaller, zero blur.',
-  Chat: 'COMPr prepares your video so it stays sharp after chat compression — up to 90% smaller, still sends fast.',
-  Product: 'COMPr prepares your photos so they stay sharp in your catalog — up to 90% smaller, loads fast for buyers.',
+  Status: 'NoBlur prepares your video so it stays sharp after Status compression | up to 90% smaller, zero blur.',
+  Chat: 'NoBlur prepares your video so it stays sharp after chat compression | up to 90% smaller, still sends fast.',
+  Product: 'NoBlur prepares your photos so they stay sharp in your catalog | up to 90% smaller, loads fast for buyers.',
 };
 
 export default function MarketingClient() {
@@ -18,12 +18,12 @@ export default function MarketingClient() {
 
   const faqs = [
     {
-      q: 'Does COMPr bypass WhatsApp compression?',
-      a: 'No. WhatsApp compresses every file you send. COMPr pre-optimizes your media so it survives that compression with maximum details intact.',
+      q: 'Does NoBlur bypass WhatsApp compression?',
+      a: 'No. WhatsApp compresses every file you send. NoBlur pre-optimizes your media so it survives that compression with maximum details intact.',
     },
     {
-      q: 'How is COMPr different from other WhatsApp compressors?',
-      a: 'Most tools only handle Status. COMPr tunes separately for Status, Chat, and product photos, and shows you a before-and-after comparison so you can see exactly how much sharper your file is before you send.',
+      q: 'How is NoBlur different from other WhatsApp compressors?',
+      a: 'Most tools only handle Status. NoBlur tunes separately for Status, Chat, and product photos, and shows you a before-and-after comparison so you can see exactly how much sharper your file is before you send.',
     },
     {
       q: 'Is my media secure?',
@@ -34,13 +34,13 @@ export default function MarketingClient() {
       a: 'No. You can start optimizing photos and videos immediately without creating an account or sharing personal info.',
     },
     {
-      q: 'Is COMPr free to use?',
-      a: 'Yes, you get 5 free optimizations every day, plus 3 more if you share COMPr to WhatsApp. A ₦2,500/month Premium plan for unlimited use is coming soon.',
+      q: 'Is NoBlur free to use?',
+      a: 'Yes, you get 5 free optimizations every day, plus 3 more if you share NoBlur to WhatsApp. A ₦2,500/month Premium plan for unlimited use is coming soon.',
     },
   ];
 
   return (
-    <main className="min-h-screen flex flex-col justify-between bg-background text-on-background pt-m3-medium pb-m3-large px-m3-large md:pt-m3-x-large md:pb-m3-xxx-large md:px-m3-xxx-large">
+    <main className="min-h-screen min-h-[100dvh] w-full flex-1 flex flex-col justify-between bg-background text-on-background pt-m3-medium pb-m3-large px-m3-large md:pt-m3-x-large md:pb-m3-xxx-large md:px-m3-xxx-large">
       <SiteHeader />
 
       <div className="flex-1 flex flex-col items-center justify-start max-w-[1120px] mx-auto w-full px-m3-medium pt-m3-xxx-large md:pt-m3-6xl pb-m3-xxx-large md:pb-m3-7xl">
@@ -75,7 +75,7 @@ export default function MarketingClient() {
             <h1 className="hero-display-text text-on-surface leading-tight message-reveal" style={{ animationDelay: '0.06s' }}>
               WhatsApp dey reduce quality?
               <br />
-              <span className="text-primary">COMPr</span> make it <span className="text-primary">sharp</span>.
+              <span className="text-primary">NoBlur</span> make it <span className="text-primary">sharp</span>.
             </h1>
 
             <p key={whatsappMode} className="text-body-large text-on-surface-variant leading-relaxed animate-fade-in message-reveal" style={{ animationDelay: '0.1s' }}>
@@ -107,7 +107,7 @@ export default function MarketingClient() {
             <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span>Up to <span className="font-mono font-semibold text-on-surface">90%</span> smaller, same sharpness</span>
+            <span>Up to <span className="font-mono font-semibold text-on-surface">90%</span> smaller, still sharp</span>
           </div>
           <div className="flex items-center gap-m3-x-small text-body-small text-on-surface-variant">
             <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
@@ -151,7 +151,7 @@ export default function MarketingClient() {
                 icon: (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 ),
-                title: 'COMPr prepares it',
+                title: 'NoBlur prepares it',
                 text: 'Pre-optimized to look sharp after WhatsApp compresses it.',
               },
               {
@@ -225,7 +225,7 @@ export default function MarketingClient() {
             Ready to send sharp media on WhatsApp?
           </h2>
           <p className="text-body-large text-on-primary/80 max-w-sm">
-            Up to 90% smaller, same sharpness. Free. No account. 5 uses daily.
+            Up to 90% smaller, still sharp. Free. No account. 5 uses daily.
           </p>
           <Link
             href="/dashboard"

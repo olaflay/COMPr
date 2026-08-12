@@ -14,7 +14,12 @@ import { buildUpsellCopy } from '../../lib/growth-ux';
 import { predictOutputSize, type SizePrediction } from '../../lib/size-predictor';
 import { addToHistory } from '../../lib/job-history';
 import { buildWhatsAppShareUrl, buildWhatsAppStatusShareUrl } from '../../lib/whatsapp-share';
+import { apiFetch } from '../../lib/api-client';
 import { trackEvent } from '../providers';
+
+// Upload progress ring geometry (r=18 circle inside the button's viewBox).
+const UPLOAD_RING_RADIUS = 18;
+const UPLOAD_RING_CIRCUMFERENCE = 2 * Math.PI * UPLOAD_RING_RADIUS;
 
 interface UsageState {
   jobsUsedToday: number;
@@ -88,7 +93,7 @@ export default function DashboardPageClient() {
   const fetchUsage = async (fp: string) => {
     setUsageLoading(true);
     try {
-      const res = await fetch(`/api/v1/usage?fingerprint=${fp}`);
+      const res = await apiFetch(`/api/v1/usage?fingerprint=${fp}`);
       const data = await res.json() as UsageState;
       setUsage(data);
     } catch (e) {
@@ -206,10 +211,10 @@ export default function DashboardPageClient() {
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
     const totalParts = Math.ceil(selectedFile.size / CHUNK_SIZE);
     const checkpointKey = `upload_cp:${selectedFile.name}:${selectedFile.size}`;
+    let fileKeyToUse = '';
 
     try {
       let uploadIdToUse = '';
-      let fileKeyToUse = '';
       let completedParts: Array<{ ETag: string; PartNumber: number }> = [];
 
       // Check for an existing upload checkpoint in localStorage to resume
@@ -227,7 +232,7 @@ export default function DashboardPageClient() {
 
       // Initiate a new multipart upload if none was found
       if (!uploadIdToUse) {
-        const startRes = await fetch('/api/v1/uploads/multipart/start', {
+        const startRes = await apiFetch('/api/v1/uploads/multipart/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -237,6 +242,9 @@ export default function DashboardPageClient() {
           }),
         });
         const startData = await startRes.json() as any;
+        if (!startRes.ok || !startData.uploadId || !startData.fileKey) {
+          throw new Error(startData?.error?.message || `Failed to start upload (status ${startRes.status})`);
+        }
         uploadIdToUse = startData.uploadId;
         fileKeyToUse = startData.fileKey;
 
@@ -272,7 +280,7 @@ export default function DashboardPageClient() {
         while (!uploadSuccess && attempts < 5) {
           attempts++;
           try {
-            const presignPartRes = await fetch('/api/v1/uploads/multipart/presign-part', {
+            const presignPartRes = await apiFetch('/api/v1/uploads/multipart/presign-part', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -283,6 +291,11 @@ export default function DashboardPageClient() {
             });
             const presignData = await presignPartRes.json() as any;
             const partUploadUrl = presignData.uploadPartUrl;
+            if (!presignPartRes.ok || !partUploadUrl) {
+              // Never fetch(undefined) — that resolves to PUT /undefined on our
+              // own origin and returns a same-site 404 that hides the real error.
+              throw new Error(presignData?.error?.message || `Failed to get upload URL (status ${presignPartRes.status})`);
+            }
 
             const uploadRes = await fetch(partUploadUrl, {
               method: 'PUT',
@@ -292,12 +305,22 @@ export default function DashboardPageClient() {
             if (uploadRes.ok) {
               etag = (uploadRes.headers.get('ETag') || '').replace(/"/g, '');
               uploadSuccess = true;
+            } else if (uploadRes.status === 404) {
+              // The multipart uploadId is gone (expired, already completed/aborted,
+              // or left over from a stale localStorage checkpoint). Retrying the
+              // same uploadId can never succeed, so stop immediately instead of
+              // burning all 5 attempts, and clear the checkpoint so the next click
+              // starts a fresh multipart upload rather than repeating this forever.
+              localStorage.removeItem(checkpointKey);
+              throw new Error('Upload session expired. Please try again.');
             } else {
               throw new Error(`Upload failed with status ${uploadRes.status}`);
             }
           } catch (err) {
             console.warn(`Part ${partNumber} attempt ${attempts} failed:`, err);
-            if (attempts >= 5) throw err;
+            if (attempts >= 5 || (err instanceof Error && err.message === 'Upload session expired. Please try again.')) {
+              throw err;
+            }
             await new Promise((resolve) => setTimeout(resolve, 2000)); // 2s backoff
           }
         }
@@ -316,7 +339,7 @@ export default function DashboardPageClient() {
       }
 
       // Complete multipart upload
-      const completeRes = await fetch('/api/v1/uploads/multipart/complete', {
+      const completeRes = await apiFetch('/api/v1/uploads/multipart/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -333,9 +356,21 @@ export default function DashboardPageClient() {
       localStorage.removeItem(checkpointKey);
       setUploadProgress(100);
       setIsUploading(false);
+    } catch (e) {
+      console.error('Upload flow failed', e);
+      const message = e instanceof Error && e.message === 'Upload session expired. Please try again.'
+        ? e.message
+        : 'Upload failed. Please check your network and try again.';
+      setToast({ message, type: 'error' });
+      setIsUploading(false);
+      return;
+    }
 
-      // Create optimization job
-      const jobRes = await fetch('/api/v1/jobs', {
+    // Create optimization job — the file is already uploaded at this point,
+    // so a failure here is a distinct problem from an upload failure and
+    // must not be reported as one.
+    try {
+      const jobRes = await apiFetch('/api/v1/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -353,12 +388,16 @@ export default function DashboardPageClient() {
         return;
       }
 
+      if (!jobRes.ok) {
+        throw new Error(jobData?.error?.message || `Failed to start optimization (status ${jobRes.status})`);
+      }
+
       trackEvent('job_created', { job_id: jobData.jobId, preset });
       startPollingJob(jobData.jobId);
     } catch (e) {
-      console.error('Upload flow failed', e);
-      setToast({ message: 'Upload failed. Please check your network and try again.', type: 'error' });
-      setIsUploading(false);
+      console.error('Job creation failed', e);
+      const message = e instanceof Error && e.message ? e.message : 'Could not start optimization. Please try again.';
+      setToast({ message, type: 'error' });
     }
   };
 
@@ -370,7 +409,7 @@ export default function DashboardPageClient() {
     setActiveJob(null);
 
     try {
-      const jobRes = await fetch('/api/v1/jobs', {
+      const jobRes = await apiFetch('/api/v1/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -402,7 +441,7 @@ export default function DashboardPageClient() {
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/v1/jobs/${jobId}?fingerprint=${fingerprint}`);
+        const res = await apiFetch(`/api/v1/jobs/${jobId}?fingerprint=${fingerprint}`);
         const data = (await res.json()) as JobState;
         setActiveJob(data);
 
@@ -463,7 +502,7 @@ export default function DashboardPageClient() {
     trackEvent('share_bonus_clicked');
     window.open(buildWhatsAppShareUrl(), '_blank', 'noopener,noreferrer');
     try {
-      const res = await fetch('/api/v1/usage/share-bonus', {
+      const res = await apiFetch('/api/v1/usage/share-bonus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fingerprint }),
@@ -485,23 +524,23 @@ export default function DashboardPageClient() {
   });
 
   return (
-    <main className="min-h-screen bg-background text-on-background p-m3-medium md:p-m3-x-large">
+    <main className="min-h-screen min-h-[100dvh] w-full flex-1 flex flex-col bg-background text-on-background p-m3-medium md:p-m3-x-large">
       <a href="#upload-section" className="skip-to-content">
         Skip to upload
       </a>
 
-      <div className="max-w-xl mx-auto flex flex-col gap-m3-large">
+      <div className="max-w-xl w-full mx-auto flex-1 flex flex-col gap-m3-large">
         {/* Header */}
         <header className="flex justify-between items-center pb-m3-medium border-b border-outline-variant">
           <Link href="/" className="flex items-center gap-m3-x-small hover:opacity-85 transition-opacity duration-m3-short-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
             <Image
               src="/favicon.svg"
-              alt="COMPr logo"
+              alt="NoBlur logo"
               width={28}
               height={28}
               className="rounded-m3-md select-none"
             />
-            <span className="text-title-medium">COMPr</span>
+            <span className="text-title-medium">NoBlur</span>
           </Link>
           <div className="text-right" aria-live="polite">
             {usageLoading ? (
@@ -535,7 +574,13 @@ export default function DashboardPageClient() {
         {!activeJob && usage && usage.jobsRemainingToday === 0 && !usage.isPremium && (
           <section className="bg-surface-container-low border border-outline-variant rounded-m3-lg shadow-m3-1">
             <EmptyState
-              icon="📊"
+              icon={
+                <svg className="w-12 h-12 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+              }
               title="You've used today's free optimizations"
               description="Come back tomorrow for 5 more, or upgrade to unlock unlimited access."
               action={
@@ -555,7 +600,7 @@ export default function DashboardPageClient() {
                     <svg className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
                     </svg>
-                    Share COMPr to WhatsApp
+                    Share NoBlur to WhatsApp
                   </button>
                   <p className="text-label-small text-on-surface-variant">Get +3 compressions today, free</p>
                 </div>
@@ -610,10 +655,26 @@ export default function DashboardPageClient() {
                       </svg>
                     </button>
                     <div className="w-20 h-20 rounded-m3-md overflow-hidden bg-surface-container-highest shadow-m3-1 flex items-center justify-center shrink-0">
+                      {/* Un-blurs in sync with upload progress — the file goes from blurred to sharp as it uploads, echoing the product's whole premise. */}
                       {selectedFile.type.startsWith('video/') ? (
-                        <video src={sourceFileUrl} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                        <video
+                          src={sourceFileUrl}
+                          className="w-full h-full object-cover"
+                          style={isUploading ? { filter: `blur(${((100 - uploadProgress) / 100 * 6).toFixed(2)}px)`, transition: 'filter 300ms ease' } : undefined}
+                          muted
+                          playsInline
+                          preload="metadata"
+                        />
                       ) : (
-                        <Image src={sourceFileUrl} alt="" width={80} height={80} unoptimized className="w-full h-full object-cover" />
+                        <Image
+                          src={sourceFileUrl}
+                          alt=""
+                          width={80}
+                          height={80}
+                          unoptimized
+                          className="w-full h-full object-cover"
+                          style={isUploading ? { filter: `blur(${((100 - uploadProgress) / 100 * 6).toFixed(2)}px)`, transition: 'filter 300ms ease' } : undefined}
+                        />
                       )}
                     </div>
                     <div className="text-body-large text-primary font-medium break-all leading-snug max-w-full px-m3-small">
@@ -627,12 +688,24 @@ export default function DashboardPageClient() {
                   </div>
                 ) : (
                   <>
-                    <div className="text-display-medium mb-m3-x-small" aria-hidden="true">{isDragging ? '📥' : '📁'}</div>
+                    <div className="mb-m3-x-small flex justify-center" aria-hidden="true">
+                      {isDragging ? (
+                        <svg className="w-12 h-12 text-primary animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="17 8 12 3 7 8" />
+                          <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                      ) : (
+                        <svg className="w-12 h-12 text-on-surface-variant" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        </svg>
+                      )}
+                    </div>
                     <div className="text-body-large text-on-surface-variant">
                       {isDragging ? 'Drop your file here' : 'Tap to select or drag a file here'}
                     </div>
                     <div className="text-label-small text-on-surface-variant mt-m3-xx-small">
-                      Videos and photos up to 100MB
+                      Videos and photos up to 50MB
                     </div>
                   </>
                 )}
@@ -641,17 +714,33 @@ export default function DashboardPageClient() {
               <button
                 onClick={() => { if (!selectedFile) { fileInputRef.current?.click(); } else { triggerUpload(); } }}
                 disabled={isUploading}
-                className="bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] disabled:bg-surface-container-highest disabled:text-on-surface-variant py-m3-small rounded-b-m3-full md:rounded-b-none md:rounded-r-m3-full text-title-small md:text-title-large md:font-semibold transition-all duration-m3-short-2 shadow-m3-1 hover:shadow-m3-2 disabled:shadow-none disabled:scale-100 flex items-center justify-center w-full md:w-48 md:shrink-0 md:min-h-[44px]"
+                className="bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] disabled:bg-surface-container-highest disabled:text-on-surface-variant py-m3-small rounded-b-m3-full md:rounded-b-none md:rounded-r-m3-full text-title-small transition-all duration-m3-short-2 shadow-m3-1 hover:shadow-m3-2 disabled:shadow-none disabled:scale-100 flex items-center justify-center w-full md:w-48 md:shrink-0 md:min-h-[44px]"
               >
                 {isUploading ? (
-                  <span className="flex items-center justify-center gap-m3-x-small">
-                    <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  <span
+                    className="relative flex items-center justify-center w-11 h-11"
+                    role="progressbar"
+                    aria-valuenow={uploadProgress}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`Uploading: ${uploadProgress}%`}
+                  >
+                    <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 44 44" aria-hidden="true">
+                      <circle cx="22" cy="22" r="18" fill="none" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+                      <circle
+                        cx="22" cy="22" r="18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"
+                        strokeDasharray={UPLOAD_RING_CIRCUMFERENCE}
+                        strokeDashoffset={UPLOAD_RING_CIRCUMFERENCE * (1 - uploadProgress / 100)}
+                        style={{ transition: 'stroke-dashoffset 300ms ease' }}
+                      />
                     </svg>
-                    {uploadProgress}%
+                    <span className="text-label-large font-semibold tabular-nums">{uploadProgress}</span>
                   </span>
-                ) : selectedFile ? 'Optimize' : 'Choose file'}
+                ) : (
+                  <span className="md:text-title-large md:font-semibold">
+                    {selectedFile ? 'Optimize' : 'Choose file'}
+                  </span>
+                )}
               </button>
             </div>
 
@@ -692,7 +781,7 @@ export default function DashboardPageClient() {
                 ))}
               </div>
               <p className="text-label-small text-on-surface-variant px-m3-xx-small" aria-live="polite">
-                {preset === 'STATUS' && 'Vertical, up to 30 seconds — sized to post straight to your Status'}
+                {preset === 'STATUS' && 'Vertical, up to 30 seconds | sized to post straight to your Status'}
                 {preset === 'CHAT' && 'Fits WhatsApp’s 16MB chat limit without losing sharpness'}
                 {preset === 'CUSTOM' && 'Pick your own target size below'}
               </p>
@@ -750,7 +839,7 @@ export default function DashboardPageClient() {
               </div>
             )}
 
-            {/* 3-Point Proof: why COMPr, tied to WhatsApp outcomes */}
+            {/* 3-Point Proof: why NoBlur, tied to WhatsApp outcomes */}
             <ul className="flex flex-col gap-m3-x-small border-t border-outline-variant pt-m3-medium list-none m-0">
               <li className="flex items-center gap-m3-x-small">
                 <svg className="w-4 h-4 shrink-0 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
@@ -776,9 +865,21 @@ export default function DashboardPageClient() {
             </ul>
 
             {/* Required trust signals per PRD §12 */}
-            <div className="text-label-small text-on-surface-variant space-y-1">
-              <p className="text-center">🔒 Files deleted automatically after 24 hours</p>
-              <p className="text-center">📱 We never post to WhatsApp for you</p>
+            <div className="text-label-small text-on-surface-variant space-y-2 flex flex-col items-center">
+              <div className="flex items-center gap-m3-x-small">
+                <svg className="w-4 h-4 text-on-surface-variant" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                <span>Files deleted automatically after 24 hours</span>
+              </div>
+              <div className="flex items-center gap-m3-x-small">
+                <svg className="w-4 h-4 text-on-surface-variant" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                  <circle cx="12" cy="18" r="1" />
+                </svg>
+                <span>We never post to WhatsApp for you</span>
+              </div>
             </div>
           </section>
         )}
@@ -908,7 +1009,7 @@ export default function DashboardPageClient() {
                       onClick={() => { setFeedbackGiven(true); trackEvent('feedback_given', { value: 'positive', job_id: activeJob.jobId }); setToast({ message: 'Thank you for your feedback!', type: 'success' }); }}
                       className="bg-primary-container text-on-primary-container hover:bg-primary/20 text-label-large py-m3-x-small px-m3-large rounded-m3-full border border-primary transition-all duration-m3-short-2"
                     >
-                      Looks great 👍
+                      Looks great
                     </button>
                     <button
                       onClick={() => { setFeedbackGiven(true); trackEvent('feedback_given', { value: 'negative', job_id: activeJob.jobId }); setToast({ message: 'Thank you for your feedback!', type: 'info' }); }}
@@ -933,8 +1034,14 @@ export default function DashboardPageClient() {
 
         {/* Failed Job view */}
         {activeJob && activeJob.status === 'FAILED' && (
-          <section className="bg-surface-container-low border border-error rounded-m3-lg p-m3-large shadow-m3-1 flex flex-col gap-m3-medium text-center" role="alert">
-            <div className="text-display-medium" aria-hidden="true">❌</div>
+          <section className="bg-surface-container-low border border-error rounded-m3-lg p-m3-large shadow-m3-1 flex flex-col gap-m3-medium text-center items-center" role="alert">
+            <div className="select-none text-error" aria-hidden="true">
+              <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            </div>
             <h3 className="text-title-large text-error">Something went wrong</h3>
             <p className="text-body-medium text-on-surface leading-relaxed">
               {activeJob.errorMessage || 'We could not optimize this file. This can happen with unusual formats or very short clips.'}
@@ -963,7 +1070,7 @@ export default function DashboardPageClient() {
         >
           <div ref={modalRef} className="bg-surface-container-low border border-outline-variant rounded-m3-lg p-m3-x-large max-w-md w-full shadow-m3-4 flex flex-col gap-m3-large animate-fade-in">
             <div className="flex flex-col gap-m3-small text-center">
-              <h2 className="text-headline-medium text-on-surface">You&apos;ve hit the daily limit</h2>
+              <h2 className="text-headline-medium text-on-surface">You don hit today limit</h2>
               <p className="text-body-medium text-on-surface-variant leading-relaxed">{upsell.anchorLine}</p>
               <p className="text-body-large text-primary">{upsell.priceLine}</p>
             </div>
@@ -986,14 +1093,14 @@ export default function DashboardPageClient() {
                 <svg className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
                 </svg>
-                Share COMPr to WhatsApp
+                Share NoBlur to WhatsApp
               </button>
               <p className="text-label-small text-on-surface-variant text-center">Get +3 compressions today, free</p>
               <button
                 onClick={() => { setShowUpsell(false); trackEvent('upsell_dismissed'); }}
                 className="w-full text-label-large text-on-surface-variant font-medium py-m3-x-small hover:text-on-surface transition-colors"
               >
-                Maybe later
+                No wahala, maybe later
               </button>
             </div>
           </div>

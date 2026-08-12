@@ -38,7 +38,7 @@ const usageRoutes: FastifyPluginAsyncZod = async (app) => {
     };
   });
 
-  // Share = Credit: grant bonus compressions once per day for sharing COMPr
+  // Share = Credit: grant bonus compressions once per day for sharing NoBlur
   app.post('/api/v1/usage/share-bonus', {
     schema: {
       body: fingerprintSchema,

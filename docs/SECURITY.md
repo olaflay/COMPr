@@ -1,6 +1,6 @@
 # Security Audit & Hardening
 
-COMPr security posture as of v1.1 (production-ready for 1000 concurrent users).
+NoBlur security posture as of v1.1 (production-ready for 1000 concurrent users).
 
 ---
 
@@ -155,7 +155,7 @@ CRYPTO_SALT="<your-random-base64-salt>"  # Generate: openssl rand -base64 32
 
 ## 🔐 Privacy Compliance
 
-### Data COMPr Collects (MVP)
+### Data NoBlur Collects (MVP)
 
 - **Uploaded files:** Stored temporarily in R2; deleted after 24 hours
 - **Device fingerprint (hashed):** Quota enforcement; never sold or shared
@@ -163,14 +163,14 @@ CRYPTO_SALT="<your-random-base64-salt>"  # Generate: openssl rand -base64 32
 - **Job metadata:** Job ID, status, timestamps, file size; retained 90 days then auto-deleted
 - **Onboarding preferences:** Optional; used only client-side to bias copy
 
-### Data COMPr Does NOT Collect
+### Data NoBlur Does NOT Collect
 
 - ❌ Raw IP addresses
 - ❌ Raw device fingerprints
 - ❌ File contents (uploaded files analyzed by FFmpeg locally, never transmitted or stored after processing)
 - ❌ Geographic location
 - ❌ Personal identifiable information (no login, no email collection)
-- ❌ Behavior tracking (PostHog tracks events only with consent; PostHog data is separate from COMPr)
+- ❌ Behavior tracking (PostHog tracks events only with consent; PostHog data is separate from NoBlur)
 
 ### Compliance
 

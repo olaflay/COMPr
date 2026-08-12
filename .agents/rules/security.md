@@ -23,7 +23,7 @@ while building, not a second copy of the same law.
 - All traffic over HTTPS/TLS; HSTS enabled.
 - Rate limiting on `/jobs` and `/uploads/presign`: 20 requests/minute/IP
   (PRD §23). Don't relax this "temporarily" for testing in a way that ships.
-- `Content-Security-Policy` is scoped only to third parties COMPr actually
+- `Content-Security-Policy` is scoped only to third parties NoBlur actually
   uses (GA4/GTM, Sentry) — never add a wildcard or a new third-party origin
   without updating this rule and confirming with a human.
 

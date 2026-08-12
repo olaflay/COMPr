@@ -65,7 +65,7 @@ export default function MediaMessageDemo({ mode }: MediaMessageDemoProps) {
 
         <div className="flex justify-between items-center gap-m3-x-small">
           <span className="text-label-medium text-primary font-semibold uppercase tracking-wide">
-            COMPr send
+            NoBlur send
           </span>
           <span className="text-label-small text-on-surface-variant">
             <span className="font-mono">8.2 MB</span>
@@ -82,12 +82,12 @@ export default function MediaMessageDemo({ mode }: MediaMessageDemoProps) {
         >
           <img
             src="/water.jpg"
-            alt="Water detail preview, sharp after COMPr optimization"
+            alt="Water detail preview, sharp after NoBlur optimization"
             className="absolute inset-0 w-full h-full object-cover select-none"
             draggable={false}
           />
           <div className="absolute right-m3-medium bottom-m3-medium bg-inverse-surface text-inverse-on-surface text-label-small px-m3-x-small py-m3-xxx-small rounded-m3-sm shadow-m3-1 z-10 opacity-75">
-            COMPr send
+            NoBlur send
           </div>
 
           <div className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: `${sliderPos}%` }}>
@@ -107,11 +107,11 @@ export default function MediaMessageDemo({ mode }: MediaMessageDemoProps) {
             <div
               role="slider"
               tabIndex={0}
-              aria-label="Drag to compare WhatsApp send versus COMPr send"
+              aria-label="Drag to compare WhatsApp send versus NoBlur send"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.round(sliderPos)}
-              aria-valuetext={`Showing ${Math.round(sliderPos)}% normal WhatsApp send, ${Math.round(100 - sliderPos)}% COMPr send`}
+              aria-valuetext={`Showing ${Math.round(sliderPos)}% normal WhatsApp send, ${Math.round(100 - sliderPos)}% NoBlur send`}
               onKeyDown={handleSliderKeyDown}
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-m3-full bg-primary text-on-primary shadow-m3-2 flex items-center justify-center border-2 border-on-primary cursor-ew-resize focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >

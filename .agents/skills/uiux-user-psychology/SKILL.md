@@ -5,9 +5,9 @@ description: Guidelines and instructions for writing copy, layout, and UX detail
 
 # UI/UX & User Psychology Writing Guidelines
 
-This skill defines the copywriting, visual hierarchy, and visual design standards for the COMPr product.
+This skill defines the copywriting, visual hierarchy, and visual design standards for the NoBlur product.
 
-## Core Psychological Principles (COMPr Specifics)
+## Core Psychological Principles (NoBlur Specifics)
 
 1. **Cognitive Load Reduction**:
    - Keep page descriptions, onboarding questions, and interface labels concise.
@@ -15,7 +15,7 @@ This skill defines the copywriting, visual hierarchy, and visual design standard
    - Limit technical jargon. Unless the user has explicitly entered an "Advanced" mode, never mention "bitrate", "codec", or "resolution". Use plain-language alternatives like "file size", "motion smoothness", or "fine detail".
 
 2. **Honesty and Trust Anchoring**:
-   - Frame limitations transparently. COMPr does not bypass or disable WhatsApp's compression: it prepares media to survive it. Copy must always frame this clearly to build user trust.
+   - Frame limitations transparently. NoBlur does not bypass or disable WhatsApp's compression: it prepares media to survive it. Copy must always frame this clearly to build user trust.
    - Never fabricate scarcity or urgency. Do not use fake countdown timers or fake daily quota counters. All counts and constraints must be backed by real, accurate data.
 
 3. **Free Exit on Every Screen (User Control & Freedom)**:

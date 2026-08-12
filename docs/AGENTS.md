@@ -1,14 +1,14 @@
-# AGENTS.md: COMPr Build Rules
+# AGENTS.md: NoBlur Build Rules
 
 ## Question 1: What Is This Project?
 
-COMPr is a mobile-first Progressive Web App that optimizes photos and videos before a user sends them on WhatsApp — automatically choosing resolution, bitrate, codec, and container so the file survives WhatsApp's own re-compression with as little visible quality loss as possible. It never bypasses, disables, or claims to bypass WhatsApp's compression.
+NoBlur is a mobile-first Progressive Web App that optimizes photos and videos before a user sends them on WhatsApp — automatically choosing resolution, bitrate, codec, and container so the file survives WhatsApp's own re-compression with as little visible quality loss as possible. It never bypasses, disables, or claims to bypass WhatsApp's compression.
 
 **Users:** online sellers, small business owners, digital marketers, content creators, and everyday WhatsApp users. Primary launch market has variable, often constrained mobile connectivity.
 
 **Version being built:** The adaptive engine milestone — Phase 1 MVP plus the previously-Phase-2 adaptive encoding engine (scene analysis, policy-selected encoding profiles, AV1 + VMAF quality gating) now shipped as the current milestone. The remaining Phase 2 (accounts/auth, real payments) and Phase 3 features are still out of scope until told otherwise — see Question 3.
 
-**Source of truth:** `COMPr-PRD-v1.md` (Version 1.0). If this file and the PRD ever conflict on _what_ to build, the PRD wins. If they conflict on _how_ to build it, this file wins. This file does not restate the PRD's features — it constrains how the agent behaves while building them. When a rule below cites a PRD section or FR number, that number is the authority for the underlying requirement.
+**Source of truth:** `NoBlur-PRD-v1.md` (Version 1.0). If this file and the PRD ever conflict on _what_ to build, the PRD wins. If they conflict on _how_ to build it, this file wins. This file does not restate the PRD's features — it constrains how the agent behaves while building them. When a rule below cites a PRD section or FR number, that number is the authority for the underlying requirement.
 
 ---
 
@@ -50,7 +50,7 @@ Breaking any rule in this section means the task has failed, even if the code co
 
 ### Claims and framing
 
-- **1.** Never generate or ship copy claiming COMPr "bypasses," "removes," "disables," or "defeats" WhatsApp's compression, in any UI string, marketing page, error message, or comment intended for user-facing text. (PRD §1, §6, §36)
+- **1.** Never generate or ship copy claiming NoBlur "bypasses," "removes," "disables," or "defeats" WhatsApp's compression, in any UI string, marketing page, error message, or comment intended for user-facing text. (PRD §1, §6, §36)
 - **2.** Never refer to the processing pipeline as "AI" in code names, UI copy, API responses, or docs. It is deterministic rule-based logic - name it "automated." (PRD §6, §13, §36)
 - **3.** Never fabricate scarcity, urgency, counters, or statistics in upsell/behavioral UX copy. Loss-aversion and contrast-effect messaging must always be built from real, specific data (actual jobs blocked, actual price) - never invented numbers. (PRD §30, §38)
 - **4.** All user-facing UI copy must be written in Nigerian Pidgin English. The `lang="pcm"` attribute handles browser auto-translation. Do NOT write copy in English and rely on translation - write it natively in Pidgin. SEO meta descriptions may remain in standard English for search engine crawlers.
@@ -200,7 +200,7 @@ Breaking any rule in this section means the task has failed, even if the code co
 docs/                        # Project documentation — PRD, agent rules, design practices
   AGENTS.md                  #   build rules for AI agents
   CHANGELOG.md               #   design system compaction and token migration history
-  COMPr-PRD-v1.md            #   product requirements document
+  NoBlur-PRD-v1.md           #   product requirements document
   COMPr-styling.css          #   legacy styling reference
   DESIGN_SYSTEM_PRACTICES.md #   M3 token discipline, typography, dark mode
 

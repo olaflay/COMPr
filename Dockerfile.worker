@@ -1,8 +1,10 @@
-# COMPr Worker Image
+# NoBlur Worker Image
 # Includes: Node.js 22, FFmpeg (with SVT-AV1), OpenCV4, VMAF model
 FROM node:22-slim
 
-# Install FFmpeg with SVT-AV1 support + OpenCV4 + Python3 for OpenCV bindings
+# Install FFmpeg with SVT-AV1 support + OpenCV4 + Python3 for OpenCV bindings.
+# openssl is required by Prisma's query engine at runtime (node:22-slim /
+# Debian 12 bookworm has no libssl present otherwise).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libopencv-dev \
@@ -10,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-opencv \
     python3-numpy \
     curl \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Verify FFmpeg has SVT-AV1 encoder available
@@ -22,14 +25,24 @@ COPY models/vmaf_v0.6.1.json /usr/share/model/vmaf_v0.6.1.json
 
 WORKDIR /app
 
-# Install production dependencies only
+# Full install (including devDependencies) is required here — the `prisma`
+# CLI needed by `prisma generate` below is a devDependency, and workers
+# import lib/prisma.ts just like the API server does.
 COPY package.json package-lock.json ./
-RUN npm ci --production
+RUN npm ci
+
+# Copy Prisma schema and generate Client
+COPY prisma/ ./prisma/
+RUN npx prisma generate
 
 # Copy application code
 COPY lib/ ./lib/
 COPY workers/ ./workers/
 COPY config/ ./config/
+
+# Now that the client is generated, strip devDependencies to keep the image
+# smaller — this only removes packages, not the already-generated client.
+RUN npm prune --omit=dev
 
 # Create temp directory for processing
 RUN mkdir -p /app/temp

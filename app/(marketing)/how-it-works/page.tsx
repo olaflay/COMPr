@@ -4,8 +4,8 @@ import SiteHeader from '../../../components/marketing/SiteHeader';
 import SiteFooter from '../../../components/marketing/SiteFooter';
 
 export const metadata: Metadata = {
-  title: 'How It Works | COMPr',
-  description: 'Learn how COMPr dey optimize your photos and videos for WhatsApp, up to 90% smaller with no visible quality loss.',
+  title: 'How It Works | NoBlur',
+  description: 'Learn how NoBlur dey optimize your photos and videos for WhatsApp, up to 90% smaller with no visible quality loss.',
 };
 
 const STEPS = [
@@ -22,7 +22,7 @@ const STEPS = [
   {
     number: '3',
     title: 'We optimize it',
-    description: 'COMPr analyzes your file and prepares it to survive WhatsApp compression, up to 90% smaller with no visible quality loss. Takes about 15 to 30 seconds.',
+    description: 'NoBlur analyzes your file and prepares it to survive WhatsApp compression, up to 90% smaller with no visible quality loss. Takes about 15 to 30 seconds.',
   },
   {
     number: '4',
@@ -33,14 +33,14 @@ const STEPS = [
 
 export default function HowItWorksPage() {
   return (
-    <main className="min-h-screen bg-background text-on-background px-m3-large md:px-m3-xxx-large pt-m3-medium md:pt-m3-x-large pb-m3-xxx-large md:pb-m3-6xl">
-      <div className="max-w-[1120px] mx-auto">
+    <main className="min-h-screen min-h-[100dvh] w-full flex-1 flex flex-col justify-between bg-background text-on-background px-m3-large md:px-m3-xxx-large pt-m3-medium md:pt-m3-x-large pb-m3-xxx-large md:pb-m3-6xl">
+      <div className="max-w-[1120px] w-full mx-auto flex-1 flex flex-col justify-between">
         <SiteHeader />
 
         <div className="max-w-2xl mx-auto flex flex-col gap-m3-xxx-large md:gap-m3-6xl py-m3-xxxx-large md:py-m3-6xl">
           <div className="text-center flex flex-col gap-m3-small">
             <h1 className="text-display-small text-on-surface leading-tight tracking-tight">
-              How COMPr dey work
+              How NoBlur dey work
             </h1>
             <p className="text-body-large text-on-surface-variant leading-relaxed max-w-md mx-auto">
               Four simple steps to sharper media on WhatsApp.

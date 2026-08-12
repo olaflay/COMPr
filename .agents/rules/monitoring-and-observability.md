@@ -2,7 +2,7 @@
 trigger: always_on
 ---
 
-# Monitoring & Observability — COMPr
+# Monitoring & Observability — NoBlur
 
 ## 1. Tooling (Locked)
 

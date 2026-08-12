@@ -1,6 +1,6 @@
 # Operations & Monitoring Guide
 
-Runbooks, health checks, scaling procedures, and troubleshooting for COMPr in production.
+Runbooks, health checks, scaling procedures, and troubleshooting for NoBlur in production.
 
 ---
 
@@ -10,7 +10,7 @@ Runbooks, health checks, scaling procedures, and troubleshooting for COMPr in pr
 
 **API Health Endpoint:**
 ```bash
-curl -v https://api.compr.app/health
+curl -v https://<YOUR_API_HOST_URL>/health
 ```
 - **200 OK** → All systems healthy
 - **503 Service Unavailable** → Database/Redis unreachable
@@ -25,16 +25,18 @@ curl -v https://api.compr.app/health
 ```bash
 #!/bin/bash
 echo "=== API HEALTH ==="
-curl -s https://api.compr.app/health | jq .
+curl -s https://<YOUR_API_HOST_URL>/health | jq .
 
 echo "=== DATABASE ==="
 psql $DATABASE_URL -c "SELECT now();" || echo "FAILED"
 
-echo "=== REDIS ==="
-redis-cli PING || echo "FAILED"
+echo "=== REDIS (Upstash) ==="
+redis-cli -u $REDIS_URL PING || echo "FAILED"
 
-echo "=== R2 BUCKETS ==="
-aws s3 ls s3://compr-uploads --endpoint-url $R2_ENDPOINT || echo "FAILED"
+echo "=== SUPABASE STORAGE BUCKETS ==="
+# Supabase Storage's S3-compatible endpoint; requires --endpoint-url and forcePathStyle equivalent (--endpoint-url handles this for the CLI)
+aws s3 ls "s3://$SUPABASE_UPLOADS_BUCKET" --endpoint-url "$SUPABASE_S3_ENDPOINT" --region "$SUPABASE_S3_REGION" || echo "FAILED"
+aws s3 ls "s3://$SUPABASE_OUTPUTS_BUCKET" --endpoint-url "$SUPABASE_S3_ENDPOINT" --region "$SUPABASE_S3_REGION" || echo "FAILED"
 
 echo "=== QUEUE DEPTH ==="
 redis-cli LLEN bull:media-analysis:waiting
@@ -70,8 +72,8 @@ redis-cli LLEN bull:media-encode:active
 - VMAF gate failure rate
 - Timeout rate
 
-**Storage:**
-- R2 objects count (uploads + outputs)
+**Storage (Supabase Storage):**
+- Object count (uploads + outputs buckets)
 - Deleted vs retained file ratio
 - Cleanup cron duration
 - Presigned URL generation latency
@@ -100,7 +102,7 @@ node_cpu_seconds_total{job="encode-worker"} > 0.8
 # Database connection pool exhaustion risk
 pg_stat_activity_count >= 18  # If max is 20
 
-# R2 cleanup falling behind
+# Storage cleanup falling behind
 increase(media_files_deleted_total[1h]) < 100
 
 # VMAF failures trending up
@@ -169,7 +171,7 @@ railway service scale --replicas 3 compr-worker
 watch -n 5 'redis-cli LLEN bull:media-encode:waiting'
 
 # After adding API instances, verify load distribution
-curl https://api.compr.app/api/v1/stats | jq '.instanceId'  # Should rotate
+curl https://<YOUR_API_HOST_URL>/api/v1/stats | jq '.instanceId'  # Should rotate
 
 # After scaling DB, verify connections balanced
 psql $DATABASE_URL -c "SELECT pid, usename, application_name FROM pg_stat_activity;" | wc -l
@@ -212,7 +214,7 @@ VACUUM ANALYZE "UsageRecord";
 **Monthly:**
 ```sql
 -- Backup before major maintenance
--- (Use platform's backup feature: Neon Branches, Supabase Backups, etc.)
+-- (Use Supabase's backup feature: Project Settings > Database > Backups)
 
 -- Clean up old jobs (older than 90 days)
 DELETE FROM "Job" WHERE "completedAt" < NOW() - INTERVAL '90 days' AND "status" = 'DONE';
@@ -288,9 +290,9 @@ redis-cli INFO persistence | grep aof_rewrite
 ### Backup Strategy
 
 **Automated (Set Up Once):**
-- Database: Daily snapshots (platform-provided: Neon, Supabase, Railway)
-- Redis: Enabled AOF persistence (auto-recovery on restart)
-- R2: Versioning enabled (rollback to previous object version if needed)
+- Database: Daily snapshots (Supabase's built-in Postgres backups)
+- Redis: Upstash-managed persistence (auto-recovery on restart)
+- Supabase Storage: enable bucket versioning if you need rollback to a previous object version
 
 **Manual Backups (Before Major Deployments):**
 
@@ -359,7 +361,7 @@ docker logs compr-analysis-worker-1 | tail -20
 |-------|-----|
 | **Analysis worker crashed** | Restart worker: `docker restart compr-analysis-worker-1` |
 | **FFprobe missing** | Verify FFmpeg installed: `ffprobe -version` |
-| **R2 credentials invalid** | Check R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY in .env |
+| **Supabase Storage credentials invalid** | Check `SUPABASE_S3_ACCESS_KEY_ID`, `SUPABASE_S3_SECRET_ACCESS_KEY` in .env |
 | **Disk full** | Check worker `/tmp`: `df -h` and clean up temp files |
 | **Worker OOM** | Reduce concurrency, increase memory allocation |
 
@@ -371,7 +373,7 @@ docker logs compr-analysis-worker-1 | tail -20
 
 **Investigation:**
 ```bash
-curl https://api.compr.app/api/v1/stats | jq '.failuresByReason'
+curl https://<YOUR_API_HOST_URL>/api/v1/stats | jq '.failuresByReason'
 docker logs compr-encode-worker-1 | grep -i error | tail -20
 ```
 
@@ -429,7 +431,7 @@ docker stats compr-encode-worker-1  # Monitor memory in real-time
 
 ### Issue: Cleanup Cron Not Running
 
-**Symptoms:** R2 fills with old files, no new files deleted for >24hr
+**Symptoms:** Supabase Storage buckets fill with old files, no new files deleted for >24hr
 
 **Investigation:**
 ```bash
@@ -443,7 +445,7 @@ psql $DATABASE_URL -c "SELECT max(\"updatedAt\") FROM \"MediaFile\" WHERE \"dele
 | Cause | Fix |
 |-------|-----|
 | **Cron job never started** | Restart: `npm run cleanup-cron` or container restart |
-| **Cron running but failing silently** | Check error logs; verify R2 credentials |
+| **Cron running but failing silently** | Check error logs; verify Supabase Storage credentials |
 | **Database locks** | Kill long-running transactions: `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'idle in transaction';` |
 
 ---
@@ -486,18 +488,12 @@ Current logic: Fast by default → acceptable quality + throughput for 1000 user
 
 ## §10. Observability (Sentry / PostHog)
 
-### Set Up Error Tracking (Sentry)
+### Error Tracking (Sentry) — Pending Setup
 
-```bash
-# Get DSN from Sentry project settings
-SENTRY_DSN="https://xxx@sentry.io/PROJECT"
-
-# All unhandled errors auto-reported
-# Filter in Sentry Dashboard:
-#   - FFmpeg encode errors (expected failures)
-#   - Database connection errors (actionable)
-#   - Rate limit errors (informational, not actionable)
-```
+`@sentry/nextjs` and `@sentry/node` are installed as dependencies, but Sentry is **not yet initialized anywhere in the code** — there is no `Sentry.init()` call wired up. `SENTRY_DSN` / `SENTRY_AUTH_TOKEN` in `.env` currently have no effect. Wiring this up is tracked as a separate, in-progress task. Until it lands:
+- Do not assume errors are being reported to Sentry.
+- Do not rely on a Sentry dashboard for the alerting rules in §3 — use application logs and the `/health` / `/api/v1/queue-stats` endpoints instead.
+- Once initialized, the intended setup is: get a DSN from Sentry project settings, set `SENTRY_DSN`, and filter in the Sentry dashboard for FFmpeg encode errors (expected failures), database connection errors (actionable), and rate limit errors (informational).
 
 ### Set Up Product Analytics (PostHog)
 
@@ -529,7 +525,7 @@ curl -X POST https://app.posthog.com/capture \
 ### On-Call Runbook
 
 **Page Received:** Ping immediately
-1. Check Sentry/dashboard for error spike or alert details
+1. Check application logs / `/health` and `/api/v1/queue-stats` for error spike or alert details (Sentry is not yet wired up — see §10)
 2. Run health checks (§1)
 3. Check queue depth (`redis-cli LLEN bull:...`)
 4. Review logs (`docker logs <service> | tail -50`)
@@ -544,7 +540,7 @@ curl -X POST https://app.posthog.com/capture \
 **P2 (High):**
 - Queue backing up (>1000 jobs) → Add workers
 - Database slow → Kill slow queries, increase resources
-- Upload failures (>10% error rate) → Check R2 credentials, check network
+- Upload failures (>10% error rate) → Check Supabase Storage credentials, check network
 
 **P3 (Low):**
 - Isolated job failures → Check input file, retry job
@@ -580,8 +576,8 @@ SELECT 'Orphaned (no job)', count(*) FROM "MediaFile" WHERE "jobAsSource" IS NUL
 - [ ] No raw fingerprints stored (only hashed)
 - [ ] File content never logged
 - [ ] Presigned URLs single-object scoped
-- [ ] Deletion working (files removed from R2 + DB within 24hr of job completion)
-- [ ] Privacy policy posted (compr.app/privacy)
+- [ ] Deletion working (files removed from Supabase Storage + DB within 24hr of job completion)
+- [ ] Privacy policy posted (`<YOUR_DOMAIN>/privacy`)
 - [ ] Cookie consent (no third-party tracking cookies without consent)
 
 ---

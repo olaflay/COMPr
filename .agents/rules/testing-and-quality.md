@@ -2,7 +2,7 @@
 trigger: always_on
 ---
 
-# Testing & Quality Assurance — COMPr
+# Testing & Quality Assurance — NoBlur
 
 ## 1. Unit Test Coverage
 

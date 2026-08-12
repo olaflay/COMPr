@@ -1,7 +1,7 @@
 export default function Loading() {
   return (
-    <main className="min-h-screen bg-background text-on-background p-m3-medium md:p-m3-x-large">
-      <div className="max-w-xl mx-auto flex flex-col gap-m3-large">
+    <main className="min-h-screen min-h-[100dvh] w-full flex-1 flex flex-col bg-background text-on-background p-m3-medium md:p-m3-x-large">
+      <div className="max-w-xl w-full mx-auto flex-1 flex flex-col gap-m3-large">
         {/* Header skeleton */}
         <div className="flex justify-between items-center pb-m3-medium border-b border-outline-variant">
           <div className="flex items-center gap-m3-x-small">

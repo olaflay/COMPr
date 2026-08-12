@@ -2,7 +2,7 @@
 trigger: always_on
 ---
 
-Source of truth for *what* to build: `COMPr-PRD-v1.md`. Source of truth for
+Source of truth for *what* to build: `NoBlur-PRD-v1.md`. Source of truth for
 locked stack/architecture: `AGENTS.md`. This file governs code shape and
 quality only — it does not restate rules already in AGENTS.md Q5, it adds to them.
 

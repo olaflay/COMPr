@@ -2,7 +2,7 @@
 trigger: glob
 ---
 
-# Design System — COMPr
+# Design System — NoBlur
 
 ## 1. Single Source of Truth
 

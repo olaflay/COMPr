@@ -5,7 +5,7 @@ description: Guidelines and instructions for elite software reliability engineer
 
 # Elite Software Reliability Engineering (SRE)
 
-Use this skill when tasked with identifying code defects, conducting post-mortems, performing root cause analyses, auditing security/performance, or establishing regression testing patterns in the COMPr codebase.
+Use this skill when tasked with identifying code defects, conducting post-mortems, performing root cause analyses, auditing security/performance, or establishing regression testing patterns in the NoBlur codebase.
 
 ---
 
@@ -32,7 +32,7 @@ Never assume something works; prove that it works. If it breaks:
 
 ## 3. Continuous Failure Hunting
 
-Actively look for and identify the following issues across the COMPr codebase:
+Actively look for and identify the following issues across the NoBlur codebase:
 - **Logic Bugs:** Edge cases, boolean condition issues, validation gaps.
 - **Race Conditions:** BullMQ queue job collisions, Postgres connection timing issues, concurrent Redis key increments.
 - **Memory Leaks:** Open connections, lingering child processes (FFmpeg/ffprobe), massive file buffers in RAM.
@@ -51,7 +51,7 @@ Actively look for and identify the following issues across the COMPr codebase:
 
 Proactively stress the application by testing and simulating:
 - **Edge Cases & Random Inputs:** Negative duration, 0-byte media, corrupted codecs, invalid magic bytes.
-- **Huge Payloads:** File uploads approaching and exceeding the 100MB/500MB ceilings.
+- **Huge Payloads:** File uploads approaching and exceeding the 50MB/500MB ceilings.
 - **Network Disruptions:** Slow network simulation (3G/4G), packet loss, timeout triggers mid-upload or mid-encode.
 - **Concurrency Pressure:** Duplicate job submissions, rapid double-clicking, multiple concurrent status queries.
 - **Resource Constraints:** Disk write failures in `/temp`, database connection dropping mid-transaction.

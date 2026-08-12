@@ -22,7 +22,7 @@ final export step must produce. Laws live in `workflow-pipeline.md`,
    - **Format/magic-byte gate:** verify real file type server-side, reject
      corrupt/unreadable files immediately (`security.md`, PRD §13 step 2).
    - **Size-ceiling gate:** reject anything over the tier's max upload size
-     (100MB free / 500MB premium) before touching the file further (PRD §10).
+     (50MB free / 500MB premium) before touching the file further (PRD §10).
    - **Quota/exemption gate:** the job-creation route already resolved this,
      but the worker re-checks the job's `isPremium`/exemption flags before
      spending encode time — never assume the queue only contains valid jobs.

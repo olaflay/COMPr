@@ -22,7 +22,7 @@ Laws live in `copy-and-claims.md` and PRD §10, §37.
 
 3. **Add structured data once, in the root layout, not per-page.**
    Organization and SoftwareApplication JSON-LD renders once and describes
-   COMPr's actual free/paid model — check `copy-and-claims.md` before
+   NoBlur's actual free/paid model — check `copy-and-claims.md` before
    writing any pricing/capability claim into structured data, since it must
    never overstate PRD §27's real business model.
 
@@ -38,8 +38,8 @@ Laws live in `copy-and-claims.md` and PRD §10, §37.
    depth,** beyond robots.txt: `X-Robots-Tag: noindex, nofollow` and
    `Cache-Control: no-store`, set in `next.config.ts` (PRD §22, §37).
 
-7. **If `llms.txt` is affected, keep its COMPr description accurate** —
-   it must state plainly that COMPr does not bypass WhatsApp compression
+7. **If `llms.txt` is affected, keep its NoBlur description accurate** —
+   it must state plainly that NoBlur does not bypass WhatsApp compression
    (`copy-and-claims.md`, PRD §37).
 
 8. **Validate before calling it done.** Load the page with GA4 enabled and

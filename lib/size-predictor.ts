@@ -40,7 +40,7 @@ export function predictOutputSize(
       estimatedSizeBytes: estimatedBytes,
       estimatedSizeLabel: formatBytes(estimatedBytes),
       reductionPercent: 35,
-      qualityNote: 'Image go dey sharp. COMPr go optimize quality for WhatsApp.',
+      qualityNote: 'Image go dey sharp. NoBlur go optimize quality for WhatsApp.',
       fitsPlatform,
     };
   }

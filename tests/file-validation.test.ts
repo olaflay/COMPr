@@ -48,13 +48,13 @@ describe('file-validation.ts - client-side validation', () => {
   it('fails validation for oversized files', () => {
     const file = {
       name: 'large_video.mp4',
-      size: 101 * 1024 * 1024, // 101MB
+      size: 51 * 1024 * 1024, // 51MB
       type: 'video/mp4'
     };
     const errors = validateFile(file as any);
     assert.equal(errors.length, 1);
     assert.equal(errors[0].field, 'size');
-    assert.match(errors[0].message, /Maximum file size is 100MB/);
+    assert.match(errors[0].message, /Maximum file size is 50MB/);
   });
 
   it('fails validation for empty files', () => {

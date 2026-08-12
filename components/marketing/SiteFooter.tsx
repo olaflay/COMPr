@@ -6,7 +6,7 @@ export default function SiteFooter() {
   return (
     <footer className="w-full max-w-[1120px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-m3-medium text-body-small text-on-surface-variant border-t border-outline-variant pt-m3-xx-large md:pt-m3-xxxx-large select-none">
       <div>
-        <span>&copy; {new Date().getFullYear()} COMPr</span>
+        <span>&copy; {new Date().getFullYear()} NoBlur</span>
         <span aria-hidden="true"> · </span>
         <span>Files deleted automatically within 24 hours</span>
       </div>
