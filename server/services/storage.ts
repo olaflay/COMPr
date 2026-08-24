@@ -7,8 +7,8 @@ const SUPABASE_S3_ENDPOINT = process.env.SUPABASE_S3_ENDPOINT;
 const SUPABASE_S3_REGION = process.env.SUPABASE_S3_REGION || 'us-east-1';
 const SUPABASE_S3_ACCESS_KEY_ID = process.env.SUPABASE_S3_ACCESS_KEY_ID || 'dummy';
 const SUPABASE_S3_SECRET_ACCESS_KEY = process.env.SUPABASE_S3_SECRET_ACCESS_KEY || 'dummy';
-const UPLOADS_BUCKET = process.env.SUPABASE_UPLOADS_BUCKET || 'compr-uploads';
-const OUTPUTS_BUCKET = process.env.SUPABASE_OUTPUTS_BUCKET || 'compr-outputs';
+const UPLOADS_BUCKET = process.env.SUPABASE_UPLOADS_BUCKET || 'noblur-uploads';
+const OUTPUTS_BUCKET = process.env.SUPABASE_OUTPUTS_BUCKET || 'noblur-outputs';
 
 export const r2Client = new S3Client({
   endpoint: SUPABASE_S3_ENDPOINT,

@@ -195,6 +195,6 @@ NoBlur uses [Semantic Versioning](https://semver.org/):
 
 ## Support
 
-- **Issues:** https://github.com/olaflay/COMPr/issues
-- **Security:** security@compr.app (private disclosure)
-- **Email:** support@compr.app
+- **Issues:** https://github.com/olaflay/NoBlur/issues
+- **Security:** security@noblur.app (private disclosure)
+- **Email:** support@noblur.app

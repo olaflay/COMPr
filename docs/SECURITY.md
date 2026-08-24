@@ -43,7 +43,7 @@ reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
 **After (v1.1):**
 ```typescript
-const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || 'https://compr.app').split(',');
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || 'https://noblur.app').split(',');
 // Only allow-list specific origins
 if (ALLOWED_ORIGINS.some(o => origin.includes(o.trim()))) {
   reply.header('Access-Control-Allow-Origin', origin);
@@ -51,7 +51,7 @@ if (ALLOWED_ORIGINS.some(o => origin.includes(o.trim()))) {
 }
 ```
 
-**Verify:** `curl -H 'Origin: https://evil.com' https://api.compr.app/api/v1/jobs` should not include `Access-Control-Allow-Origin: *`
+**Verify:** `curl -H 'Origin: https://evil.com' https://api.noblur.app/api/v1/jobs` should not include `Access-Control-Allow-Origin: *`
 
 ---
 
@@ -178,7 +178,7 @@ CRYPTO_SALT="<your-random-base64-salt>"  # Generate: openssl rand -base64 32
 - **CCPA:** No third-party selling (only Sentry/PostHog for error monitoring/analytics; both have DPAs)
 - **HIPAA:** N/A (no health data)
 
-**Privacy Policy:** Posted at `compr.app/privacy` (linked in footer)
+**Privacy Policy:** Posted at `noblur.app/privacy` (linked in footer)
 
 ---
 
@@ -188,23 +188,23 @@ CRYPTO_SALT="<your-random-base64-salt>"  # Generate: openssl rand -base64 32
 
 ```bash
 # 1. CORS origin check
-curl -v -H 'Origin: https://evil.com' https://api.compr.app/api/v1/jobs
+curl -v -H 'Origin: https://evil.com' https://api.noblur.app/api/v1/jobs
 # Should NOT have 'Access-Control-Allow-Origin: *'
 
 # 2. Rate limiting
-for i in {1..25}; do curl https://api.compr.app/api/v1/jobs; done
+for i in {1..25}; do curl https://api.noblur.app/api/v1/jobs; done
 # 21st+ requests should get 429 Too Many Requests
 
 # 3. File validation (corrupt file should fail gracefully)
 echo "not a real video" > fake.mp4
-curl -X POST https://api.compr.app/api/v1/jobs \
+curl -X POST https://api.noblur.app/api/v1/jobs \
   -H 'Content-Type: application/json' \
   -d '{"fileKey": "test.mp4", "preset": "CHAT", "fingerprint": "fp_123"}'
 # Should get 400-level error, not 500
 
 # 4. SQL injection (parameterization test)
 # All Prisma queries are parameterized; attempt will fail safely
-curl https://api.compr.app/api/v1/jobs/'; DROP TABLE Job; --
+curl https://api.noblur.app/api/v1/jobs/'; DROP TABLE Job; --
 # Should get 404 (job not found), not database error
 ```
 
@@ -247,7 +247,7 @@ npm run test:integration  # End-to-end with real inputs
 
 ## Questions?
 
-Report security issues **privately** to [security@compr.app](mailto:security@compr.app).  
+Report security issues **privately** to [security@noblur.app](mailto:security@noblur.app).  
 Do not open public issues for vulnerabilities.
 
-For other questions, use [GitHub Issues](https://github.com/olaflay/COMPr/issues).
+For other questions, use [GitHub Issues](https://github.com/olaflay/NoBlur/issues).

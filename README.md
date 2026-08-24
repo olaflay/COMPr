@@ -2,9 +2,9 @@
 
 Compress photos and videos so they stay sharp after WhatsApp's re-compression. A mobile-first PWA that pre-optimizes media for WhatsApp's specific encoding behavior.
 
-**Live:** [compr.app](https://compr.app)  
+**Live:** [noblur.app](https://noblur.app)  
 **Status:** Production-ready for 1000 concurrent users on free/cheap hosting  
-**Latest:** v1.1 — Adaptive encoding engine + 1000-user scale optimizations ([026722c](https://github.com/olaflay/COMPr/commit/026722c))
+**Latest:** v1.1 — Adaptive encoding engine + 1000-user scale optimizations ([026722c](https://github.com/olaflay/NoBlur/commit/026722c))
 
 ---
 
@@ -21,8 +21,8 @@ Compress photos and videos so they stay sharp after WhatsApp's re-compression. A
 
 ```bash
 # Clone & install
-git clone https://github.com/olaflay/COMPr.git
-cd COMPr
+git clone https://github.com/olaflay/NoBlur.git
+cd NoBlur
 npm install
 
 # Copy environment template
@@ -229,4 +229,4 @@ MIT — See [LICENSE](./LICENSE) for details.
 Built by **Olaf Lay** ([GitHub](https://github.com/olaflay))  
 Engineered for scale & reliability by **Claude** ([Anthropic](https://anthropic.com))
 
-**Questions?** Open an issue or email [support@compr.app](mailto:support@compr.app)
+**Questions?** Open an issue or email [support@noblur.app](mailto:support@noblur.app)

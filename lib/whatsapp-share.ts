@@ -1,5 +1,5 @@
 const SHARE_MESSAGE = 'Make your media look sharp on WhatsApp';
-const SHARE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://com-pr.vercel.app';
+const SHARE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://noblur.app';
 
 /**
  * Build a WhatsApp share URL that opens WhatsApp directly on mobile

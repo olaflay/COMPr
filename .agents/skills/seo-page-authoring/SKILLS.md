@@ -66,7 +66,7 @@ export function buildPageMetadata(page: 'home' | 'about' | 'pricing' | 'how-it-w
 // app/sitemap.ts — static routes only, job pages excluded
 export default function sitemap(): MetadataRoute.Sitemap {
   return STATIC_MARKETING_ROUTES.map((route) => ({
-    url: `https://compr.app${route}`,
+    url: `https://noblur.app${route}`,
     lastModified: new Date(),
   })); // /jobs/:id never appears here
 }

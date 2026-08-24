@@ -9,5 +9,5 @@ Allow: /how-it-works
 Disallow: /jobs/
 Disallow: /api/
 
-Sitemap: https://compr.app/sitemap.xml
+Sitemap: https://noblur.app/sitemap.xml
 Crawl-delay: 1

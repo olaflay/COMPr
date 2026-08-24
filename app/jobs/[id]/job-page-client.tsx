@@ -28,7 +28,7 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
   const pollIntervalRef = useRef<any>(null);
 
   useEffect(() => {
-    const fp = localStorage.getItem('compr_fingerprint');
+    const fp = localStorage.getItem('noblur_fingerprint');
 
     if (!fp) {
       setLoading(false);
@@ -239,7 +239,7 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
                 <a
                   key={idx}
                   href={out.downloadUrl}
-                  download={`compr_output_${activeJob.jobId}${idx > 0 ? `_part${idx}` : ''}.mp4`}
+                  download={`noblur_output_${activeJob.jobId}${idx > 0 ? `_part${idx}` : ''}.mp4`}
                   className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface py-m3-small rounded-m3-full text-label-large text-center block border border-outline transition-all duration-m3-short-2"
                 >
                   Download to device {activeJob.outputs.length > 1 ? `(Part ${idx + 1})` : ''}

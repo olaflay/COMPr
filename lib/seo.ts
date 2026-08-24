@@ -5,7 +5,7 @@
  */
 
 export const SITE_NAME = 'NoBlur';
-export const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://com-pr.vercel.app';
+export const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://noblur.app';
 export const DEFAULT_DESCRIPTION =
   'Pre-optimize photos and videos so they stay sharp after WhatsApp compresses them | up to 90% smaller, 5 free daily, no account needed.';
 

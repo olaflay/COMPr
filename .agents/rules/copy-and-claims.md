@@ -66,8 +66,8 @@ inside any one technical rules file.
 
 ## WhatsApp share message (FR-15)
 
-- The pre-filled WhatsApp share message must use the exact phrasing: "Make your media look sharp on WhatsApp" followed by the `compr.app` branded link. No variations that claim bypass, removal, or disabling of compression.
-- The link must use the product's own domain (`compr.app`), never a URL shortener or third-party redirect, to preserve trust and brand recognition.
+- The pre-filled WhatsApp share message must use the exact phrasing: "Make your media look sharp on WhatsApp" followed by the `noblur.app` branded link. No variations that claim bypass, removal, or disabling of compression.
+- The link must use the product's own domain (`noblur.app`), never a URL shortener or third-party redirect, to preserve trust and brand recognition.
 - The share message is defined in `lib/whatsapp-share.ts` as a single source of truth. Any copy change to the share message goes through this file, not inline in components.
 
 ## Definition of done (copy-level)

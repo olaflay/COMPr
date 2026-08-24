@@ -21,10 +21,10 @@ export default function OnboardingPageClient() {
   }, [step]);
 
   useEffect(() => {
-    let fp = localStorage.getItem('compr_fingerprint');
+    let fp = localStorage.getItem('noblur_fingerprint');
     if (!fp) {
       fp = 'fp_' + Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('compr_fingerprint', fp);
+      localStorage.setItem('noblur_fingerprint', fp);
     }
     setFingerprint(fp);
   }, []);

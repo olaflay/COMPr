@@ -66,10 +66,10 @@ export default function DashboardPageClient() {
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let fp = localStorage.getItem('compr_fingerprint');
+    let fp = localStorage.getItem('noblur_fingerprint');
     if (!fp) {
       fp = 'fp_' + Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('compr_fingerprint', fp);
+      localStorage.setItem('noblur_fingerprint', fp);
     }
     setFingerprint(fp);
     fetchUsage(fp);
@@ -992,7 +992,7 @@ export default function DashboardPageClient() {
                 <a
                   key={idx}
                   href={out.downloadUrl}
-                  download={`compr_output_${activeJob.jobId}${idx > 0 ? `_part${idx}` : ''}.mp4`}
+                  download={`noblur_output_${activeJob.jobId}${idx > 0 ? `_part${idx}` : ''}.mp4`}
                   onClick={() => trackEvent('download_clicked', { job_id: activeJob.jobId, output_index: idx, size_bytes: out.sizeBytes })}
                   className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] py-m3-small rounded-m3-full text-label-large text-center block border border-outline transition-all duration-m3-short-2"
                 >

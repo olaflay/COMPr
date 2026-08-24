@@ -18,8 +18,8 @@ How to set up a development environment, contribute code, and follow NoBlur's st
 
 ```bash
 # Clone repository
-git clone https://github.com/olaflay/COMPr.git
-cd COMPr
+git clone https://github.com/olaflay/NoBlur.git
+cd NoBlur
 
 # Install dependencies
 npm install
@@ -28,7 +28,7 @@ npm install
 cp .env.example .env
 
 # Fill in local development values
-# DATABASE_URL=postgresql://localhost/compr
+# DATABASE_URL=postgresql://localhost/noblur
 # REDIS_URL=redis://localhost:6379
 # CRYPTO_SALT=dev-salt-12345
 # (R2 keys can be dummy for local testing)
@@ -263,7 +263,7 @@ console.log(`[Pipeline] Job ${jobId} started with target size ${targetSizeMB}MB`
 request.log.debug({ jobId }, 'Creating job');
 
 // Check logs
-docker logs compr-web_1 | grep Pipeline
+docker logs noblur-web_1 | grep Pipeline
 ```
 
 ---
@@ -426,4 +426,4 @@ npm run test -- my-feature
 
 ---
 
-Questions? Open an issue or email [dev@compr.app](mailto:dev@compr.app)
+Questions? Open an issue or email [dev@noblur.app](mailto:dev@noblur.app)

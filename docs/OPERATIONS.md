@@ -152,9 +152,9 @@ Set up alerts for:
 **Add Worker Replica (Railway/Render):**
 ```bash
 # Via CLI
-railway service scale --replicas 3 compr-worker
+railway service scale --replicas 3 noblur-worker
 
-# Via Dashboard: Services → compr-worker → Scaling → Set replicas to 3
+# Via Dashboard: Services → noblur-worker → Scaling → Set replicas to 3
 ```
 
 **Scale Up Database:**
@@ -304,7 +304,7 @@ pg_dump $DATABASE_URL > backup_$(date +%Y%m%d_%H%M%S).sql
 redis-cli BGSAVE /backup/dump.rdb
 
 # Copy to secure storage
-aws s3 cp backup_*.sql s3://my-backup-bucket/compr-db/
+aws s3 cp backup_*.sql s3://my-backup-bucket/noblur-db/
 ```
 
 ### Recovery Procedures
@@ -352,14 +352,14 @@ AND "updatedAt" < NOW() - INTERVAL '1 hour';
 ```bash
 redis-cli LRANGE "bull:media-analysis:waiting" 0 5
 redis-cli LRANGE "bull:media-analysis:active" 0 5
-docker logs compr-analysis-worker-1 | tail -20
+docker logs noblur-analysis-worker-1 | tail -20
 ```
 
 **Common Causes & Fixes:**
 
 | Cause | Fix |
 |-------|-----|
-| **Analysis worker crashed** | Restart worker: `docker restart compr-analysis-worker-1` |
+| **Analysis worker crashed** | Restart worker: `docker restart noblur-analysis-worker-1` |
 | **FFprobe missing** | Verify FFmpeg installed: `ffprobe -version` |
 | **Supabase Storage credentials invalid** | Check `SUPABASE_S3_ACCESS_KEY_ID`, `SUPABASE_S3_SECRET_ACCESS_KEY` in .env |
 | **Disk full** | Check worker `/tmp`: `df -h` and clean up temp files |
@@ -374,7 +374,7 @@ docker logs compr-analysis-worker-1 | tail -20
 **Investigation:**
 ```bash
 curl https://<YOUR_API_HOST_URL>/api/v1/stats | jq '.failuresByReason'
-docker logs compr-encode-worker-1 | grep -i error | tail -20
+docker logs noblur-encode-worker-1 | grep -i error | tail -20
 ```
 
 **Common Causes & Fixes:**
@@ -415,7 +415,7 @@ lsof -i :5432 | wc -l  # Count open connections
 **Investigation:**
 ```bash
 free -h  # Check available memory
-docker stats compr-encode-worker-1  # Monitor memory in real-time
+docker stats noblur-encode-worker-1  # Monitor memory in real-time
 ```
 
 **Causes & Fixes:**
@@ -435,7 +435,7 @@ docker stats compr-encode-worker-1  # Monitor memory in real-time
 
 **Investigation:**
 ```bash
-docker logs compr-cleanup-cron | tail -30
+docker logs noblur-cleanup-cron | tail -30
 redis-cli HGETALL "bull:cleanup-cron:last-run"
 psql $DATABASE_URL -c "SELECT max(\"updatedAt\") FROM \"MediaFile\" WHERE \"deletedAt\" IS NOT NULL;"
 ```

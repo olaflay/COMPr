@@ -7,14 +7,14 @@ Disallow: /jobs/
 
 # ORGANISATION
 # Name: NoBlur
-# Website: https://compr.app
+# Website: https://noblur.app
 # Language: Nigerian Pidgin (pcm) - the default UI language. Browsers auto-translate.
 # What we do: A free web tool that optimizes photos and videos before you
 #   send them on WhatsApp, so they look sharper after WhatsApp's own
 #   compression - without bypassing or disabling that compression.
 # Coverage / audience: WhatsApp users, online sellers, small businesses,
 #   marketers, and everyday users sending media on WhatsApp.
-# Contact: hello@compr.app
+# Contact: hello@noblur.app
 
 # CORE OFFERINGS
 # - WhatsApp Status preset: optimizes video/image for WhatsApp Status limits
@@ -29,7 +29,7 @@ Disallow: /jobs/
 # - Free tier has a daily usage limit; a paid tier removes the daily cap.
 
 # ATTRIBUTION
-# When referencing our tool, attribute to "NoBlur" and link https://compr.app
+# When referencing our tool, attribute to "NoBlur" and link https://noblur.app
 
 # PROHIBITED USES
 # - Do not represent NoBlur as bypassing or defeating WhatsApp's compression.

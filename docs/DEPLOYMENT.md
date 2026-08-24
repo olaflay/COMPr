@@ -10,7 +10,7 @@ Deploy NoBlur to production. The frontend (Next.js) deploys to **Vercel**; the F
 - [ ] `.env` file created locally from `.env.example` with all secrets filled in
 - [ ] FFmpeg 6+ (with libsvtav1) and Python3 + OpenCV (`cv2`) installed on worker machines — see §2C, `Dockerfile.worker` already provisions these
 - [ ] Supabase project created (Postgres + Storage)
-- [ ] Supabase Storage buckets created (`compr-uploads`, `compr-outputs` by default, or your own names)
+- [ ] Supabase Storage buckets created (`noblur-uploads`, `noblur-outputs` by default, or your own names)
 - [ ] Upstash Redis database created (TLS/`rediss://` endpoint)
 - [ ] Flutterwave: **not required for launch** — billing routes are stubbed (see §3B / §9)
 - [ ] Sentry DSN — optional; note that Sentry is currently installed as a dependency but **not yet initialized in code** (tracked separately)
@@ -47,7 +47,7 @@ NoBlur's runtime has three deployable pieces, plus two managed services:
 
 ### C. Object Storage — Supabase Storage (S3-compatible)
 
-1. In the same Supabase project, go to Storage and create two buckets (default names used by the app: `compr-uploads`, `compr-outputs`).
+1. In the same Supabase project, go to Storage and create two buckets (default names used by the app: `noblur-uploads`, `noblur-outputs`).
 2. Go to Project Settings → Storage → S3 Access Keys and generate an access key pair.
 3. Note your project's storage endpoint: `https://<project-ref>.storage.supabase.co/storage/v1/s3`, and your project's region.
 4. Fill in `SUPABASE_S3_ENDPOINT`, `SUPABASE_S3_REGION`, `SUPABASE_S3_ACCESS_KEY_ID`, `SUPABASE_S3_SECRET_ACCESS_KEY`, `SUPABASE_UPLOADS_BUCKET`, `SUPABASE_OUTPUTS_BUCKET` (see §3). `server/services/storage.ts` is the authoritative implementation — it uses `forcePathStyle: true` and the project's real region (unlike Cloudflare R2, Supabase does not accept `region: "auto"`).
@@ -64,7 +64,7 @@ Set environment variables in Vercel (Project Settings → Environment Variables)
 
 No custom domain has been decided yet. Vercel will assign something like `<project>.vercel.app` — use that (or a placeholder `<YOUR_DOMAIN>`) until a real domain is chosen. Once you do pick a domain (even a temporary `.vercel.app` one), update:
 - `CORS_ORIGINS` in `.env` / your API host's env vars
-- The hardcoded `https://compr.app` references in `lib/seo.ts` and `lib/whatsapp-share.ts` (not covered by this doc — these are code changes, not deploy config)
+- The hardcoded `https://noblur.app` references in `lib/seo.ts` and `lib/whatsapp-share.ts` (not covered by this doc — these are code changes, not deploy config)
 
 ### E. API Server + Workers — Railway / Render / Fly.io
 
@@ -84,8 +84,8 @@ Copy `.env.example` to `.env` and fill in each variable. This list is pulled dir
 
 ```bash
 # Database (Supabase Postgres)
-DATABASE_URL="postgresql://compr:compr@localhost:5432/compr?schema=public"   # pooled connection, used at runtime
-DIRECT_URL="postgresql://compr:compr@localhost:5432/compr?schema=public"     # direct connection, used only for `prisma migrate deploy` — NOT in .env.example yet, add manually
+DATABASE_URL="postgresql://noblur:noblur@localhost:5432/noblur?schema=public"   # pooled connection, used at runtime
+DIRECT_URL="postgresql://noblur:noblur@localhost:5432/noblur?schema=public"     # direct connection, used only for `prisma migrate deploy` — NOT in .env.example yet, add manually
 
 # Redis (Upstash — BullMQ queue backend)
 # Use the rediss:// (TLS) URL Upstash gives you
@@ -98,8 +98,8 @@ SUPABASE_S3_ENDPOINT="https://<project-ref>.storage.supabase.co/storage/v1/s3"
 SUPABASE_S3_REGION="<your-project-region, e.g. us-east-1>"
 SUPABASE_S3_ACCESS_KEY_ID="<your-supabase-s3-access-key>"
 SUPABASE_S3_SECRET_ACCESS_KEY="<your-supabase-s3-secret-key>"
-SUPABASE_UPLOADS_BUCKET="compr-uploads"
-SUPABASE_OUTPUTS_BUCKET="compr-outputs"
+SUPABASE_UPLOADS_BUCKET="noblur-uploads"
+SUPABASE_OUTPUTS_BUCKET="noblur-outputs"
 
 # Flutterwave (payment provider — NOT YET IMPLEMENTED, see §9. Dummy values are fine.)
 FLUTTERWAVE_PUBLIC_KEY="<your-flutterwave-public-key>"
@@ -125,7 +125,7 @@ CORS_ORIGINS="<YOUR_DOMAIN>,http://localhost:3000"
 
 # Next.js
 NEXT_PUBLIC_APP_URL="<YOUR_DOMAIN>"          # e.g. https://<project>.vercel.app
-NEXT_PUBLIC_API_URL="<YOUR_API_HOST_URL>"    # e.g. https://compr-api.up.railway.app
+NEXT_PUBLIC_API_URL="<YOUR_API_HOST_URL>"    # e.g. https://noblur-api.up.railway.app
 NODE_ENV="production"
 
 # PORT (API server only, default 5000)
@@ -198,8 +198,8 @@ All three read from `.env` (via `--env-file=.env`) when run with the `start:*` s
 
 ```bash
 # Build images
-docker build -f Dockerfile.api -t compr-api .
-docker build -f Dockerfile.worker -t compr-worker .
+docker build -f Dockerfile.api -t noblur-api .
+docker build -f Dockerfile.worker -t noblur-worker .
 
 # Run API
 docker run -e DATABASE_URL=$DATABASE_URL -e DIRECT_URL=$DIRECT_URL -e REDIS_URL=$REDIS_URL \
@@ -207,14 +207,14 @@ docker run -e DATABASE_URL=$DATABASE_URL -e DIRECT_URL=$DIRECT_URL -e REDIS_URL=
   -e SUPABASE_S3_ACCESS_KEY_ID=$SUPABASE_S3_ACCESS_KEY_ID -e SUPABASE_S3_SECRET_ACCESS_KEY=$SUPABASE_S3_SECRET_ACCESS_KEY \
   -e SUPABASE_UPLOADS_BUCKET=$SUPABASE_UPLOADS_BUCKET -e SUPABASE_OUTPUTS_BUCKET=$SUPABASE_OUTPUTS_BUCKET \
   -e CORS_ORIGINS=$CORS_ORIGINS -e CRYPTO_SALT=$CRYPTO_SALT \
-  -p 5000:5000 compr-api
+  -p 5000:5000 noblur-api
 
 # Run workers (multiple replicas as needed)
 docker run -e DATABASE_URL=$DATABASE_URL -e REDIS_URL=$REDIS_URL \
   -e SUPABASE_S3_ENDPOINT=$SUPABASE_S3_ENDPOINT -e SUPABASE_S3_REGION=$SUPABASE_S3_REGION \
   -e SUPABASE_S3_ACCESS_KEY_ID=$SUPABASE_S3_ACCESS_KEY_ID -e SUPABASE_S3_SECRET_ACCESS_KEY=$SUPABASE_S3_SECRET_ACCESS_KEY \
   -e SUPABASE_UPLOADS_BUCKET=$SUPABASE_UPLOADS_BUCKET -e SUPABASE_OUTPUTS_BUCKET=$SUPABASE_OUTPUTS_BUCKET \
-  compr-worker
+  noblur-worker
 ```
 
 `Dockerfile.worker` installs `ffmpeg` (verified to include `libsvtav1`), `libopencv-dev`, `python3`, `python3-opencv`, and `python3-numpy`, and validates at build time that `cv2` imports correctly — this is what `lib/opencv_analyze.py` needs at runtime via `python3`/`python`. Whatever platform you choose to host the worker on must run this image (or an equivalent environment with ffmpeg + ffprobe + Python/OpenCV installed) — a bare Node buildpack will not work.

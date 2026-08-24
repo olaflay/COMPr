@@ -169,7 +169,7 @@ The following are acceptable uses of non-token values:
 
 - **Reduced Tap Count**: The primary post-optimization action is "Send to WhatsApp," reducing the flow from 3 taps (download, open WhatsApp, attach) to 1 tap plus WhatsApp's native confirm.
 - **Loss Aversion at the Moment of Value**: The share button appears immediately after the user sees the before/after comparison, anchoring the share action to the moment of highest perceived value (Peak-End Rule).
-- **Honest Share Message**: The pre-filled WhatsApp message says "Make your media look sharp on WhatsApp" with the `compr.app` branded link. No claims of bypassing or disabling compression. The link uses the product's own domain, not a URL shortener, to build trust (Trust Anchoring).
+- **Honest Share Message**: The pre-filled WhatsApp message says "Make your media look sharp on WhatsApp" with the `noblur.app` branded link. No claims of bypassing or disabling compression. The link uses the product's own domain, not a URL shortener, to build trust (Trust Anchoring).
 - **Secondary Download Option**: "Download to device" is always available below the share button as a secondary action, respecting user control and freedom (Nielsen Heuristic #3) for users who prefer to save locally or share to other platforms.
 - **Go Back to Upload**: A tertiary text link "Optimize another file" sits at the bottom, maintaining navigation flow without competing with the primary CTA (Visual Hierarchy).
 

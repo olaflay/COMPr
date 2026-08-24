@@ -36,7 +36,7 @@ app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
 
 // CORS: lock to frontend origins only. Prevents cross-origin quota-burn attacks.
-const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || 'https://com-pr.vercel.app,http://localhost:3000').split(',');
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || 'https://noblur.app,http://localhost:3000').split(',');
 app.addHook('onRequest', async (request, reply) => {
   const origin = request.headers.origin || '';
   if (ALLOWED_ORIGINS.some(o => origin === o.trim())) {

@@ -182,7 +182,7 @@ Breaking any rule in this section means the task has failed, even if the code co
 /public
   robots.txt
   llms.txt
-  compr-logo.svg
+  noblur-logo.svg
   favicon.ico
   favicon.svg
 
@@ -201,7 +201,7 @@ docs/                        # Project documentation — PRD, agent rules, desig
   AGENTS.md                  #   build rules for AI agents
   CHANGELOG.md               #   design system compaction and token migration history
   NoBlur-PRD-v1.md           #   product requirements document
-  COMPr-styling.css          #   legacy styling reference
+  NoBlur-styling.css          #   legacy styling reference
   DESIGN_SYSTEM_PRACTICES.md #   M3 token discipline, typography, dark mode
 
 .agents/                     # Agent configuration — rules and skills

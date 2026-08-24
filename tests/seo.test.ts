@@ -7,7 +7,7 @@ describe('seo.ts structured data and metadata', () => {
     const meta = buildMetadata();
     assert.equal(meta.title, 'NoBlur | WhatsApp-ready photos and videos');
     assert.ok(meta.description.includes('optimize'));
-    assert.equal(meta.alternates.canonical, 'https://com-pr.vercel.app');
+    assert.equal(meta.alternates.canonical, 'https://noblur.app');
     assert.ok(meta.icons);
     assert.equal(meta.icons.icon, '/favicon.svg');
     assert.equal(meta.icons.shortcut, '/favicon.ico');
@@ -17,7 +17,7 @@ describe('seo.ts structured data and metadata', () => {
   it('customizes the page title in metadata', () => {
     const meta = buildMetadata({ title: 'About Us', path: '/about' });
     assert.equal(meta.title, 'About Us | NoBlur');
-    assert.equal(meta.alternates.canonical, 'https://com-pr.vercel.app/about');
+    assert.equal(meta.alternates.canonical, 'https://noblur.app/about');
   });
 
   it('returns valid JSON-LD schemas', () => {

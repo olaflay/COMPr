@@ -1,5 +1,5 @@
 ---
-name: compr-design-intelligence
+name: noblur-design-intelligence
 description: Use for anything that requires product design, UX/UI decisions, information architecture, visual styling, accessibility guidelines, or responsiveness audits. Triggers on "design", "UI/UX", "visual", "wireframe", "responsive", "accessibility", "M3", "Material 3".
 ---
 

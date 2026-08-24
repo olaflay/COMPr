@@ -3,8 +3,8 @@ import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { prisma } from '../lib/prisma.ts';
 import { r2Client } from '../server/services/storage.ts';
 
-const OUTPUTS_BUCKET = process.env.SUPABASE_OUTPUTS_BUCKET || 'compr-outputs';
-const UPLOADS_BUCKET = process.env.SUPABASE_UPLOADS_BUCKET || 'compr-uploads';
+const OUTPUTS_BUCKET = process.env.SUPABASE_OUTPUTS_BUCKET || 'noblur-outputs';
+const UPLOADS_BUCKET = process.env.SUPABASE_UPLOADS_BUCKET || 'noblur-uploads';
 
 /**
  * Sweep expired MediaFiles:
