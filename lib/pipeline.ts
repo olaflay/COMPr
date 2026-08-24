@@ -249,11 +249,11 @@ export async function runAdaptivePipeline({
       targetSizeMB: effectiveTargetSizeMB,
       sizeWithinTolerance,
       vmaf: vmafResult,
-      qualityOk: vmafResult.passed || prioritizeDetail,
+      qualityOk: (vmafResult.verified && vmafResult.passed) || prioritizeDetail,
       reason: gate.reason,
     });
 
-    console.log(`[Adaptive] Attempt ${attempt}: ${actualSizeMB.toFixed(2)}MB VMAF=${vmafResult.avgVmaf} passed=${vmafResult.passed}`);
+    console.log(`[Adaptive] Attempt ${attempt}: ${actualSizeMB.toFixed(2)}MB VMAF=${vmafResult.avgVmaf ?? 'unverified'} passed=${vmafResult.passed}`);
 
     if (vmafResult.passed || prioritizeDetail || attempt === 1) break;
 

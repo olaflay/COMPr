@@ -13,6 +13,7 @@ function makeVmafResult(overrides: Partial<VmafResult> = {}): VmafResult {
     minVmaf: 80,
     sampleCount: 15,
     passed: true,
+    verified: true,
     ...overrides,
   };
 }
@@ -77,5 +78,17 @@ describe('qualityGate', () => {
     // This test verifies the gate logic is independent
     const result = qualityGate(makeVmafResult({ avgVmaf: 75, passed: false }), 28);
     assert.equal(result.shouldReencode, true, 'gate should still recommend re-encode');
+  });
+
+  it('unverified result never passes the gate (no fabricated 100)', () => {
+    // A measurement failure must not be reported as a pass — the quality gate
+    // cannot close on a number that was never measured (Constitution Art. III).
+    const result = qualityGate(
+      makeVmafResult({ avgVmaf: null, minVmaf: null, sampleCount: 0, passed: false, verified: false }),
+      28,
+    );
+    assert.equal(result.shouldReencode, false, 'must not re-encode when the tool is broken');
+    assert.ok(result.reason.includes('unverified'), 'reason must say unverified');
+    assert.equal(result.vmafResult.passed, false, 'unverified result is never a pass');
   });
 });

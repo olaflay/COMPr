@@ -169,6 +169,8 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
       outputs,
       resolutionDropped,
       prioritizeDetail: job.prioritizeDetail,
+      vmafScore: job.vmafScore ?? undefined,
+      reencodeCount: job.reencodeCount ?? undefined,
       errorMessage: job.errorMessage,
       queuePosition: queuePosition || undefined,
     });
