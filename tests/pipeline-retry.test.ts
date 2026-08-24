@@ -28,10 +28,16 @@ describe('Pipeline Retry and Boundary Verification', () => {
           streams: [{ codec_type: 'video', width: 1920, height: 1080, duration: '10.0' }],
         });
       }
-      // For ffmpeg, we simulate generating an output file
+      // For ffmpeg, we simulate generating an output file.
+      // VMAF/SSIM probe commands end with '-f null - -loglevel error', so the
+      // last arg may be the literal 'error' (relative path) - only write when
+      // the last arg is an absolute output path to avoid a stray ./error file.
       const outPath = args[args.length - 1];
       const { writeFileSync } = await import('node:fs');
-      writeFileSync(outPath, 'fake output');
+      const { isAbsolute } = await import('node:path');
+      if (isAbsolute(outPath)) {
+        writeFileSync(outPath, 'fake output');
+      }
       return '';
     });
 
