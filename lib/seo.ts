@@ -41,6 +41,7 @@ export interface PageMetadata {
     shortcut: string;
     apple?: string;
   };
+  manifest: string;
 }
 
 export function buildMetadata({
@@ -79,6 +80,7 @@ export function buildMetadata({
       shortcut: '/favicon.ico',
       apple: '/favicon.svg',
     },
+    manifest: '/manifest.json',
   };
 }
 
