@@ -11,6 +11,7 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
+    "check:boundaries": "node --experimental-strip-types scripts/check-boundaries.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",

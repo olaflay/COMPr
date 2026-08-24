@@ -29,5 +29,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check frontend/backend separation
+        run: npm run check:boundaries
+
       - name: Run tests
         run: npm test
