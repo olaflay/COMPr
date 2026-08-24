@@ -27,6 +27,7 @@ const cspHeader = [
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.googletagmanager.com https://us-assets.i.posthog.com https://eu-assets.i.posthog.com`,
   `connect-src 'self' ${connectSrcExtra.join(' ')} https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.i.posthog.com`,
   "img-src 'self' data: https: blob:",
+  "media-src 'self' blob: data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   'upgrade-insecure-requests',

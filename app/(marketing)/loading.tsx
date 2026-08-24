@@ -139,8 +139,8 @@ function FaqSkeleton() {
   const rows = [1, 2, 3, 4];
   return (
     <div className="w-full flex flex-col gap-y-m3-large mt-m3-xxx-large md:mt-m3-6xl">
-      <div className="skeleton h-6 w-72 mx-auto rounded-m3-sm" />
       <div className="flex flex-col gap-m3-x-small w-full max-w-2xl mx-auto">
+        <div className="skeleton h-6 w-72 rounded-m3-sm" />
         {rows.map((r) => (
           <div
             key={r}

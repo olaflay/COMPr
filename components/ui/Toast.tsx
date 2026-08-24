@@ -7,9 +7,13 @@ interface ToastProps {
   type?: 'success' | 'error' | 'info';
   onDismiss: () => void;
   duration?: number;
+  /** Optional action button (e.g. "Try Again") shown on error toasts so
+   *  failures always offer a recovery path instead of a dead end. */
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
-export default function Toast({ message, type = 'info', onDismiss, duration = 5000 }: ToastProps) {
+export default function Toast({ message, type = 'info', onDismiss, duration = 5000, actionLabel, onAction }: ToastProps) {
   const [visible, setVisible] = useState(false);
 
   const dismiss = useCallback(() => {
@@ -19,9 +23,9 @@ export default function Toast({ message, type = 'info', onDismiss, duration = 50
 
   useEffect(() => {
     setVisible(true);
-    const timer = setTimeout(dismiss, duration);
+    const timer = setTimeout(dismiss, actionLabel ? duration + 3000 : duration);
     return () => clearTimeout(timer);
-  }, [duration, dismiss]);
+  }, [duration, dismiss, actionLabel]);
 
   const colorMap = {
     success: 'bg-success-container text-on-success-container',
@@ -58,9 +62,20 @@ export default function Toast({ message, type = 'info', onDismiss, duration = 50
     >
       {iconMap[type]}
       <span className="flex-1">{message}</span>
+      {actionLabel && onAction && (
+        <button
+          onClick={() => {
+            onAction();
+            dismiss();
+          }}
+          className="shrink-0 ml-m3-x-small px-m3-medium py-m3-xx-small rounded-m3-full bg-on-error-container/10 text-on-error-container font-semibold text-label-large hover:bg-on-error-container/20 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+        >
+          {actionLabel}
+        </button>
+      )}
       <button
         onClick={dismiss}
-        className="shrink-0 w-11 h-11 flex items-center justify-center rounded-m3-full hover:opacity-70 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-current"
+        className="shrink-0 w-11 h-11 flex items-center justify-center rounded-m3-full hover:opacity-70 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
         aria-label="Dismiss notification"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

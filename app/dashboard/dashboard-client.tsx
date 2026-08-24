@@ -53,7 +53,7 @@ export default function DashboardPageClient() {
   const [activeJob, setActiveJob] = useState<JobState | null>(null);
   const [sourceFileUrl, setSourceFileUrl] = useState<string>('');
   const [uploadedFileKey, setUploadedFileKey] = useState<string>('');
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; actionLabel?: string; onAction?: () => void } | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [showUpsell, setShowUpsell] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState(false);
@@ -361,7 +361,7 @@ export default function DashboardPageClient() {
       const message = e instanceof Error && e.message === 'Upload session expired. Please try again.'
         ? e.message
         : 'Upload failed. Please check your network and try again.';
-      setToast({ message, type: 'error' });
+      setToast({ message, type: 'error', actionLabel: 'Try Again', onAction: () => { void triggerUpload(); } });
       setIsUploading(false);
       return;
     }
@@ -397,7 +397,7 @@ export default function DashboardPageClient() {
     } catch (e) {
       console.error('Job creation failed', e);
       const message = e instanceof Error && e.message ? e.message : 'Could not start optimization. Please try again.';
-      setToast({ message, type: 'error' });
+      setToast({ message, type: 'error', actionLabel: 'Try Again', onAction: () => { void triggerUpload(); } });
     }
   };
 
@@ -432,7 +432,7 @@ export default function DashboardPageClient() {
       startPollingJob(jobData.jobId);
     } catch (e) {
       console.error('Failed to run prioritize detail job', e);
-      setToast({ message: 'Failed to re-optimize. Please try again.', type: 'error' });
+      setToast({ message: 'Failed to re-optimize. Please try again.', type: 'error', actionLabel: 'Try Again', onAction: () => { void handlePrioritizeDetail(); } });
     }
   };
 
@@ -752,6 +752,13 @@ export default function DashboardPageClient() {
                     {err.message}
                   </div>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="self-start mt-m3-xx-small text-label-large text-primary font-semibold underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-m3-sm px-m3-xx-small py-m3-xx-small"
+                >
+                  Choose another file
+                </button>
               </div>
             )}
 
@@ -1113,6 +1120,8 @@ export default function DashboardPageClient() {
           message={toast.message}
           type={toast.type}
           onDismiss={() => setToast(null)}
+          actionLabel={toast.actionLabel}
+          onAction={toast.onAction}
         />
       )}
     </main>

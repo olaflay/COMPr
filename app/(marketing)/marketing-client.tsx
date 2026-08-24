@@ -237,8 +237,8 @@ export default function MarketingClient() {
 
         {/* FAQs Section */}
         <div className="w-full flex flex-col gap-y-m3-large text-left mt-m3-xxx-large md:mt-m3-6xl">
-          <h2 className="text-headline-small text-on-surface font-bold text-center">Frequently Asked Questions</h2>
           <div className="flex flex-col gap-m3-x-small w-full max-w-2xl mx-auto">
+            <h2 className="text-headline-small text-on-surface font-bold">Frequently Asked Questions</h2>
             {faqs.map((faq, index) => {
               const isOpen = activeFaq === index;
               return (
