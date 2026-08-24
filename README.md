@@ -2,8 +2,7 @@
 
 Compress photos and videos so they stay sharp after WhatsApp's re-compression. A mobile-first PWA that pre-optimizes media for WhatsApp's specific encoding behavior.
 
-**Live:** [noblur.app](https://noblur.app)  
-**Status:** Production-ready for 1000 concurrent users on free/cheap hosting  
+**Status:** v1.1 — adaptive encoding engine complete. Unit-tested (106 tests passing), not yet deployed.  
 **Latest:** v1.1 — Adaptive encoding engine + 1000-user scale optimizations ([026722c](https://github.com/olaflay/NoBlur/commit/026722c))
 
 ---
@@ -14,7 +13,7 @@ Compress photos and videos so they stay sharp after WhatsApp's re-compression. A
 - **Node.js** 18+ (`node --version`)
 - **PostgreSQL** 14+ (or Neon/Supabase for free tier)
 - **Redis** 7+ (for job queue)
-- **Cloudflare R2** account (S3-compatible object storage)
+- **Supabase Storage** account (S3-compatible object storage)
 - **FFmpeg** 6+ (`ffmpeg -version`)
 
 ### Local Setup
@@ -29,7 +28,7 @@ npm install
 cp .env.example .env
 
 # Fill in secrets (see DEPLOYMENT.md §1)
-# DATABASE_URL, REDIS_URL, R2_* keys, CRYPTO_SALT, CORS_ORIGINS, etc.
+# DATABASE_URL, REDIS_URL, SUPABASE_S3_* keys, CRYPTO_SALT, CORS_ORIGINS, etc.
 ```
 
 ### Run Locally
@@ -67,7 +66,7 @@ Access: `http://localhost:3000` (frontend) | `http://localhost:5000` (API)
     │ usage quota   │
     └────────┬──────┘
              │
-             ├─ Cloudflare R2 (uploads/outputs)
+             ├─ Supabase Storage (uploads/outputs)
              ├─ PostgreSQL (jobs, usage, config)
              └─ Redis + BullMQ (job queue)
                  │
@@ -82,7 +81,7 @@ Access: `http://localhost:3000` (frontend) | `http://localhost:5000` (API)
 - **Client→Storage:** Direct presigned URLs (API never proxies bytes)
 - **Workers:** Stateless, horizontally scalable
 - **Queue:** BullMQ on Redis (AOF persistence required)
-- **Storage:** Separate R2 buckets for uploads/outputs
+- **Storage:** Separate Supabase Storage buckets for uploads/outputs
 
 ---
 
@@ -98,7 +97,7 @@ Access: `http://localhost:3000` (frontend) | `http://localhost:5000` (API)
 **Quick summary:**
 ```bash
 # 1. Provision infrastructure (Railway/Render for API+workers, Vercel for frontend)
-# 2. Set secrets in .env (CRYPTO_SALT, R2 keys, DATABASE_URL, REDIS_URL)
+# 2. Set secrets in .env (CRYPTO_SALT, SUPABASE_S3 keys, DATABASE_URL, REDIS_URL)
 # 3. Run migrations: npx prisma migrate deploy
 # 4. Deploy frontend: vercel deploy
 # 5. Deploy API: railway deploy (or git push Railway)
@@ -182,18 +181,14 @@ redis-cli info memory
 ## 🧪 Testing
 
 ```bash
-# Unit tests (bitrate math, resolution selection, error classification)
+# Unit tests (bitrate math, resolution selection, error classification, policy engine, etc.)
 npm run test
 
-# Integration tests (full pipeline with real FFmpeg)
-npm run test:integration
-
-# Load test (simulate 1000 concurrent uploads)
-npm run test:load
-
-# End-to-end (upload → compress → download → compare with WhatsApp)
-npm run test:e2e
+# TypeScript check
+npm run typecheck
 ```
+
+> Note: `test:integration`, `test:load`, and `test:e2e` are planned but not yet implemented. The scripts/ folder contains standalone smoke tests (`test-whatsapp.ts`, `test-downloads-compat.ts`, `test-tecno-compat.ts`) run manually with `node --experimental-strip-types scripts/<name>.ts`.
 
 ---
 

@@ -184,7 +184,7 @@ NoBlur uses [Semantic Versioning](https://semver.org/):
 ## Release Process
 
 1. Update version in `package.json` and `docs/CHANGELOG.md`
-2. Run full test suite: `npm run test && npm run test:integration && npm run test:load`
+2. Run full test suite: `npm run test && npm run typecheck`
 3. Commit: `git commit -m "release: v1.1.0"`
 4. Tag: `git tag v1.1.0`
 5. Push: `git push origin main --tags`

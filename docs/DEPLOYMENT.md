@@ -13,7 +13,7 @@ Deploy NoBlur to production. The frontend (Next.js) deploys to **Vercel**; the F
 - [ ] Supabase Storage buckets created (`noblur-uploads`, `noblur-outputs` by default, or your own names)
 - [ ] Upstash Redis database created (TLS/`rediss://` endpoint)
 - [ ] Flutterwave: **not required for launch** — billing routes are stubbed (see §3B / §9)
-- [ ] Sentry DSN — optional; note that Sentry is currently installed as a dependency but **not yet initialized in code** (tracked separately)
+- [x] Sentry DSN — initialized via instrumentation.ts + sentry.server.config.ts (client + server)
 - [ ] PostHog API key (optional, for analytics)
 
 ---
@@ -106,7 +106,7 @@ FLUTTERWAVE_PUBLIC_KEY="<your-flutterwave-public-key>"
 FLUTTERWAVE_SECRET_KEY="<your-flutterwave-secret-key>"
 FLUTTERWAVE_WEBHOOK_SECRET="<your-flutterwave-webhook-secret>"
 
-# Sentry (error monitoring — installed but NOT YET INITIALIZED in code, see §9)
+# Sentry (error monitoring — initialized via instrumentation.ts + sentry.server.config.ts)
 SENTRY_DSN="<your-sentry-dsn>"
 SENTRY_AUTH_TOKEN="<your-sentry-auth-token>"
 
@@ -320,7 +320,7 @@ npx prisma migrate resolve --rolled-back <migration-name>
 - [ ] Health checks passing (`/health`, `/api/v1/queue-stats`)
 - [ ] Sample upload → compress → download flow tested end-to-end
 - [ ] `CORS_ORIGINS`, `NEXT_PUBLIC_APP_URL` updated once a real (or temporary `.vercel.app`) domain is chosen; `lib/seo.ts` and `lib/whatsapp-share.ts` updated separately in code
-- [ ] Sentry — pending: dependency is installed but not yet initialized (separate task)
+- [x] Sentry — initialized (instrumentation.ts, sentry.server.config.ts, sentry.edge.config.ts)
 - [ ] Analytics tracking verified (PostHog events firing), if configured
 
 ---

@@ -116,7 +116,7 @@ const videoBitrate = Math.max(0, bitrate - audio);  // If audio calc is wrong, s
 npm run test               # All tests
 npm run test:watch        # Watch mode (rerun on change)
 npm run test:coverage     # Coverage report
-npm run test:integration  # Integration tests (real FFmpeg)
+npm run test  # unit tests; scripts/test-*.ts are manual smoke tests
 ```
 
 ### Test Patterns
@@ -198,7 +198,7 @@ git commit -m "docs: add deployment guide for Railway"
 
 1. **Create branch:** `git checkout -b fix/issue-123-audio-bitrate`
 2. **Make changes:** Follow code standards above
-3. **Test:** `npm run test && npm run test:integration`
+3. **Test:** `npm run test && npm run typecheck`
 4. **Commit:** Use conventional format
 5. **Push:** `git push origin fix/issue-123-audio-bitrate`
 6. **Open PR:** Link to GitHub issue, describe changes + testing
@@ -360,7 +360,7 @@ Before pushing your PR:
 
 3. **Test:**
    ```bash
-   npm run test:integration -- --grep "policy-engine"
+   node --experimental-strip-types --test --test-name-pattern="policy-engine" tests/policy-engine.test.ts
    ```
 
 ### Add a New API Endpoint

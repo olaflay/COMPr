@@ -133,7 +133,7 @@ CRYPTO_SALT="<your-random-base64-salt>"  # Generate: openssl rand -base64 32
 
 **4. Infrastructure Attacks**
 - ❌ Redis/Postgres compromise → Job hijacking → **Mitigated:** Jobs are immutable after creation
-- ❌ R2 credentials leaked → File exfiltration → **Mitigated:** Separate credentials per service
+- ❌ Supabase Storage credentials leaked → File exfiltration → **Mitigated:** Separate credentials per service
 - ⚠️ Rate limiter bypass (single proxy hop assumed) → **Deferred:** Fingerprint fallback Phase 2
 
 ---
@@ -146,7 +146,7 @@ CRYPTO_SALT="<your-random-base64-salt>"  # Generate: openssl rand -base64 32
 - [ ] Secrets stored in platform (Railway/Render Secrets, not hardcoded)
 - [ ] Database backed up (Neon Branches, Supabase Backups, or pg_dump)
 - [ ] Redis AOF persistence enabled
-- [ ] R2 lifecycle rules configured (auto-delete uploads >1 day, outputs >24hr)
+- [ ] Supabase Storage lifecycle rules configured (auto-delete uploads >1 day, outputs >24hr)
 - [ ] HTTPS/TLS enforced (auto via Vercel/Railway)
 - [ ] CSP headers deployed (`next.config.ts`)
 - [ ] Sentry/PostHog configured for error monitoring
@@ -157,7 +157,7 @@ CRYPTO_SALT="<your-random-base64-salt>"  # Generate: openssl rand -base64 32
 
 ### Data NoBlur Collects (MVP)
 
-- **Uploaded files:** Stored temporarily in R2; deleted after 24 hours
+- **Uploaded files:** Stored temporarily in Supabase Storage; deleted after 24 hours
 - **Device fingerprint (hashed):** Quota enforcement; never sold or shared
 - **IP address (hashed):** Rate limiting fallback; never stored raw
 - **Job metadata:** Job ID, status, timestamps, file size; retained 90 days then auto-deleted
@@ -214,7 +214,7 @@ curl https://api.noblur.app/api/v1/jobs/'; DROP TABLE Job; --
 npm run test:security  # OWASP validation, secrets scanning
 npm run lint           # ESLint security plugin rules
 npm run type-check     # TypeScript strict mode catches type confusions
-npm run test:integration  # End-to-end with real inputs
+npm run test  # unit tests; scripts/test-*.ts are manual smoke tests
 ```
 
 ---
