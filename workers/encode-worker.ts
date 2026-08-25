@@ -157,6 +157,7 @@ export const encodeWorker = new Worker(
 
       let firstPlan: any = null;
       let firstVmaf: number | null = null;
+      let reencodeCount = 0;
 
       if (job.mediaKind === 'VIDEO') {
         if (isSplitRequired) {
@@ -198,6 +199,7 @@ export const encodeWorker = new Worker(
             if (idx === 0) {
               firstPlan = result.plan;
               firstVmaf = finalAttempt?.vmaf?.avgVmaf ?? null;
+              reencodeCount = Math.max(0, result.attempts.length - 1);
             }
           }
         } else {
@@ -228,6 +230,7 @@ export const encodeWorker = new Worker(
 
           firstPlan = result.plan;
           firstVmaf = finalAttempt?.vmaf?.avgVmaf ?? null;
+          reencodeCount = Math.max(0, result.attempts.length - 1);
         }
 
         // Store adaptive analysis metadata on the job
@@ -243,6 +246,7 @@ export const encodeWorker = new Worker(
                 reason: isSplitRequired ? 'Split status segments' : undefined,
               }),
               vmafScore: firstVmaf,
+              reencodeCount,
             },
           });
         }

@@ -5,6 +5,12 @@
  * using the pre-compiled VMAF model. Triggers a single re-encode fallback with
  * CRF reduced by 3 if the score falls below 80 (debate decision).
  *
+ * The re-encode must be able to go BELOW the profile-selection CRF floor (20).
+ * Profile selection starts at CRF 20-40 as a reasonable first guess, but a
+ * corrective re-encode that is floored at the same 20 would re-run an
+ * identical encode and never improve a failing score. The floor here is the
+ * practical visual-lossless limit for x264 (14), not the profile start point.
+ *
  * All FFmpeg args are arrays — never shell-interpolated (AGENTS.md Q3 Rule 20).
  */
 
@@ -25,6 +31,14 @@ export const VMAF_FLOOR = 80;
 
 /** CRF reduction applied on VMAF-triggered re-encode (debate decision). */
 export const VMAF_REDUCE_CRF = 3;
+
+/**
+ * Lowest CRF a corrective re-encode may use. Deliberately BELOW the profile
+ * selection floor (20): a re-encode floored at 20 re-runs an identical encode
+ * when the profile already picked 20, so the corrective step could never
+ * improve a failing score. 14 is the practical visual-lossless floor for x264.
+ */
+export const VMAF_REENCODE_CRF_FLOOR = 14;
 
 /** Minimum VMAF score that indicates catastrophic frame quality. */
 export const VMAF_MIN_WARN = 60;
@@ -245,7 +259,16 @@ export function qualityGate(
     };
   }
 
-  const newCrf = Math.max(20, originalCrf - VMAF_REDUCE_CRF);
+  const newCrf = Math.max(VMAF_REENCODE_CRF_FLOOR, originalCrf - VMAF_REDUCE_CRF);
+  // A corrective re-encode that does not actually change the encode is
+  // pointless: it would re-run the same settings and produce the same score.
+  if (newCrf >= originalCrf) {
+    return {
+      shouldReencode: false,
+      vmafResult,
+      reason: `VMAF ${vmafResult.avgVmaf} < ${VMAF_FLOOR} but CRF cannot go lower than ${newCrf}`,
+    };
+  }
   return {
     shouldReencode: true,
     newCrf,

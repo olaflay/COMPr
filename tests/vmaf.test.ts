@@ -56,12 +56,34 @@ describe('qualityGate', () => {
     assert.equal(result.newCrf, originalCrf - VMAF_REDUCE_CRF);
   });
 
-  it('clamps new CRF to minimum 20', () => {
+  it('re-encodes below the profile CRF floor when the score fails', () => {
+    // Profile selection can start at CRF 20; a corrective re-encode floored
+    // at 20 would re-run an identical encode. It must be allowed to go lower.
     const result = qualityGate(
       makeVmafResult({ avgVmaf: 60, passed: false }),
-      21, // 21 - 3 = 18, should clamp to 20
+      20, // profile floor: 20 - 3 = 17, must NOT clamp back to 20
     );
-    assert.equal(result.newCrf, 20);
+    assert.equal(result.shouldReencode, true);
+    assert.equal(result.newCrf, 17);
+  });
+
+  it('refuses a no-op re-encode when CRF cannot actually drop', () => {
+    // 14 is the re-encode floor; 14 - 3 = 11 clamps to 14, same as original:
+    // re-encoding would change nothing, so the gate must say no.
+    const result = qualityGate(
+      makeVmafResult({ avgVmaf: 50, passed: false }),
+      14,
+    );
+    assert.equal(result.shouldReencode, false);
+    assert.ok(result.reason.includes('cannot go lower'));
+  });
+
+  it('clamps new CRF to minimum 14', () => {
+    const result = qualityGate(
+      makeVmafResult({ avgVmaf: 60, passed: false }),
+      16, // 16 - 3 = 13, clamps up to 14 (below 14 is visual-lossless overkill)
+    );
+    assert.equal(result.newCrf, 14);
   });
 
   it('warns when min VMAF is below VMAF_MIN_WARN even if avg passes', () => {
