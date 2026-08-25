@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { apiUrl } from '../lib/api-client';
 import {
   getHistory,
   removeFromHistory,
@@ -25,7 +26,7 @@ export default function ProcessingHistory() {
 
   const handleReDownload = (entry: HistoryEntry) => {
     trackEvent('download_clicked', { job_id: entry.jobId, preset: entry.preset });
-    window.open(entry.downloadUrl, '_blank');
+    window.open(apiUrl(entry.downloadPath), '_blank');
   };
 
   const handleRemove = (jobId: string) => {

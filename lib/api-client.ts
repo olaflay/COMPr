@@ -20,3 +20,13 @@ const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '')
 export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${API_BASE_URL}${path}`, init);
 }
+
+/**
+ * Absolute URL for an API-relative path (e.g. a downloadPath returned by the
+ * jobs route). Mirrors apiFetch: in production the API lives on its own host
+ * (NEXT_PUBLIC_API_URL), so hrefs and window.open targets must be prefixed
+ * the same way or they would resolve against the frontend origin.
+ */
+export function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}

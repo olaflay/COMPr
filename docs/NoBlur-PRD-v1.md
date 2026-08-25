@@ -312,7 +312,7 @@ Validation: `targetSizeMB` is only accepted, and required, when `preset: "custom
 Response: `{ jobId, status: "queued" }`
 
 **GET `/jobs/:jobId`**
-Response: `{ jobId, status, stage, progressPercent, stepsRemaining, outputs: [{ segmentIndex, downloadUrl, sizeBytes }], resolutionDropped: boolean, prioritizeDetail: boolean, error? }`
+Response: `{ jobId, status, stage, progressPercent, stepsRemaining, outputs: [{ segmentIndex, downloadPath, sizeBytes }], resolutionDropped: boolean, prioritizeDetail: boolean, error? }`
 `progressPercent` and `stepsRemaining` are computed via `lib/progress-stages.ts` for the goal-gradient display, not raw compute-time fractions.
 
 **GET `/jobs/:jobId/stream`** (SSE)

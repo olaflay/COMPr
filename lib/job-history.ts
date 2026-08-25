@@ -17,7 +17,7 @@ export interface HistoryEntry {
   preset: string;
   inputSizeBytes: number;
   outputSizeBytes: number;
-  downloadUrl: string;
+  downloadPath: string;
   thumbnailUrl?: string;
   createdAt: number; // timestamp
   status: 'DONE' | 'FAILED';

@@ -269,7 +269,7 @@ for i in {1..30}; do
 done
 
 # 5. Download result
-curl $(curl https://<YOUR_API_HOST_URL>/api/v1/jobs/$JOB_ID?fingerprint=test_fp_001 | jq -r '.outputs[0].downloadUrl') \
+curl $(curl https://<YOUR_API_HOST_URL>/api/v1/jobs/$JOB_ID?fingerprint=test_fp_001 | jq -r '.outputs[0].downloadPath') \
   -o optimized.mp4
 ```
 

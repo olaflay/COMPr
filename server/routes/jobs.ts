@@ -130,19 +130,16 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
     const progressPercent = isFailed ? 0 : cumulativeDisplayPercent(stageKey);
     const steps = isFailed ? 0 : stepsRemaining(stageKey);
 
-    // Generate presigned download URLs for output files
-    const outputs = await Promise.all(
-      job.outputs.map(async (out) => {
-        const downloadUrl = await getPresignedDownloadUrl(out.storageKey).catch(
-          () => '' // fallback if S3 SDK fails
-        );
-        return {
-          segmentIndex: out.segmentIndex,
-          downloadUrl,
-          sizeBytes: out.sizeBytes,
-        };
-      })
-    );
+    // Return app-relative download paths, NEVER storage URLs. The client must
+    // not see Supabase presigned URLs (they embed the S3 access key id and
+    // grant 24h direct access). Downloads go through the download route below,
+    // which verifies ownership and redirects to a fresh server-side URL.
+    const outputs = job.outputs.map((out) => ({
+      id: out.id,
+      segmentIndex: out.segmentIndex,
+      downloadPath: `/api/v1/jobs/${job.id}/download/${out.id}?fingerprint=${encodeURIComponent(fingerprint)}`,
+      sizeBytes: out.sizeBytes,
+    }));
 
     let resolutionDropped = false;
     if (job.status === 'DONE' && job.mediaKind === 'VIDEO' && job.sourceFile && job.outputs.length > 0 && job.preset !== 'CUSTOM') {
@@ -174,6 +171,46 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
       errorMessage: job.errorMessage,
       queuePosition: queuePosition || undefined,
     });
+  });
+
+  // GET /api/v1/jobs/:jobId/download/:outputId — server-mediated download.
+  //
+  // The client only ever holds an app-relative path. This route verifies the
+  // fingerprint owns the job, looks up the output, and 302-redirects to a
+  // fresh server-side presigned URL. Storage URLs never reach the frontend:
+  // they embed the S3 access key id and would grant 24h direct access to
+  // anyone who sees them (PRD §22, security.md).
+  app.get('/api/v1/jobs/:jobId/download/:outputId', async (request, reply) => {
+    const { jobId, outputId } = request.params as { jobId: string; outputId: string };
+    const { fingerprint } = request.query as { fingerprint?: string };
+
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      include: { outputs: true },
+    });
+
+    if (!job) {
+      return reply.code(404).send({
+        error: { code: 'JOB_NOT_FOUND', message: `Job with ID ${jobId} not found` },
+      });
+    }
+
+    if (!fingerprint || hashString(fingerprint) !== job.fingerprintHash) {
+      return reply.code(403).send({
+        error: { code: 'FORBIDDEN', message: 'You do not have permission to access this job' },
+      });
+    }
+
+    const output = job.outputs.find((o) => o.id === outputId);
+    if (!output) {
+      return reply.code(404).send({
+        error: { code: 'OUTPUT_NOT_FOUND', message: `Output ${outputId} not found on this job` },
+      });
+    }
+
+    const downloadUrl = await getPresignedDownloadUrl(output.storageKey);
+    // 302 (not 307): the presigned GET is a plain GET, no method/body to keep.
+    return reply.code(302).redirect(downloadUrl);
   });
 };
 

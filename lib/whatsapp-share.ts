@@ -2,6 +2,17 @@ const SHARE_MESSAGE = 'Make your media look sharp on WhatsApp';
 const SHARE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://noblur.app';
 
 /**
+ * Absolute, shareable URL for a download. The API returns app-relative
+ * download paths (storage URLs must never reach the frontend), but a
+ * WhatsApp message needs a fully-qualified link the recipient can open.
+ */
+function absoluteShareUrl(downloadPath?: string): string {
+  if (!downloadPath) return SHARE_URL;
+  if (downloadPath.startsWith('http://') || downloadPath.startsWith('https://')) return downloadPath;
+  return `${SHARE_URL.replace(/\/$/, '')}${downloadPath.startsWith('/') ? downloadPath : `/${downloadPath}`}`;
+}
+
+/**
  * Build a WhatsApp share URL that opens WhatsApp directly on mobile
  * and falls back to wa.me on desktop.
  * On mobile: whatsapp://send?text=... opens the WhatsApp app directly.
@@ -9,7 +20,7 @@ const SHARE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://noblur.app';
  */
 export function buildWhatsAppShareUrl(downloadUrl?: string): string {
   const message = downloadUrl
-    ? `${SHARE_MESSAGE} ${downloadUrl}`
+    ? `${SHARE_MESSAGE} ${absoluteShareUrl(downloadUrl)}`
     : `${SHARE_MESSAGE} ${SHARE_URL}`;
   const encoded = encodeURIComponent(message);
 
@@ -25,7 +36,7 @@ export function buildWhatsAppShareUrl(downloadUrl?: string): string {
  */
 export function buildWhatsAppStatusShareUrl(downloadUrl?: string): string {
   const message = downloadUrl
-    ? `Check out this sharp video I optimized with NoBlur ${downloadUrl}`
+    ? `Check out this sharp video I optimized with NoBlur ${absoluteShareUrl(downloadUrl)}`
     : `${SHARE_MESSAGE} ${SHARE_URL}`;
   const encoded = encodeURIComponent(message);
 

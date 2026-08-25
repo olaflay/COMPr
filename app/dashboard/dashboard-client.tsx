@@ -14,7 +14,7 @@ import { buildUpsellCopy } from '../../lib/growth-ux';
 import { predictOutputSize, type SizePrediction } from '../../lib/size-predictor';
 import { addToHistory } from '../../lib/job-history';
 import { buildWhatsAppShareUrl, buildWhatsAppStatusShareUrl } from '../../lib/whatsapp-share';
-import { apiFetch } from '../../lib/api-client';
+import { apiFetch, apiUrl } from '../../lib/api-client';
 import { trackEvent } from '../providers';
 
 // Upload progress ring geometry (r=18 circle inside the button's viewBox).
@@ -35,7 +35,7 @@ interface JobState {
   stage: string;
   progressPercent: number;
   stepsRemaining: number;
-  outputs: Array<{ segmentIndex: number | null; downloadUrl: string; sizeBytes: number }>;
+  outputs: Array<{ id: string; segmentIndex: number | null; downloadPath: string; sizeBytes: number }>;
   errorMessage?: string;
   resolutionDropped?: boolean;
   prioritizeDetail?: boolean;
@@ -458,7 +458,7 @@ export default function DashboardPageClient() {
               preset,
               inputSizeBytes: selectedFile.size,
               outputSizeBytes: data.outputs[0].sizeBytes,
-              downloadUrl: data.outputs[0].downloadUrl,
+              downloadPath: data.outputs[0].downloadPath,
               createdAt: Date.now(),
               status: 'DONE',
             });
@@ -951,7 +951,7 @@ export default function DashboardPageClient() {
             {selectedFile && activeJob.outputs.length > 0 && (
               <BeforeAfterSlider
                 sourceFrameUrl={sourceFileUrl}
-                outputFrameUrl={activeJob.outputs[0].downloadUrl}
+                outputFrameUrl={apiUrl(activeJob.outputs[0].downloadPath)}
                 sizeBefore={selectedFile.size}
                 sizeAfter={activeJob.outputs[0].sizeBytes}
               />
@@ -974,7 +974,7 @@ export default function DashboardPageClient() {
             <div className="flex flex-col gap-m3-small">
               {/* Primary CTA: Send to WhatsApp (deep link) */}
               <a
-                href={buildWhatsAppShareUrl(activeJob.outputs[0]?.downloadUrl)}
+                href={buildWhatsAppShareUrl(apiUrl(activeJob.outputs[0]?.downloadPath))}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => trackEvent('share_to_whatsapp_clicked', { job_id: activeJob.jobId, destination: 'chat' })}
@@ -985,7 +985,7 @@ export default function DashboardPageClient() {
 
               {/* Secondary: Send to Status (deep link) */}
               <a
-                href={buildWhatsAppStatusShareUrl(activeJob.outputs[0]?.downloadUrl)}
+                href={buildWhatsAppStatusShareUrl(apiUrl(activeJob.outputs[0]?.downloadPath))}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => trackEvent('share_to_whatsapp_clicked', { job_id: activeJob.jobId, destination: 'status' })}
@@ -998,7 +998,7 @@ export default function DashboardPageClient() {
               {activeJob.outputs.map((out, idx) => (
                 <a
                   key={idx}
-                  href={out.downloadUrl}
+                  href={apiUrl(out.downloadPath)}
                   download={`noblur_output_${activeJob.jobId}${idx > 0 ? `_part${idx}` : ''}.mp4`}
                   onClick={() => trackEvent('download_clicked', { job_id: activeJob.jobId, output_index: idx, size_bytes: out.sizeBytes })}
                   className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] py-m3-small rounded-m3-full text-label-large text-center block border border-outline transition-all duration-m3-short-2"

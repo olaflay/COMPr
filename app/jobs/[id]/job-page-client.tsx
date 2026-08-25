@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Toast from '../../../components/ui/Toast';
 import { buildWhatsAppShareUrl, buildWhatsAppStatusShareUrl } from '../../../lib/whatsapp-share';
-import { apiFetch } from '../../../lib/api-client';
+import { apiFetch, apiUrl } from '../../../lib/api-client';
 
 interface JobState {
   jobId: string;
@@ -13,7 +13,7 @@ interface JobState {
   stage: string;
   progressPercent: number;
   stepsRemaining: number;
-  outputs: Array<{ segmentIndex: number | null; downloadUrl: string; sizeBytes: number }>;
+  outputs: Array<{ id: string; segmentIndex: number | null; downloadPath: string; sizeBytes: number }>;
   errorMessage?: string;
   resolutionDropped?: boolean;
   prioritizeDetail?: boolean;
@@ -218,7 +218,7 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
             <div className="flex flex-col gap-m3-small">
               {/* Download / Share buttons */}
               <a
-                href={buildWhatsAppShareUrl(activeJob.outputs[0]?.downloadUrl)}
+                href={buildWhatsAppShareUrl(apiUrl(activeJob.outputs[0]?.downloadPath))}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container py-m3-small rounded-m3-full text-title-small text-center block shadow-m3-1 hover:shadow-m3-2 transition-all duration-m3-short-2"
@@ -227,7 +227,7 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
               </a>
 
               <a
-                href={buildWhatsAppStatusShareUrl(activeJob.outputs[0]?.downloadUrl)}
+                href={buildWhatsAppStatusShareUrl(apiUrl(activeJob.outputs[0]?.downloadPath))}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface py-m3-small rounded-m3-full text-label-large text-center block border border-outline transition-all duration-m3-short-2"
@@ -238,7 +238,7 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
               {activeJob.outputs.map((out, idx) => (
                 <a
                   key={idx}
-                  href={out.downloadUrl}
+                  href={apiUrl(out.downloadPath)}
                   download={`noblur_output_${activeJob.jobId}${idx > 0 ? `_part${idx}` : ''}.mp4`}
                   className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface py-m3-small rounded-m3-full text-label-large text-center block border border-outline transition-all duration-m3-short-2"
                 >
