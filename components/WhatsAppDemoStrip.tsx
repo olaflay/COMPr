@@ -1,9 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
+import { memo } from 'react';
+
 const SAMPLE_IMAGE = '/water.jpg';
 
-export default function WhatsAppDemoStrip() {
+const WhatsAppDemoStrip = memo(function WhatsAppDemoStrip() {
   return (
     <section aria-label="What WhatsApp does versus NoBlur" className="flex flex-col gap-m3-x-small">
       <h3 className="text-label-medium text-on-surface-variant">What WhatsApp does vs NoBlur</h3>
@@ -35,4 +37,6 @@ export default function WhatsAppDemoStrip() {
       <p className="text-body-small text-on-surface-variant text-center">Same file. Different result.</p>
     </section>
   );
-}
+});
+
+export default WhatsAppDemoStrip;
