@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useState, useRef, MouseEvent, TouchEvent, KeyboardEvent, useCallback } from 'react';
+import { useState, useRef, MouseEvent, TouchEvent, KeyboardEvent, useCallback, memo } from 'react';
 
 interface BeforeAfterSliderProps {
   sourceFrameUrl: string;  // Image URL or video file path (worker extracts frames to /frames/)
@@ -11,7 +11,7 @@ interface BeforeAfterSliderProps {
   isVideo?: boolean;       // If true, frameUrl is a still-frame from ffmpeg, not the video itself
 }
 
-export default function BeforeAfterSlider({
+const BeforeAfterSlider = memo(function BeforeAfterSlider({
   sourceFrameUrl,
   outputFrameUrl,
   sizeBefore,
@@ -193,4 +193,6 @@ export default function BeforeAfterSlider({
       </div>
     </div>
   );
-}
+});
+
+export default BeforeAfterSlider;
