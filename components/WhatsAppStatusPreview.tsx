@@ -13,7 +13,8 @@ export default function WhatsAppStatusPreview({ videoFile, durationSec }: WhatsA
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const timeTextRef = useRef<HTMLSpanElement>(null);
   const [trimmedDuration] = useState(() =>
     Math.min(durationSec, STATUS_MAX_DURATION_SEC)
   );
@@ -31,11 +32,21 @@ export default function WhatsAppStatusPreview({ videoFile, durationSec }: WhatsA
 
     const handleTimeUpdate = () => {
       const t = video.currentTime;
-      setCurrentTime(t);
+
       if (isTrimmed && t >= STATUS_MAX_DURATION_SEC) {
         video.pause();
         video.currentTime = 0;
         setIsPlaying(false);
+        if (progressRef.current) progressRef.current.style.width = '0%';
+        if (timeTextRef.current) timeTextRef.current.textContent = formatTime(0);
+      } else {
+        if (progressRef.current) {
+          const progressPercent = (t / trimmedDuration) * 100;
+          progressRef.current.style.width = `${progressPercent}%`;
+        }
+        if (timeTextRef.current) {
+          timeTextRef.current.textContent = formatTime(t);
+        }
       }
     };
 
@@ -46,7 +57,7 @@ export default function WhatsAppStatusPreview({ videoFile, durationSec }: WhatsA
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('ended', handleEnded);
     };
-  }, [isTrimmed]);
+  }, [isTrimmed, trimmedDuration]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -67,8 +78,6 @@ export default function WhatsAppStatusPreview({ videoFile, durationSec }: WhatsA
     const s = Math.floor(sec % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
-
-  const progressPercent = (currentTime / trimmedDuration) * 100;
 
   return (
     <div className="flex flex-col items-center gap-m3-small">
@@ -119,14 +128,15 @@ export default function WhatsAppStatusPreview({ videoFile, durationSec }: WhatsA
           {/* Progress dots (WhatsApp-style segments) */}
           <div className="w-full h-0.5 bg-white/30 rounded-m3-full mb-m3-x-small overflow-hidden">
             <div
+              ref={progressRef}
               className="h-full bg-white rounded-m3-full transition-all duration-m3-short-1"
-              style={{ width: `${progressPercent}%` }}
+              style={{ width: `0%` }}
             />
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-label-small text-white/90 font-medium tabular-nums">
-              {formatTime(currentTime)}
+            <span ref={timeTextRef} className="text-label-small text-white/90 font-medium tabular-nums">
+              {formatTime(0)}
             </span>
             <span className="text-label-small text-white/60">
               / {formatTime(trimmedDuration)}
