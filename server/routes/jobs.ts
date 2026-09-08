@@ -7,7 +7,8 @@ import { chooseInitialResolution } from '../../lib/resolution.ts';
 import { createJobForFingerprint, IntakeError } from '../../lib/job-intake.ts';
 import { createBatchJobForFingerprint, BatchNotImplementedError } from '../../lib/batch-intake.ts';
 import { getPresignedDownloadUrl } from '../services/storage.ts';
-import { hashString } from '../../lib/crypto.ts';
+import { hashString, createSignedDownloadToken, verifySignedDownloadToken } from '../../lib/crypto.ts';
+import { redisConnection } from '../../lib/queue.ts';
 
 const PRESET_VALUES = ['STATUS', 'CHAT', 'CUSTOM'] as const;
 const DESTINATION_VALUES = ['WHATSAPP_NORMAL', 'WHATSAPP_HD', 'WHATSAPP_DOCUMENT', 'PREVIEW_WEB'] as const;
@@ -51,6 +52,11 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
         fingerprint,
         ip: request.ip,
       });
+
+      // Invalidate usage cache in Redis
+      const fpHash = hashString(fingerprint);
+      await redisConnection.del(`usage_cache:${fpHash}`).catch(() => {});
+
       return reply.code(202).send(result);
     } catch (err) {
       if (err instanceof IntakeError) {
@@ -114,7 +120,8 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     }
 
-    const { fingerprint } = request.query as { fingerprint?: string };
+    const fingerprint = (request.headers['x-noblur-fingerprint'] ??
+      (request.query as { fingerprint?: string }).fingerprint) as string | undefined;
     if (!fingerprint || hashString(fingerprint) !== job.fingerprintHash) {
       return reply.code(403).send({
         error: { code: 'FORBIDDEN', message: 'You do not have permission to access this job' },
@@ -131,13 +138,14 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
     const steps = isFailed ? 0 : stepsRemaining(stageKey);
 
     // Return app-relative download paths, NEVER storage URLs. The client must
-    // not see Supabase presigned URLs (they embed the S3 access key id and
-    // grant 24h direct access). Downloads go through the download route below,
-    // which verifies ownership and redirects to a fresh server-side URL.
+    // not see presigned URLs (they embed the S3 access key id and grant 24h
+    // direct access). Downloads go through the download route below, which
+    // verifies ownership via a short-lived signed token (D-4) and redirects
+    // to a fresh server-side URL. The raw fingerprint is never put in a URL.
     const outputs = job.outputs.map((out) => ({
       id: out.id,
       segmentIndex: out.segmentIndex,
-      downloadPath: `/api/v1/jobs/${job.id}/download/${out.id}?fingerprint=${encodeURIComponent(fingerprint)}`,
+      downloadPath: `/api/v1/jobs/${job.id}/download/${out.id}?dl=${encodeURIComponent(createSignedDownloadToken(job.id, out.id))}`,
       sizeBytes: out.sizeBytes,
     }));
 
@@ -175,14 +183,18 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
 
   // GET /api/v1/jobs/:jobId/download/:outputId — server-mediated download.
   //
-  // The client only ever holds an app-relative path. This route verifies the
-  // fingerprint owns the job, looks up the output, and 302-redirects to a
-  // fresh server-side presigned URL. Storage URLs never reach the frontend:
-  // they embed the S3 access key id and would grant 24h direct access to
-  // anyone who sees them (PRD §22, security.md).
+  // The client only ever holds an app-relative path. This route verifies a
+  // short-lived signed token owns the output, looks it up, and 302-redirects
+  // to a fresh server-side presigned URL. Storage URLs never reach the
+  // frontend: they embed the S3 access key id and would grant 24h direct
+  // access to anyone who sees them (PRD §22, security.md).
   app.get('/api/v1/jobs/:jobId/download/:outputId', async (request, reply) => {
     const { jobId, outputId } = request.params as { jobId: string; outputId: string };
-    const { fingerprint } = request.query as { fingerprint?: string };
+    // D-4: ownership proof is a short-lived signed token (dl), never the raw
+    // fingerprint. This lets the client open the URL as a top-level navigation
+    // (necessary for the WhatsApp share flow) without putting the fingerprint
+    // in a URL where logs / history / Referer could see it.
+    const { dl } = request.query as { dl?: string };
 
     const job = await prisma.job.findUnique({
       where: { id: jobId },
@@ -195,7 +207,7 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     }
 
-    if (!fingerprint || hashString(fingerprint) !== job.fingerprintHash) {
+    if (!verifySignedDownloadToken(dl || '', jobId, outputId)) {
       return reply.code(403).send({
         error: { code: 'FORBIDDEN', message: 'You do not have permission to access this job' },
       });

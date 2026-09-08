@@ -67,11 +67,6 @@ export default function MediaMessageDemo({ mode }: MediaMessageDemoProps) {
           <span className="text-label-medium text-primary font-semibold uppercase tracking-wide">
             NoBlur send
           </span>
-          <span className="text-label-small text-on-surface-variant">
-            <span className="font-mono">8.2 MB</span>
-            <span aria-hidden="true"> &rarr; </span>
-            <span className="font-mono text-primary font-semibold">380 KB</span>
-          </span>
         </div>
 
         <div

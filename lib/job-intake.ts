@@ -116,11 +116,43 @@ async function createJobForFingerprintValidated(input: {
       throw new IntakeError('QUOTA_EXCEEDED', 'Daily limit reached for this IP address. Please try again tomorrow.', 429);
     }
 
-    // 2. Fetch current fingerprint jobs to determine first job status
+    // 2. Resolve the uploaded source file and handle idempotency up-front.
+    // A source file is single-use. If a job already exists for it, we short
+    // circuit BEFORE the daily-quota gate so a retry never consumes a quota
+    // slot:
+    //   - the SAME fingerprint that created it is retrying (e.g. the first
+    //     response was lost on a flaky network) -> return the existing job;
+    //   - a DIFFERENT fingerprint is probing a file it doesn't own -> reject.
+    // Ownership is decided by who created the prior job (fingerprintHash),
+    // never by trusting a client. This is retry-safe without leaking to third
+    // parties that a file was processed (PRD §22).
+    const sourceFile = await tx.mediaFile.findUnique({
+      where: { storageKey: fileKey },
+      include: { jobAsSource: true },
+    });
+
+    if (!sourceFile) {
+      throw new IntakeError('SOURCE_FILE_NOT_FOUND', 'Uploaded source file not found', 404);
+    }
+
+    if (sourceFile.jobAsSource) {
+      if (sourceFile.jobAsSource.fingerprintHash === fingerprintHash) {
+        return { jobId: sourceFile.jobAsSource.id, status: 'queued' };
+      }
+      throw new IntakeError(
+        'FORBIDDEN',
+        'You do not have permission to process this file.',
+        403
+      );
+    }
+
+    const mediaKind = inferMediaKindFromFileKey(fileKey);
+
+    // 3. Fetch current fingerprint jobs to determine first job status
     const jobCount = await tx.job.count({ where: { fingerprintHash } });
     const isFirstJob = jobCount === 0;
 
-    // 3. Quota gate check (FR-11): first job is always exempt
+    // 4. Quota gate check (FR-11): first job is always exempt
     if (!isFirstJob) {
       // Atomic increment-first to avoid TOCTOU double-spend race
       const usage = await tx.usageRecord.upsert({
@@ -147,31 +179,7 @@ async function createJobForFingerprintValidated(input: {
       }
     }
 
-    const mediaKind = inferMediaKindFromFileKey(fileKey);
-
-    const sourceFile = await tx.mediaFile.findUnique({
-      where: { storageKey: fileKey },
-      include: { jobAsSource: true },
-    });
-
-    if (!sourceFile) {
-      throw new IntakeError('SOURCE_FILE_NOT_FOUND', 'Uploaded source file not found', 404);
-    }
-
-    // Ownership check: fileKey can only be used by the fingerprint that uploaded it.
-    // This prevents users from enqueuing jobs against other users' files.
-    // For now, we rely on the presigned URL being single-use. In a future phase,
-    // add a jobCreators table or store fingerprintHash on MediaFile itself.
-    if (sourceFile.jobAsSource) {
-      // Already used by a prior job; prevent re-use
-      throw new IntakeError(
-        'FILE_ALREADY_PROCESSED',
-        'This file has already been processed. Please upload again.',
-        400
-      );
-    }
-
-    // 4. Create job record
+    // 5. Create job record
     const job = await tx.job.create({
       data: {
         preset,
@@ -187,7 +195,7 @@ async function createJobForFingerprintValidated(input: {
       },
     });
 
-    // 5. If first job, register and increment usage count now
+    // 6. If first job, register and increment usage count now
     if (isFirstJob) {
       await tx.usageRecord.upsert({
         where: { fingerprintHash_date: { fingerprintHash, date: todayStart() } },
@@ -196,7 +204,7 @@ async function createJobForFingerprintValidated(input: {
       });
     }
 
-    // 6. Push to analysis queue
+    // 7. Push to analysis queue
     await mediaAnalysisQueue.add(job.id, { jobId: job.id });
 
     return { jobId: job.id, status: 'queued' };

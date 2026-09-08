@@ -5,7 +5,7 @@ import {
   validatorCompiler,
   serializerCompiler,
 } from '@fastify/type-provider-zod';
-import { r2Client } from '../server/services/storage.ts';
+import { storageClient } from '../server/services/storage.ts';
 import uploadsRoutes from '../server/routes/uploads.ts';
 import { prisma } from '../lib/prisma.ts';
 
@@ -63,8 +63,10 @@ describe('resumable-upload flow routes', () => {
       return { id };
     }) as any;
 
-    // Mock the S3 SDK r2Client.send call to avoid real network requests
-    sendMock = mock.method(r2Client, 'send', async (command: any) => {
+    prisma.mediaFile.findMany = (async () => Array.from(mockDb.values())) as any;
+
+    // Mock the S3 SDK storageClient.send call to avoid real network requests
+    sendMock = mock.method(storageClient, 'send', async (command: any) => {
       const name = command.constructor.name;
       if (name === 'CreateMultipartUploadCommand') {
         return { UploadId: 'test-upload-id-123' };
@@ -93,14 +95,14 @@ describe('resumable-upload flow routes', () => {
     prisma.mediaFile.delete = origDelete;
   });
 
-  it('initiates multipart upload, registers in DB, and returns uploadId', async () => {
+  it('initiates multipart upload, registers in DB, and returns uploadId and pre-signed parts', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/uploads/multipart/start',
       payload: {
         filename: 'video_slow_network.mp4',
         mimeType: 'video/mp4',
-        sizeBytes: 52428800 // 50MB
+        sizeBytes: 52428800 // 50MB (10 parts)
       }
     });
 
@@ -108,6 +110,10 @@ describe('resumable-upload flow routes', () => {
     const body = JSON.parse(response.body);
     assert.equal(body.uploadId, 'test-upload-id-123');
     assert.ok(body.fileKey.startsWith('uploads/'));
+    assert.ok(Array.isArray(body.parts));
+    assert.equal(body.parts.length, 10);
+    assert.equal(body.parts[0].partNumber, 1);
+    assert.ok(body.parts[0].uploadPartUrl);
 
     // Check DB record
     const mediaFile = await prisma.mediaFile.findUnique({
@@ -140,6 +146,27 @@ describe('resumable-upload flow routes', () => {
     assert.ok(body.uploadPartUrl.includes('uploadId=test-upload-id-123'));
   });
 
+  it('generates multiple presigned part URLs via presign-parts', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/uploads/multipart/presign-parts',
+      payload: {
+        fileKey: 'uploads/dummy-file.mp4',
+        uploadId: 'test-upload-id-123',
+        partNumbers: [2, 5, 8]
+      }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = JSON.parse(response.body);
+    assert.ok(Array.isArray(body.parts));
+    assert.equal(body.parts.length, 3);
+    assert.equal(body.parts[0].partNumber, 2);
+    assert.equal(body.parts[1].partNumber, 5);
+    assert.equal(body.parts[2].partNumber, 8);
+    assert.ok(body.parts[0].uploadPartUrl.includes('partNumber=2'));
+  });
+
   it('completes multipart upload and returns success', async () => {
     const response = await app.inject({
       method: 'POST',
@@ -157,5 +184,46 @@ describe('resumable-upload flow routes', () => {
     assert.equal(response.statusCode, 200);
     const body = JSON.parse(response.body);
     assert.deepEqual(body, { success: true });
+  });
+
+  it('rejects an unsupported MIME type before creating any DB row (D-3 whitelist)', async () => {
+    const before = await prisma.mediaFile.findMany();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/uploads/multipart/start',
+      payload: {
+        filename: 'malware.exe',
+        mimeType: 'application/x-msdownload',
+        sizeBytes: 1024
+      }
+    });
+
+    assert.equal(response.statusCode, 400);
+    const after = await prisma.mediaFile.findMany();
+    assert.equal(after.length, before.length, 'no MediaFile row should be created for a rejected type');
+  });
+
+  it('accepts a 3gpp/octet-stream source that the client allowlist permits', async () => {
+    // lib/file-validation.ts allows video/3gpp; the server whitelist must
+    // stay in sync so a client-validated file is never rejected server-side.
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/uploads/multipart/start',
+      payload: {
+        filename: 'clip.3gp',
+        mimeType: 'video/3gpp',
+        sizeBytes: 1024
+      }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = JSON.parse(response.body);
+    assert.ok(body.uploadId);
+    const mediaFile = await prisma.mediaFile.findUnique({
+      where: { storageKey: body.fileKey }
+    });
+    assert.ok(mediaFile);
+    assert.equal(mediaFile.mimeType, 'video/3gpp');
+    await prisma.mediaFile.delete({ where: { id: mediaFile.id } });
   });
 });

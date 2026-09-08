@@ -24,8 +24,8 @@ These choices are already made. Do not change, swap, "improve," or replace any o
 - Media processing: FFmpeg / ffprobe, invoked only via an argument array (`execFile`), never via a shell string.
 - Queue: BullMQ on Redis, with AOF persistence and a managed/backed-up Redis instance. Never run Redis with ephemeral/default persistence config.
 - Database: PostgreSQL via Prisma ORM. Do not introduce a second ORM or raw-SQL layer alongside Prisma.
-- Object storage: Cloudflare R2, accessed only via presigned URLs. The API server must never proxy raw file bytes.
-- Hosting: Vercel for the frontend/API; Railway or Render for the worker pool. Worker region must be chosen for latency to the launch market, not defaulted to US/EU.
+- Object storage: Supabase Storage (S3-compatible), accessed only via presigned URLs. The API server must never proxy raw file bytes. (2026-08-27 human decision: no Cloudflare. Redis/Upstash is queue + cache only, never media storage.)
+- Hosting: Vercel for the frontend; Railway/Render/Fly in eu-west (London - best verified Lagos latency route) for the Fastify API + worker pool. Upstash Redis (eu-west) for queue AND cache. Worker region is chosen for latency to the launch market, never defaulted to US/EU.
 - Monitoring: Sentry for errors, PostHog for product analytics. Do not add a third analytics or error-tracking vendor.
 - Analytics: PostHog is wired into the frontend via `app/providers.tsx`. Track all key user events. The `trackEvent` function is exported from `app/providers.tsx` and must be called at each touchpoint. Canonical event names (PRD §28):
   - **MVP (Phase 1):** `upload_started`, `upload_completed`, `upload_failed`, `onboarding_answered`, `onboarding_skipped`, `smart_default_preset_shown`, `smart_default_preset_overridden`, `job_submitted`, `job_stage_changed`, `job_completed`, `job_failed`, `download_clicked`, `share_to_whatsapp_clicked`, `before_after_comparison_viewed`, `post_send_feedback_submitted`, `quota_exhausted_shown`, `upgrade_clicked`, `checkout_started`, `checkout_completed`, `pwa_installed`
@@ -35,8 +35,8 @@ These choices are already made. Do not change, swap, "improve," or replace any o
 
 ### Media pipeline choices
 
-- Video codecs: AV1 (`libsvtav1`) is the primary codec on the document/preview path; H.264 (`libx264`) remains the fallback for the standard WhatsApp chat path and the legacy `runPipeline`. Both output MP4 with AAC audio. H.265 is explicitly rejected. Do not remove AV1 support or expand to other codecs without explicit instruction.
-- Quality metric: VMAF is the primary gate, scored against the bundled model on a middle 5-second segment (`lib/vmaf.ts`, `VMAF_FLOOR` 80). A score below the floor triggers a single re-encode at CRF reduced by 3. SSIM remains the secondary metric. Do not change the floor or the segment-based sampling without explicit instruction.
+- Video codecs: H.264 (`libx264`) is the MVP codec on every path. AV1 (`libsvtav1`) profiles remain in `config/encoding-profiles.json` for future GPU/idle-capacity use but the policy engine does NOT select them in MVP (2026-08-27 human decision: SVT-AV1 is 4-8x slower than x264 on small CPU workers). Both output MP4 with AAC audio. H.265 is explicitly rejected.
+- Quality metric: VMAF is the primary gate, scored against the bundled model on sampled keyframes every 4 seconds (`lib/vmaf.ts`, `VMAF_FLOOR` 80; 2026-08-27 human decision, previously 2s). A score below the floor triggers a single re-encode at CRF reduced by 3. SSIM remains the secondary metric, run only when VMAF fails or is unverified. Do not change the floor.
 - Encoding profiles: The policy engine (`lib/policy-engine.ts`) selects a profile from `config/encoding-profiles.json` by job destination + scene-analysis scores. There are 9 profiles across 3 families (`whatsapp_normal_*`, `whatsapp_hd_*` H.264, `av1_document_*` AV1), each with face / text / balanced variants. Profile selection and CRF modifiers are locked; add a profile only by editing the JSON config, never by hardcoding in pipeline code.
 - Scene analysis: `workers/analysis-worker.ts` runs an OpenCV scene analyzer (face/text/brightness/contrast at a 1 fps sample) and magic-byte validation before encoding. Scene scores feed profile selection only — they do not drive status-splitting cuts.
 - WhatsApp platform constants (duration/resolution/size ceilings) live only in the `PlatformLimit` config table (`config/platform-limits.json` in dev, DB-backed in prod). Never hardcode a WhatsApp duration, resolution, or size value anywhere else in the codebase.
@@ -167,7 +167,7 @@ Breaking any rule in this section means the task has failed, even if the code co
   plugins/
     rate-limit.ts            #   auth-free rate limiting
   services/
-    storage.ts               #   R2 presigned URL generation
+    storage.ts               #   object-storage (Tigris S3) presigned URL generation
 
 /workers                     # BullMQ worker processes — no HTTP surface.
   encode-worker.ts           #   video/image encode pipeline

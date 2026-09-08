@@ -5,7 +5,7 @@ import { mkdirSync, unlinkSync, existsSync } from 'node:fs';
 import { prisma } from '../lib/prisma.ts';
 import { redisConnection, mediaEncodeQueue } from '../lib/queue.ts';
 import { probe } from '../lib/pipeline.ts';
-import { downloadFromR2 } from '../server/services/storage.ts';
+import { downloadObject } from '../server/services/storage.ts';
 import { sniffFileType } from '../lib/sniff-file-type.ts';
 
 import { cleanupStaleTempFiles } from '../lib/sre-cleanup.ts';
@@ -39,10 +39,11 @@ export const analysisWorker = new Worker(
     });
 
     const localInputPath = join(TEMP_DIR, `source_${job.sourceFile.id}_${job.sourceFile.storageKey.split('/').pop()}`);
+    let success = false;
 
     try {
-      // 1. Download file from R2 uploads bucket
-      await downloadFromR2(job.sourceFile.storageKey, localInputPath);
+      // 1. Download file from uploads bucket
+      await downloadObject(job.sourceFile.storageKey, localInputPath);
 
       // 2. Perform magic-byte sniffing (authoritative server-side check)
       const detectedKind = sniffFileType(localInputPath);
@@ -69,7 +70,27 @@ export const analysisWorker = new Worker(
         data: { status: 'ENCODING' },
       });
 
-      await mediaEncodeQueue.add(jobId, { jobId });
+      // Calculate priority: STATUS = 1, CHAT = 2, CUSTOM = 3.
+      // BullMQ priority: 1 is highest priority.
+      let priority = 3;
+      if (job.preset === 'STATUS') {
+        priority = 1;
+      } else if (job.preset === 'CHAT') {
+        priority = 2;
+      }
+
+      // Premium jobs shift one level up (higher priority value -> smaller number)
+      if (job.isPremium) {
+        priority = Math.max(1, priority - 1);
+      }
+
+      // Pass localPath and priority option to prevent double download and prioritize jobs
+      await mediaEncodeQueue.add(
+        jobId,
+        { jobId, localPath: localInputPath },
+        { priority }
+      );
+      success = true;
     } catch (error: any) {
       console.error(`[Analysis Worker] Error processing job ${jobId}:`, error);
       Sentry.captureException(error);
@@ -98,10 +119,10 @@ export const analysisWorker = new Worker(
         return { success: false, error: error.message }; // Complete cleanly without BullMQ retries
       }
 
-      throw error; // Let BullMQ handle retry if transient (R2 connection, Postgres down)
+      throw error; // Let BullMQ handle retry if transient (storage connection, Postgres down)
     } finally {
-      // Clean up temp file
-      if (existsSync(localInputPath)) {
+      // Clean up temp file ONLY if analysis failed. On success, the encode worker cleans it up.
+      if (!success && existsSync(localInputPath)) {
         try {
           unlinkSync(localInputPath);
         } catch (e) {

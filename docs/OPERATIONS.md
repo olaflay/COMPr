@@ -33,10 +33,10 @@ psql $DATABASE_URL -c "SELECT now();" || echo "FAILED"
 echo "=== REDIS (Upstash) ==="
 redis-cli -u $REDIS_URL PING || echo "FAILED"
 
-echo "=== SUPABASE STORAGE BUCKETS ==="
-# Supabase Storage's S3-compatible endpoint; requires --endpoint-url and forcePathStyle equivalent (--endpoint-url handles this for the CLI)
-aws s3 ls "s3://$SUPABASE_UPLOADS_BUCKET" --endpoint-url "$SUPABASE_S3_ENDPOINT" --region "$SUPABASE_S3_REGION" || echo "FAILED"
-aws s3 ls "s3://$SUPABASE_OUTPUTS_BUCKET" --endpoint-url "$SUPABASE_S3_ENDPOINT" --region "$SUPABASE_S3_REGION" || echo "FAILED"
+echo "=== TIGRIS STORAGE BUCKETS ==="
+# Tigris is S3-compatible; use --endpoint-url and region auto
+aws s3 ls "s3://$TIGRIS_UPLOADS_BUCKET" --endpoint-url "$TIGRIS_ENDPOINT" --region "$TIGRIS_REGION" || echo "FAILED"
+aws s3 ls "s3://$TIGRIS_OUTPUTS_BUCKET" --endpoint-url "$TIGRIS_ENDPOINT" --region "$TIGRIS_REGION" || echo "FAILED"
 
 echo "=== QUEUE DEPTH ==="
 redis-cli LLEN bull:media-analysis:waiting
@@ -361,7 +361,7 @@ docker logs noblur-analysis-worker-1 | tail -20
 |-------|-----|
 | **Analysis worker crashed** | Restart worker: `docker restart noblur-analysis-worker-1` |
 | **FFprobe missing** | Verify FFmpeg installed: `ffprobe -version` |
-| **Supabase Storage credentials invalid** | Check `SUPABASE_S3_ACCESS_KEY_ID`, `SUPABASE_S3_SECRET_ACCESS_KEY` in .env |
+| **Tigris credentials invalid** | Check `TIGRIS_ACCESS_KEY_ID`, `TIGRIS_SECRET_ACCESS_KEY` in .env |
 | **Disk full** | Check worker `/tmp`: `df -h` and clean up temp files |
 | **Worker OOM** | Reduce concurrency, increase memory allocation |
 

@@ -2,11 +2,13 @@ import type { Metadata } from 'next';
 import SiteHeader from '../../../components/marketing/SiteHeader';
 import SiteFooter from '../../../components/marketing/SiteFooter';
 import ContactForm from '../../../components/marketing/ContactForm';
+import { buildMetadata } from '../../../lib/seo';
 
-export const metadata: Metadata = {
-  title: 'About | NoBlur',
+export const metadata: Metadata = buildMetadata({
+  title: 'About',
   description: 'Learn how NoBlur dey help you send sharper photos and videos for WhatsApp.',
-};
+  path: '/about',
+});
 
 export default function AboutPage() {
   return (

@@ -28,7 +28,7 @@ npm install
 cp .env.example .env
 
 # Fill in secrets (see DEPLOYMENT.md §1)
-# DATABASE_URL, REDIS_URL, SUPABASE_S3_* keys, CRYPTO_SALT, CORS_ORIGINS, etc.
+# DATABASE_URL, REDIS_URL, TIGRIS_* keys, CRYPTO_SALT, CORS_ORIGINS, etc.
 ```
 
 ### Run Locally
@@ -97,7 +97,7 @@ Access: `http://localhost:3000` (frontend) | `http://localhost:5000` (API)
 **Quick summary:**
 ```bash
 # 1. Provision infrastructure (Railway/Render for API+workers, Vercel for frontend)
-# 2. Set secrets in .env (CRYPTO_SALT, SUPABASE_S3 keys, DATABASE_URL, REDIS_URL)
+# 2. Set secrets in .env (CRYPTO_SALT, TIGRIS keys, DATABASE_URL, REDIS_URL)
 # 3. Run migrations: npx prisma migrate deploy
 # 4. Deploy frontend: vercel deploy
 # 5. Deploy API: railway deploy (or git push Railway)

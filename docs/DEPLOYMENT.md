@@ -13,7 +13,7 @@ Deploy NoBlur to production. The frontend (Next.js) deploys to **Vercel**; the F
 - [ ] Supabase Storage buckets created (`noblur-uploads`, `noblur-outputs` by default, or your own names)
 - [ ] Upstash Redis database created (TLS/`rediss://` endpoint)
 - [ ] Flutterwave: **not required for launch** — billing routes are stubbed (see §3B / §9)
-- [x] Sentry DSN — initialized via instrumentation.ts + sentry.server.config.ts (client + server)
+- [x] Sentry DSN — initialized via `instrumentation.ts` (server + edge; no separate config files)
 - [ ] PostHog API key (optional, for analytics)
 
 ---
@@ -45,13 +45,13 @@ NoBlur's runtime has three deployable pieces, plus two managed services:
 1. Create an Upstash Redis database.
 2. Copy the `rediss://` (TLS) connection string into `REDIS_URL`. `lib/queue.ts` passes this directly to `ioredis`/BullMQ — no other Redis-specific config is required.
 
-### C. Object Storage — Supabase Storage (S3-compatible)
+### C. Object Storage — Tigris (S3-compatible)
 
-1. In the same Supabase project, go to Storage and create two buckets (default names used by the app: `noblur-uploads`, `noblur-outputs`).
-2. Go to Project Settings → Storage → S3 Access Keys and generate an access key pair.
-3. Note your project's storage endpoint: `https://<project-ref>.storage.supabase.co/storage/v1/s3`, and your project's region.
-4. Fill in `SUPABASE_S3_ENDPOINT`, `SUPABASE_S3_REGION`, `SUPABASE_S3_ACCESS_KEY_ID`, `SUPABASE_S3_SECRET_ACCESS_KEY`, `SUPABASE_UPLOADS_BUCKET`, `SUPABASE_OUTPUTS_BUCKET` (see §3). `server/services/storage.ts` is the authoritative implementation — it uses `forcePathStyle: true` and the project's real region (unlike Cloudflare R2, Supabase does not accept `region: "auto"`).
-5. This has been verified end-to-end (presigned multipart upload + real PUT) as working with this configuration.
+1. Create a Tigris project (https://www.tigrisdata.com) and an App Key. This yields an access key / secret key pair (`tid_...` / `tsec_...`).
+2. In the Tigris console, create two buckets (default names used by the app): `noblur-uploads`, `noblur-outputs`.
+3. Note your project endpoint: canonical `https://t3.storage.dev` (or legacy `https://fly.storage.tigris.dev`). Region is always `auto`.
+4. Fill in `TIGRIS_ENDPOINT`, `TIGRIS_REGION`, `TIGRIS_ACCESS_KEY_ID`, `TIGRIS_SECRET_ACCESS_KEY`, `TIGRIS_UPLOADS_BUCKET`, `TIGRIS_OUTPUTS_BUCKET` (see §3). `server/services/storage.ts` is the authoritative implementation — it uses the AWS SDK with virtual-hosted-style addressing (`forcePathStyle: false`) and `region: "auto"`, per Tigris's S3-compatibility docs.
+5. This configuration must be validated end-to-end (presigned multipart upload + real PUT) once real buckets exist — the Tigris buckets are created in the console; the codebase already points at them.
 
 ### D. Frontend — Vercel
 
@@ -91,22 +91,22 @@ DIRECT_URL="postgresql://noblur:noblur@localhost:5432/noblur?schema=public"     
 # Use the rediss:// (TLS) URL Upstash gives you
 REDIS_URL="rediss://default:PASSWORD@your-db.upstash.io:6379"
 
-# Supabase Storage (S3-compatible object storage)
-# Endpoint format: https://<project-ref>.storage.supabase.co/storage/v1/s3
-# Get access keys + region from: Project Settings > Storage > S3 Access Keys
-SUPABASE_S3_ENDPOINT="https://<project-ref>.storage.supabase.co/storage/v1/s3"
-SUPABASE_S3_REGION="<your-project-region, e.g. us-east-1>"
-SUPABASE_S3_ACCESS_KEY_ID="<your-supabase-s3-access-key>"
-SUPABASE_S3_SECRET_ACCESS_KEY="<your-supabase-s3-secret-key>"
-SUPABASE_UPLOADS_BUCKET="noblur-uploads"
-SUPABASE_OUTPUTS_BUCKET="noblur-outputs"
+# Tigris (S3-compatible object storage)
+# Endpoint: https://t3.storage.dev (canonical) or https://fly.storage.tigris.dev (legacy)
+# Region is always "auto". Keys are tid_... / tsec_... (Tigris console > App Keys).
+TIGRIS_ENDPOINT="https://t3.storage.dev"
+TIGRIS_REGION="auto"
+TIGRIS_ACCESS_KEY_ID="<your-tigris-access-key>"
+TIGRIS_SECRET_ACCESS_KEY="<your-tigris-secret-key>"
+TIGRIS_UPLOADS_BUCKET="noblur-uploads"
+TIGRIS_OUTPUTS_BUCKET="noblur-outputs"
 
 # Flutterwave (payment provider — NOT YET IMPLEMENTED, see §9. Dummy values are fine.)
 FLUTTERWAVE_PUBLIC_KEY="<your-flutterwave-public-key>"
 FLUTTERWAVE_SECRET_KEY="<your-flutterwave-secret-key>"
 FLUTTERWAVE_WEBHOOK_SECRET="<your-flutterwave-webhook-secret>"
 
-# Sentry (error monitoring — initialized via instrumentation.ts + sentry.server.config.ts)
+# Sentry (error monitoring — initialized via instrumentation.ts)
 SENTRY_DSN="<your-sentry-dsn>"
 SENTRY_AUTH_TOKEN="<your-sentry-auth-token>"
 
@@ -203,17 +203,17 @@ docker build -f Dockerfile.worker -t noblur-worker .
 
 # Run API
 docker run -e DATABASE_URL=$DATABASE_URL -e DIRECT_URL=$DIRECT_URL -e REDIS_URL=$REDIS_URL \
-  -e SUPABASE_S3_ENDPOINT=$SUPABASE_S3_ENDPOINT -e SUPABASE_S3_REGION=$SUPABASE_S3_REGION \
-  -e SUPABASE_S3_ACCESS_KEY_ID=$SUPABASE_S3_ACCESS_KEY_ID -e SUPABASE_S3_SECRET_ACCESS_KEY=$SUPABASE_S3_SECRET_ACCESS_KEY \
-  -e SUPABASE_UPLOADS_BUCKET=$SUPABASE_UPLOADS_BUCKET -e SUPABASE_OUTPUTS_BUCKET=$SUPABASE_OUTPUTS_BUCKET \
+  -e TIGRIS_ENDPOINT=$TIGRIS_ENDPOINT -e TIGRIS_REGION=$TIGRIS_REGION \
+  -e TIGRIS_ACCESS_KEY_ID=$TIGRIS_ACCESS_KEY_ID -e TIGRIS_SECRET_ACCESS_KEY=$TIGRIS_SECRET_ACCESS_KEY \
+  -e TIGRIS_UPLOADS_BUCKET=$TIGRIS_UPLOADS_BUCKET -e TIGRIS_OUTPUTS_BUCKET=$TIGRIS_OUTPUTS_BUCKET \
   -e CORS_ORIGINS=$CORS_ORIGINS -e CRYPTO_SALT=$CRYPTO_SALT \
   -p 5000:5000 noblur-api
 
 # Run workers (multiple replicas as needed)
 docker run -e DATABASE_URL=$DATABASE_URL -e REDIS_URL=$REDIS_URL \
-  -e SUPABASE_S3_ENDPOINT=$SUPABASE_S3_ENDPOINT -e SUPABASE_S3_REGION=$SUPABASE_S3_REGION \
-  -e SUPABASE_S3_ACCESS_KEY_ID=$SUPABASE_S3_ACCESS_KEY_ID -e SUPABASE_S3_SECRET_ACCESS_KEY=$SUPABASE_S3_SECRET_ACCESS_KEY \
-  -e SUPABASE_UPLOADS_BUCKET=$SUPABASE_UPLOADS_BUCKET -e SUPABASE_OUTPUTS_BUCKET=$SUPABASE_OUTPUTS_BUCKET \
+  -e TIGRIS_ENDPOINT=$TIGRIS_ENDPOINT -e TIGRIS_REGION=$TIGRIS_REGION \
+  -e TIGRIS_ACCESS_KEY_ID=$TIGRIS_ACCESS_KEY_ID -e TIGRIS_SECRET_ACCESS_KEY=$TIGRIS_SECRET_ACCESS_KEY \
+  -e TIGRIS_UPLOADS_BUCKET=$TIGRIS_UPLOADS_BUCKET -e TIGRIS_OUTPUTS_BUCKET=$TIGRIS_OUTPUTS_BUCKET \
   noblur-worker
 ```
 
@@ -320,7 +320,7 @@ npx prisma migrate resolve --rolled-back <migration-name>
 - [ ] Health checks passing (`/health`, `/api/v1/queue-stats`)
 - [ ] Sample upload → compress → download flow tested end-to-end
 - [ ] `CORS_ORIGINS`, `NEXT_PUBLIC_APP_URL` updated once a real (or temporary `.vercel.app`) domain is chosen; `lib/seo.ts` and `lib/whatsapp-share.ts` updated separately in code
-- [x] Sentry — initialized (instrumentation.ts, sentry.server.config.ts, sentry.edge.config.ts)
+- [x] Sentry — initialized (instrumentation.ts only; server + edge runtime)
 - [ ] Analytics tracking verified (PostHog events firing), if configured
 
 ---

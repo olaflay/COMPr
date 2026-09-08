@@ -1,23 +1,25 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Supabase Storage's S3-compatible endpoint (see /docs/guides/storage/s3/authentication).
-// Unlike R2 ('auto'), Supabase requires the project's real region and forcePathStyle.
-const SUPABASE_S3_ENDPOINT = process.env.SUPABASE_S3_ENDPOINT;
-const SUPABASE_S3_REGION = process.env.SUPABASE_S3_REGION || 'us-east-1';
-const SUPABASE_S3_ACCESS_KEY_ID = process.env.SUPABASE_S3_ACCESS_KEY_ID || 'dummy';
-const SUPABASE_S3_SECRET_ACCESS_KEY = process.env.SUPABASE_S3_SECRET_ACCESS_KEY || 'dummy';
-const UPLOADS_BUCKET = process.env.SUPABASE_UPLOADS_BUCKET || 'noblur-uploads';
-const OUTPUTS_BUCKET = process.env.SUPABASE_OUTPUTS_BUCKET || 'noblur-outputs';
+// Tigris (S3-compatible object storage) — https://t3.storage.dev
+// The AWS JS SDK is used as-is with virtual-hosted-style addressing:
+// forcePathStyle MUST be false and region MUST be "auto" for Tigris
+// (see tigrisdata.com/docs/objects/s3-compatibility).
+const TIGRIS_ENDPOINT = process.env.TIGRIS_ENDPOINT || 'https://t3.storage.dev';
+const TIGRIS_REGION = process.env.TIGRIS_REGION || 'auto';
+const TIGRIS_ACCESS_KEY_ID = process.env.TIGRIS_ACCESS_KEY_ID || 'dummy';
+const TIGRIS_SECRET_ACCESS_KEY = process.env.TIGRIS_SECRET_ACCESS_KEY || 'dummy';
+const UPLOADS_BUCKET = process.env.TIGRIS_UPLOADS_BUCKET || 'noblur-uploads';
+const OUTPUTS_BUCKET = process.env.TIGRIS_OUTPUTS_BUCKET || 'noblur-outputs';
 
-export const r2Client = new S3Client({
-  endpoint: SUPABASE_S3_ENDPOINT,
-  forcePathStyle: true,
+export const storageClient = new S3Client({
+  endpoint: TIGRIS_ENDPOINT,
+  forcePathStyle: false,
   credentials: {
-    accessKeyId: SUPABASE_S3_ACCESS_KEY_ID,
-    secretAccessKey: SUPABASE_S3_SECRET_ACCESS_KEY,
+    accessKeyId: TIGRIS_ACCESS_KEY_ID,
+    secretAccessKey: TIGRIS_SECRET_ACCESS_KEY,
   },
-  region: SUPABASE_S3_REGION,
+  region: TIGRIS_REGION,
 });
 
 /**
@@ -32,7 +34,7 @@ export async function getPresignedUploadUrl(key: string, _maxBytes: number = 500
     // Client must NOT exceed maxBytes; server-side HEAD/validation still applies.
   });
   // 60-minute expiry per PRD §13, §23
-  return getSignedUrl(r2Client, command, { expiresIn: 3600 });
+  return getSignedUrl(storageClient, command, { expiresIn: 3600 });
 }
 
 /**
@@ -44,7 +46,7 @@ export async function getPresignedDownloadUrl(key: string): Promise<string> {
     Key: key,
   });
   // 24-hour expiry per PRD §22, §23
-  return getSignedUrl(r2Client, command, { expiresIn: 86400 });
+  return getSignedUrl(storageClient, command, { expiresIn: 86400 });
 }
 
 import { createReadStream, createWriteStream } from 'node:fs';
@@ -52,35 +54,35 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 /**
- * Downloads an object from the uploads R2 bucket to a local filepath.
+ * Downloads an object from the uploads bucket to a local filepath.
  */
-export async function downloadFromR2(key: string, localPath: string): Promise<void> {
+export async function downloadObject(key: string, localPath: string): Promise<void> {
   const command = new GetObjectCommand({
     Bucket: UPLOADS_BUCKET,
     Key: key,
   });
-  const response = await r2Client.send(command);
+  const response = await storageClient.send(command);
   if (response.Body instanceof Readable) {
     await pipeline(response.Body, createWriteStream(localPath));
   } else {
-    throw new Error('R2 response body is not readable stream');
+    throw new Error('storage response body is not readable stream');
   }
 }
 
 /**
- * Uploads a local file to the outputs R2 bucket.
+ * Uploads a local file to the outputs bucket.
  */
-export async function uploadToR2(key: string, localPath: string): Promise<void> {
+export async function uploadObject(key: string, localPath: string): Promise<void> {
   const command = new PutObjectCommand({
     Bucket: OUTPUTS_BUCKET,
     Key: key,
     Body: createReadStream(localPath),
   });
-  await r2Client.send(command);
+  await storageClient.send(command);
 }
 
 /**
- * Initiate a multipart upload in R2 uploads bucket (60 minutes expiry).
+ * Initiate a multipart upload in the uploads bucket (60 minutes expiry).
  */
 export async function startMultipartUpload(key: string, mimeType: string): Promise<string> {
   const command = new CreateMultipartUploadCommand({
@@ -88,7 +90,7 @@ export async function startMultipartUpload(key: string, mimeType: string): Promi
     Key: key,
     ContentType: mimeType,
   });
-  const response = await r2Client.send(command);
+  const response = await storageClient.send(command);
   if (!response.UploadId) {
     throw new Error('Failed to initiate S3 multipart upload (no UploadId returned)');
   }
@@ -105,11 +107,11 @@ export async function getPresignedPartUploadUrl(key: string, uploadId: string, p
     UploadId: uploadId,
     PartNumber: partNumber,
   });
-  return getSignedUrl(r2Client, command, { expiresIn: 3600 });
+  return getSignedUrl(storageClient, command, { expiresIn: 3600 });
 }
 
 /**
- * Complete a multipart upload in R2 uploads bucket.
+ * Complete a multipart upload in the uploads bucket.
  */
 export async function completeMultipartUpload(
   key: string,
@@ -124,6 +126,6 @@ export async function completeMultipartUpload(
       Parts: parts.sort((a, b) => a.PartNumber - b.PartNumber),
     },
   });
-  await r2Client.send(command);
+  await storageClient.send(command);
 }
 

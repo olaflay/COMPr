@@ -2,37 +2,6 @@ import type { NextConfig } from 'next';
 import path from 'path';
 import { withSentryConfig } from '@sentry/nextjs';
 
-const isDev = process.env.NODE_ENV === 'development';
-
-// The client calls the API host directly (see lib/api-client.ts) and PUTs
-// upload parts straight to the storage provider's presigned URLs, both
-// cross-origin — CSP connect-src must allow them explicitly or the browser
-// blocks the fetch even though CORS on the server side is fine.
-function originOf(url: string | undefined): string | null {
-  if (!url) return null;
-  try {
-    return new URL(url).origin;
-  } catch {
-    return null;
-  }
-}
-
-const connectSrcExtra = [
-  originOf(process.env.NEXT_PUBLIC_API_URL),
-  originOf(process.env.SUPABASE_S3_ENDPOINT),
-].filter((origin): origin is string => origin !== null);
-
-const cspHeader = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.googletagmanager.com https://us-assets.i.posthog.com https://eu-assets.i.posthog.com`,
-  `connect-src 'self' ${connectSrcExtra.join(' ')} https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.i.posthog.com`,
-  "img-src 'self' data: https: blob:",
-  "media-src 'self' blob: data:",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  'upgrade-insecure-requests',
-].join('; ');
-
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname),
   async rewrites() {
@@ -53,11 +22,13 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
+    // The Content-Security-Policy header is set per-request in middleware.ts
+    // (it carries a per-request script-src nonce, D-5). The static headers
+    // below are nonce-independent and stay here.
     return [
       {
         source: '/(.*)',
         headers: [
-          { key: 'Content-Security-Policy', value: cspHeader },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
@@ -86,6 +57,14 @@ export default withSentryConfig(nextConfig, {
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
+
+  // Source-map upload is an explicit opt-in (SENTRY_SOURCE_MAPS=1). Without
+  // it the upload is disabled, so local/CI builds never hang on the Sentry
+  // upload step (the token in .env.sentry-build-plugin is present by default).
+  // Deployment/CI that wants uploaded stacks sets SENTRY_SOURCE_MAPS=1.
+  sourcemaps: {
+    disable: !process.env.SENTRY_SOURCE_MAPS,
+  },
 
   // For all available options, see:
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/

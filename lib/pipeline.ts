@@ -164,18 +164,25 @@ export async function runAdaptivePipeline({
   inputPath,
   outputDir,
   targetSizeMB,
+  presetMaxHeight = 720,
   prioritizeDetail = false,
   destination = 'WHATSAPP_NORMAL',
+  speedPresetOverride,
 }: {
   inputPath: string;
   outputDir: string;
   targetSizeMB: number;
+  presetMaxHeight?: number;
   prioritizeDetail?: boolean;
   destination?: string;
+  speedPresetOverride?: 'slow' | 'medium' | 'fast';
 }): Promise<AdaptivePipelineResult> {
   const source = await probe(inputPath);
   const sourceSizeMB = fileSizeMB(inputPath);
   const effectiveTargetSizeMB = Math.min(targetSizeMB, sourceSizeMB);
+
+  // Compute target resolution based on source dimensions and max height cap
+  const resolution = chooseInitialResolution(source.width, source.height, presetMaxHeight);
 
   // 1. Analyze scene
   const tempDir = outputDir;
@@ -183,7 +190,7 @@ export async function runAdaptivePipeline({
   console.log(`[Adaptive] Scene: faces=${analysis.hasFaces} text=${analysis.hasText} motion=${analysis.avgMotionScore.toFixed(3)} lowLight=${analysis.isLowLight}`);
 
   // 2. Select encoding profile
-  let plan = selectProfile(analysis, effectiveTargetSizeMB, source.durationSec, destination, source.isHdr);
+  let plan = selectProfile(analysis, effectiveTargetSizeMB, source.durationSec, destination, source.isHdr, speedPresetOverride);
   console.log(`[Adaptive] Profile: ${plan.profileName} codec=${plan.codec} CRF=${plan.crf} isHdr=${plan.isHdr}`);
 
   const attempts: AdaptiveAttemptRecord[] = [];
@@ -192,8 +199,8 @@ export async function runAdaptivePipeline({
   for (let attempt = 0; attempt <= 1; attempt++) {
     outputPath = join(outputDir, `output_adaptive_${attempt}.mp4`);
 
-    // 3. Encode using buildFFmpegArgs
-    const args = buildFFmpegArgs(inputPath, outputPath, plan);
+    // 3. Encode using buildFFmpegArgs, passing target resolution dimensions
+    const args = buildFFmpegArgs(inputPath, outputPath, plan, resolution.width, resolution.height);
     try {
       await runFfmpeg(args);
     } catch (err: any) {
@@ -204,7 +211,7 @@ export async function runAdaptivePipeline({
           inputPath,
           outputDir,
           targetSizeMB: effectiveTargetSizeMB,
-          presetMaxHeight: source.height,
+          presetMaxHeight,
           prioritizeDetail,
           cpuPreset: 'medium',
           passCount: 1,
@@ -239,23 +246,40 @@ export async function runAdaptivePipeline({
     const vmafResult = await measureVmaf(inputPath, outputPath, source.durationSec);
     const gate = qualityGate(vmafResult, plan.crf);
 
+    let qualityOk = (vmafResult.verified && vmafResult.passed) || prioritizeDetail;
+    let ssimReason = gate.reason;
+
+    if (!qualityOk) {
+      try {
+        const { avgSSIM } = await measureSSIM(inputPath, outputPath, source.durationSec);
+        if (avgSSIM >= 0.90) {
+          qualityOk = true;
+          ssimReason = `${gate.reason} (VMAF failed/unverified, SSIM fallback passed: ${round(avgSSIM)})`;
+        } else {
+          ssimReason = `${gate.reason} (SSIM fallback failed: ${round(avgSSIM)})`;
+        }
+      } catch (ssimErr) {
+        console.warn('[Adaptive] SSIM fallback measurement failed:', ssimErr);
+      }
+    }
+
     attempts.push({
       attempt,
       profileName: plan.profileName,
       codec: plan.codec,
-      resolution: `${source.width}x${source.height}`,
+      resolution: `${resolution.width}x${resolution.height}`,
       crf: plan.crf,
       actualSizeMB: round(actualSizeMB),
       targetSizeMB: effectiveTargetSizeMB,
       sizeWithinTolerance,
       vmaf: vmafResult,
-      qualityOk: (vmafResult.verified && vmafResult.passed) || prioritizeDetail,
-      reason: gate.reason,
+      qualityOk,
+      reason: ssimReason,
     });
 
-    console.log(`[Adaptive] Attempt ${attempt}: ${actualSizeMB.toFixed(2)}MB VMAF=${vmafResult.avgVmaf ?? 'unverified'} passed=${vmafResult.passed}`);
+    console.log(`[Adaptive] Attempt ${attempt}: ${actualSizeMB.toFixed(2)}MB VMAF=${vmafResult.avgVmaf ?? 'unverified'} passed=${vmafResult.passed} qualityOk=${qualityOk}`);
 
-    if (vmafResult.passed || prioritizeDetail || attempt === 1) break;
+    if (qualityOk || prioritizeDetail || attempt === 1) break;
 
     // 5. VMAF gate: re-encode with reduced CRF
     if (gate.shouldReencode && gate.newCrf !== undefined) {

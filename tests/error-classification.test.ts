@@ -18,7 +18,7 @@ describe('Error Classification SRE utility', () => {
   test('should classify infra/network errors as transient', () => {
     assert.equal(isPermanentFailure('Failed to connect to database postgres'), false);
     assert.equal(isPermanentFailure('Connection timeout to Redis'), false);
-    assert.equal(isPermanentFailure('R2 bucket connection closed'), false);
+    assert.equal(isPermanentFailure('Object storage bucket connection closed'), false);
     assert.equal(isPermanentFailure('unexpected token < in JSON'), false);
   });
 });

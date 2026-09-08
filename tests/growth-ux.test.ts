@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { suggestPreset } from '../lib/smart-defaults.ts';
 import { cumulativeDisplayPercent, stepsRemaining } from '../lib/progress-stages.ts';
-import { isFirstJobExemptFromQuota, buildUpsellCopy, applyOnboardingPreferences } from '../lib/growth-ux.ts';
+import { isFirstJobExemptFromQuota, buildUpsellCopy, applyOnboardingPreferences, formatDataSaved } from '../lib/growth-ux.ts';
 
 describe('smart-defaults.ts', () => {
   it('portrait short video -> STATUS', () => {
@@ -55,5 +55,10 @@ describe('growth-ux.ts', () => {
     const r = applyOnboardingPreferences({ primary_use: 'products', priority: 'quality' });
     assert.equal(r.emphasis, 'quality-forward');
     assert.equal(r.primaryUse, 'products');
+  });
+
+  it('formatDataSaved returns correct Pidgin text', () => {
+    const text = formatDataSaved(15 * 1024 * 1024, 5 * 1024 * 1024);
+    assert.equal(text, 'You just save ~10.0 MB of data');
   });
 });

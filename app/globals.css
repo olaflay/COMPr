@@ -12,10 +12,10 @@ body {
 
 .hero-display-text {
   font-family: var(--md-ref-typeface-brand);
-  font-size: clamp(2rem, 1.5rem + 2.5vw, 2.8125rem);
+  font-size: clamp(1.625rem, 1.25rem + 1.5vw, 2.25rem);
   font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: clamp(-0.8px, calc(0.4px - 0.1vw), 0px);
+  line-height: 1.2;
+  letter-spacing: clamp(-0.5px, calc(0.2px - 0.05vw), 0px);
 }
 
 .skip-to-content {

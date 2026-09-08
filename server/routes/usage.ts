@@ -2,33 +2,29 @@ import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
 import { z } from 'zod';
 import { hashString } from '../../lib/crypto.ts';
 import { grantShareBonus, fetchUsage, FREE_DAILY_LIMIT, remainingJobs, allowanceFor, todayStart } from '../../lib/quota.ts';
+import { redisConnection } from '../../lib/queue.ts';
 
 const fingerprintSchema = z.object({
   fingerprint: z.string().optional(),
 });
 
-// Short-TTL response cache for GET /usage. The dashboard calls this on every
-// load and each call pays a full Nigeria->eu-west-1 DB round trip (~900ms).
-// Quota values only change when a job completes, so a 5s cache makes rapid
-// loads instant while keeping the displayed count honest (PRD §27).
-const USAGE_CACHE_TTL_MS = 5000;
-const usageCache = new Map<string, { expiresAt: number; body: unknown }>();
+const REDIS_CACHE_TTL_SEC = 30;
 
-function cachedUsage(fingerprintHash: string): unknown | undefined {
-  const hit = usageCache.get(fingerprintHash);
-  if (hit && hit.expiresAt > Date.now()) return hit.body;
-  if (hit) usageCache.delete(fingerprintHash);
-  return undefined;
+async function getCachedUsage(fingerprintHash: string): Promise<unknown | null> {
+  try {
+    const cached = await redisConnection.get(`usage_cache:${fingerprintHash}`);
+    if (cached) return JSON.parse(cached);
+  } catch (err) {
+    console.warn('[Usage Cache] Redis get error:', err);
+  }
+  return null;
 }
 
-function cacheUsage(fingerprintHash: string, body: unknown): void {
-  usageCache.set(fingerprintHash, { expiresAt: Date.now() + USAGE_CACHE_TTL_MS, body });
-  // Bound the map: drop expired entries when it grows (one entry per device).
-  if (usageCache.size > 2000) {
-    const now = Date.now();
-    for (const [k, v] of usageCache) {
-      if (v.expiresAt <= now) usageCache.delete(k);
-    }
+async function setCachedUsage(fingerprintHash: string, body: unknown): Promise<void> {
+  try {
+    await redisConnection.setex(`usage_cache:${fingerprintHash}`, REDIS_CACHE_TTL_SEC, JSON.stringify(body));
+  } catch (err) {
+    console.warn('[Usage Cache] Redis set error:', err);
   }
 }
 
@@ -38,16 +34,19 @@ const usageRoutes: FastifyPluginAsyncZod = async (app) => {
       querystring: fingerprintSchema,
     },
   }, async (request, reply) => {
-    const { fingerprint } = request.query;
+    // D-4: read the fingerprint from a header so it never rides in a URL.
+    // Query param kept as a fallback for older clients / manual testing.
+    const fingerprint = (request.headers['x-noblur-fingerprint'] ??
+      request.query.fingerprint) as string | undefined;
     if (!fingerprint) {
       return reply.code(400).send({
-        error: { code: 'MISSING_FINGERPRINT', message: 'fingerprint query parameter is required' },
+        error: { code: 'MISSING_FINGERPRINT', message: 'fingerprint is required (X-NoBlur-Fingerprint header)' },
       });
     }
 
     const fingerprintHash = hashString(fingerprint);
 
-    const cached = cachedUsage(fingerprintHash);
+    const cached = await getCachedUsage(fingerprintHash);
     if (cached) return cached;
 
     const today = todayStart();
@@ -66,7 +65,7 @@ const usageRoutes: FastifyPluginAsyncZod = async (app) => {
       allowance,
     };
 
-    cacheUsage(fingerprintHash, body);
+    await setCachedUsage(fingerprintHash, body);
     return body;
   });
 
@@ -87,6 +86,9 @@ const usageRoutes: FastifyPluginAsyncZod = async (app) => {
     const ipHash = hashString(request.ip);
 
     const granted = await grantShareBonus(fingerprintHash, ipHash);
+
+    // Invalidate cache immediately on update
+    await redisConnection.del(`usage_cache:${fingerprintHash}`).catch(() => {});
 
     const usage = await fetchUsage(fingerprintHash, todayStart());
     const used = usage ? usage.jobCount : 0;

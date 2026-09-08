@@ -1,13 +1,17 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import platformLimits from '../config/platform-limits.json' with { type: 'json' };
 
 interface WhatsAppStatusPreviewProps {
   videoFile: File;
   durationSec: number;
 }
 
-const STATUS_MAX_DURATION_SEC = 30;
+// Pull the Status duration ceiling from the single source of truth
+// (config/platform-limits.json / PlatformLimit table), never hardcode it —
+// WhatsApp raised it 30s -> 60s -> 90s over 2024-2026 (AGENTS.md Q5).
+const STATUS_MAX_DURATION_SEC = platformLimits.STATUS.maxDurationSec || 90;
 
 export default function WhatsAppStatusPreview({ videoFile, durationSec }: WhatsAppStatusPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);

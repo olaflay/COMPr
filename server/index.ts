@@ -28,7 +28,11 @@ import rateLimitPlugin from './plugins/rate-limit.ts';
 
 const app = Fastify({
   logger: true,
-  trustProxy: 1,
+  // TRUST_PROXY hop-count: trust the first untrusted proxy from the client.
+  // The legacy bare-number form was dropped in fastify 5.12.1's hardening of
+  // X-Forwarded-* parsing (GHSA-3m5p-2c4r-xxw2); `true` is the equivalent for
+  // a single trusted reverse proxy hop in front of the API.
+  trustProxy: true,
 }).withTypeProvider<ZodTypeProvider>();
 
 // Zod-based request validation and response serialization (PRD §18)
@@ -42,7 +46,12 @@ app.addHook('onRequest', async (request, reply) => {
   if (ALLOWED_ORIGINS.some(o => origin === o.trim())) {
     reply.header('Access-Control-Allow-Origin', origin);
     reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-    reply.header('Access-Control-Allow-Headers', 'Content-Type');
+    reply.header('Access-Control-Allow-Headers', 'Content-Type, X-NoBlur-Fingerprint');
+    // Cache preflight responses for 24h (D-8) — reduces OPTIONS round-trips.
+    reply.header('Access-Control-Max-Age', '86400');
+    // Reflect the origin header back through intermediaries (required for a
+    // dynamic Access-Control-Allow-Origin to be cache-safe).
+    reply.header('Vary', 'Origin');
   }
   if (request.method === 'OPTIONS') {
     return reply.code(204).send();

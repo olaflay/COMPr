@@ -5,6 +5,8 @@
 
 **Revision note (v1.1):** Records the adaptive encoding engine milestone shipped after the v1.0 "Final — Ready for Implementation" baseline: scene analysis (FR-16), policy-selected encoding profiles (FR-16), AV1 + VMAF quality gating (replacing the earlier "H.264 only / VMAF is Phase 2" constraints), job destinations, and share-for-credits (FR-17). Section 21 now mirrors the shipped Prisma schema.
 
+**Revision note (v1.2, 2026-08-27):** Research + human decisions: storage is Supabase Storage (S3-compatible), NOT Cloudflare R2 (wherever this PRD says R2, read Supabase Storage); Redis (Upstash) is queue + cache; AV1 deferred (H.264 everywhere in MVP); VMAF samples keyframes every 4s (floor 80 unchanged); WhatsApp constants re-verified (Status 90s, video 720p/480p, 64/100MB caps — see research/01-PERFORMANCE-PLAYBOOK.md). AGENTS.md Q2 is the authority on how.
+
 ---
 
 ## 1. Executive Summary

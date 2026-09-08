@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildMetadata, organizationSchema, softwareApplicationSchema } from '../lib/seo.ts';
+import { buildMetadata, organizationSchema, softwareApplicationSchema, faqSchema } from '../lib/seo.ts';
 
 describe('seo.ts structured data and metadata', () => {
   it('generates the default metadata accurately', () => {
@@ -29,5 +29,18 @@ describe('seo.ts structured data and metadata', () => {
     assert.equal(app['@type'], 'SoftwareApplication');
     assert.equal(app.name, 'NoBlur');
     assert.equal((app.offers as any).price, '0');
+  });
+
+  it('builds a valid FAQPage schema', () => {
+    const schema = faqSchema([
+      { question: 'Is NoBlur free?', answer: 'Yes, 5 free optimizations per day.' },
+      { question: 'Do I need an account?', answer: 'No.' },
+    ]);
+    assert.equal(schema['@type'], 'FAQPage');
+    const main = schema.mainEntity as Array<{ '@type': string; name: string; acceptedAnswer: { '@type': string } }>;
+    assert.equal(main.length, 2);
+    assert.equal(main[0]['@type'], 'Question');
+    assert.equal(main[0].name, 'Is NoBlur free?');
+    assert.equal(main[0].acceptedAnswer['@type'], 'Answer');
   });
 });

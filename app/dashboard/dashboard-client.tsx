@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import BeforeAfterSlider from '../../components/BeforeAfterSlider.tsx';
 import WhatsAppStatusPreview from '../../components/WhatsAppStatusPreview.tsx';
-import WhatsAppDemoStrip from '../../components/WhatsAppDemoStrip.tsx';
 import ProcessingHistory from '../../components/ProcessingHistory';
 import Toast from '../../components/ui/Toast';
 import EmptyState from '../../components/ui/EmptyState';
@@ -617,8 +616,6 @@ export default function DashboardPageClient() {
           >
             <h2 className="text-title-large text-on-surface">Choose a file to optimize</h2>
 
-            {/* WhatsApp Demo: before/after preview strip */}
-            <WhatsAppDemoStrip />
 
             {/* Drag & Drop File Box + Optimize CTA: stacked tight on mobile, side-by-side on desktop */}
             <div className="flex flex-col md:flex-row md:items-stretch gap-m3-x-small">
@@ -846,30 +843,6 @@ export default function DashboardPageClient() {
               </div>
             )}
 
-            {/* 3-Point Proof: why NoBlur, tied to WhatsApp outcomes */}
-            <ul className="flex flex-col gap-m3-x-small border-t border-outline-variant pt-m3-medium list-none m-0">
-              <li className="flex items-center gap-m3-x-small">
-                <svg className="w-4 h-4 shrink-0 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4" />
-                </svg>
-                <span className="text-body-small text-on-surface">Stays sharp even after WhatsApp compresses it</span>
-              </li>
-              <li className="flex items-center gap-m3-x-small">
-                <svg className="w-4 h-4 shrink-0 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4" />
-                </svg>
-                <span className="text-body-small text-on-surface">Up to 90% smaller, so it sends fast</span>
-              </li>
-              <li className="flex items-center gap-m3-x-small">
-                <svg className="w-4 h-4 shrink-0 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4" />
-                </svg>
-                <span className="text-body-small text-on-surface">Share straight to any chat or status</span>
-              </li>
-            </ul>
 
             {/* Required trust signals per PRD §12 */}
             <div className="text-label-small text-on-surface-variant space-y-2 flex flex-col items-center">

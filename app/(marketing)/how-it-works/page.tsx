@@ -2,11 +2,14 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import SiteHeader from '../../../components/marketing/SiteHeader';
 import SiteFooter from '../../../components/marketing/SiteFooter';
+import { buildMetadata } from '../../../lib/seo';
 
-export const metadata: Metadata = {
-  title: 'How It Works | NoBlur',
-  description: 'Learn how NoBlur dey optimize your photos and videos for WhatsApp, up to 90% smaller with no visible quality loss.',
-};
+export const metadata: Metadata = buildMetadata({
+  title: 'How It Works',
+  description:
+    'Learn how NoBlur dey optimize your photos and videos for WhatsApp, up to 90% smaller with no visible quality loss.',
+  path: '/how-it-works',
+});
 
 const STEPS = [
   {

@@ -7,7 +7,7 @@ import { redisConnection, mediaEncodeQueue } from '../lib/queue.ts';
 import { runPipeline, runAdaptivePipeline, processImage, processAnimatedGif, probe, fileSizeMB } from '../lib/pipeline.ts';
 import { splitVideo } from '../lib/split.ts';
 import { cpus } from 'node:os';
-import { downloadFromR2, uploadToR2 } from '../server/services/storage.ts';
+import { downloadObject, uploadObject } from '../server/services/storage.ts';
 import platformLimits from '../config/platform-limits.json' with { type: 'json' };
 
 import { cleanupStaleTempFiles } from '../lib/sre-cleanup.ts';
@@ -22,7 +22,7 @@ cleanupStaleTempFiles(TEMP_DIR);
 export const encodeWorker = new Worker(
   'media-encode',
   async (bullJob) => {
-    const { jobId } = bullJob.data as { jobId: string };
+    const { jobId, localPath } = bullJob.data as { jobId: string; localPath?: string };
 
     const job = await prisma.job.findUnique({
       where: { id: jobId },
@@ -45,9 +45,15 @@ export const encodeWorker = new Worker(
       mkdirSync(localOutputDir, { recursive: true });
     }
 
+    let finalInputPath = localInputPath;
+
     try {
-      // 1. Download source from R2 uploads bucket
-      await downloadFromR2(job.sourceFile.storageKey, localInputPath);
+      // 1. Reuse existing local path from analysis-worker if available on same host
+      if (localPath && existsSync(localPath)) {
+        finalInputPath = localPath;
+      } else {
+        await downloadObject(job.sourceFile.storageKey, localInputPath);
+      }
 
       // Determine parameters based on preset config (never hardcoded, per AGENTS.md)
       const targetSizeMB =
@@ -92,8 +98,10 @@ export const encodeWorker = new Worker(
             inputPath,
             outputDir,
             targetSizeMB,
+            presetMaxHeight,
             prioritizeDetail: job.prioritizeDetail,
             destination: job.destination,
+            speedPresetOverride: cpuPreset,
           });
         } catch (adaptiveErr) {
           console.warn('[Encode Worker] Adaptive pipeline failed, falling back to H.264:', adaptiveErr);
@@ -162,7 +170,7 @@ export const encodeWorker = new Worker(
       if (job.mediaKind === 'VIDEO') {
         if (isSplitRequired) {
           // Split the video into segments
-          const segments = await splitVideo(localInputPath, statusCeiling, localOutputDir);
+          const segments = await splitVideo(finalInputPath, statusCeiling, localOutputDir);
           console.log(`[Encode Worker] Splitting Status video of ${duration}s into ${segments.length} segments.`);
 
           for (let idx = 0; idx < segments.length; idx++) {
@@ -185,8 +193,8 @@ export const encodeWorker = new Worker(
             const outputFilename = `output_${jobId}_part${idx}${extname(result.finalOutputPath)}`;
             const outputKey = `outputs/${outputFilename}`;
 
-            // Upload the segment to R2
-            await uploadToR2(outputKey, result.finalOutputPath);
+            // Upload the segment to object storage
+            await uploadObject(outputKey, result.finalOutputPath);
 
             outputsToCreate.push({
               storageKey: outputKey,
@@ -204,7 +212,7 @@ export const encodeWorker = new Worker(
           }
         } else {
           // Run standard single-file video pipeline
-          const result = await runVideoPipeline(localInputPath, localOutputDir);
+          const result = await runVideoPipeline(finalInputPath, localOutputDir);
           finalLocalPath = result.finalOutputPath;
 
           const finalAttempt = result.attempts[result.attempts.length - 1];
@@ -218,7 +226,7 @@ export const encodeWorker = new Worker(
           const outputFilename = `output_${jobId}${extname(finalLocalPath)}`;
           const outputKey = `outputs/${outputFilename}`;
 
-          await uploadToR2(outputKey, finalLocalPath);
+          await uploadObject(outputKey, finalLocalPath);
 
           outputsToCreate.push({
             storageKey: outputKey,
@@ -255,7 +263,7 @@ export const encodeWorker = new Worker(
         // An animated GIF (frame count > 1) needs the palette-aware GIF
         // encoder to avoid banded/dithered output — a static (single-frame)
         // GIF, or any other still image, goes through the regular JPEG path.
-        const sourceProbe = await probe(localInputPath);
+        const sourceProbe = await probe(finalInputPath);
         const isAnimatedGif = sourceProbe.codecName === 'gif' && (sourceProbe.frameCount ?? 0) > 1;
 
         let imgResult;
@@ -264,7 +272,7 @@ export const encodeWorker = new Worker(
           const maxLongEdge = job.preset === 'STATUS' ? 480 : 640;
 
           imgResult = await processAnimatedGif({
-            inputPath: localInputPath,
+            inputPath: finalInputPath,
             outputPath: finalLocalPath,
             maxLongEdgePx: maxLongEdge,
           });
@@ -273,7 +281,7 @@ export const encodeWorker = new Worker(
           const maxLongEdge = job.preset === 'STATUS' ? 1080 : 1600;
 
           imgResult = await processImage({
-            inputPath: localInputPath,
+            inputPath: finalInputPath,
             outputPath: finalLocalPath,
             maxLongEdgePx: maxLongEdge,
           });
@@ -286,7 +294,7 @@ export const encodeWorker = new Worker(
         const outputFilename = `output_${jobId}${extname(finalLocalPath)}`;
         const outputKey = `outputs/${outputFilename}`;
 
-        await uploadToR2(outputKey, finalLocalPath);
+        await uploadObject(outputKey, finalLocalPath);
 
         outputsToCreate.push({
           storageKey: outputKey,
@@ -379,6 +387,11 @@ export const encodeWorker = new Worker(
       if (existsSync(localInputPath)) {
         try {
           unlinkSync(localInputPath);
+        } catch (e) {}
+      }
+      if (localPath && existsSync(localPath)) {
+        try {
+          unlinkSync(localPath);
         } catch (e) {}
       }
       // Recursive delete temp directory

@@ -1,15 +1,21 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useState, useRef, MouseEvent, TouchEvent, KeyboardEvent, useCallback } from 'react';
+import { useState, useRef, MouseEvent, TouchEvent, KeyboardEvent, useCallback, useEffect } from 'react';
 
 interface BeforeAfterSliderProps {
-  sourceFrameUrl: string;  // Image URL or video file path (worker extracts frames to /frames/)
-  outputFrameUrl: string;  // Same
+  sourceFrameUrl: string;  // Image URL, or source video blob URL for video jobs
+  outputFrameUrl: string;  // Image URL, or output MP4 URL for video jobs
   sizeBefore: number;
   sizeAfter: number;
-  isVideo?: boolean;       // If true, frameUrl is a still-frame from ffmpeg, not the video itself
+  isVideo?: boolean;       // If true, render <video> and pin both to the same still frame
+  onViewed?: () => void;   // Fired once when the comparison enters the viewport
 }
+
+// Both videos are seeked to the same representative timestamp and paused so the
+// split slider compares matching frames instead of two live, unsynced streams
+// (no audio, no CPU-heavy dual playback).
+const VIDEO_SYNC_SEEK_SEC = 0.5;
 
 export default function BeforeAfterSlider({
   sourceFrameUrl,
@@ -17,13 +23,44 @@ export default function BeforeAfterSlider({
   sizeBefore,
   sizeAfter,
   isVideo,
+  onViewed,
 }: BeforeAfterSliderProps) {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [sourceLoaded, setSourceLoaded] = useState(false);
   const [outputLoaded, setOutputLoaded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const sourceVideoRef = useRef<HTMLVideoElement>(null);
+  const outputVideoRef = useRef<HTMLVideoElement>(null);
+  const viewedRef = useRef(false);
 
   const imagesLoaded = sourceLoaded && outputLoaded;
+
+  // Park a video on its still frame: wait for the first frame, seek to the
+  // sync timestamp, and stay paused.
+  const handleVideoLoadedData = (el: HTMLVideoElement | null) => {
+    if (!el) return;
+    el.currentTime = VIDEO_SYNC_SEEK_SEC;
+    el.pause();
+  };
+
+  // Fire the canonical analytics event once, when the comparison actually
+  // scrolls into view (PRD §28 / PRODUCT-GAPS-AND-MICRO-SPEC Feature 5).
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (viewedRef.current) return;
+        if (entries.some((e) => e.isIntersecting)) {
+          viewedRef.current = true;
+          onViewed?.();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onViewed]);
 
   const formatSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -90,19 +127,23 @@ export default function BeforeAfterSlider({
         onTouchMove={handleTouchMove}
         className="relative overflow-hidden w-full aspect-video rounded-m3-md cursor-ew-resize select-none border border-outline"
       >
-        {/* Loading skeleton while images load */}
+        {/* Loading skeleton while frames load */}
         {!imagesLoaded && (
           <div className="absolute inset-0 skeleton" aria-label="Loading comparison images" />
         )}
 
-        {/* Output frame (Background) — for video jobs, this is a still frame extracted by ffmpeg */}
+        {/* Output frame (Background) — for video jobs, both sides are parked on the same timestamp */}
         {isVideo ? (
           <video
+            ref={outputVideoRef}
             src={outputFrameUrl}
-            onLoadedMetadata={() => setOutputLoaded(true)}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-m3-medium-2 ${outputLoaded ? 'opacity-100' : 'opacity-0'}`}
-            playsInline
             muted
+            playsInline
+            preload="auto"
+            onLoadedData={() => handleVideoLoadedData(outputVideoRef.current)}
+            onSeeked={() => setOutputLoaded(true)}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-m3-medium-2 ${outputLoaded ? 'opacity-100' : 'opacity-0'}`}
+            aria-hidden="true"
           />
         ) : (
           <img
@@ -124,12 +165,16 @@ export default function BeforeAfterSlider({
         >
           {isVideo ? (
             <video
+              ref={sourceVideoRef}
               src={sourceFrameUrl}
-              onLoadedMetadata={() => setSourceLoaded(true)}
+              muted
+              playsInline
+              preload="auto"
+              onLoadedData={() => handleVideoLoadedData(sourceVideoRef.current)}
+              onSeeked={() => setSourceLoaded(true)}
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-m3-medium-2 ${sourceLoaded ? 'opacity-100' : 'opacity-0'}`}
               style={{ width: containerRef.current?.getBoundingClientRect().width || '100%', maxWidth: 'none' }}
-              playsInline
-              muted
+              aria-hidden="true"
             />
           ) : (
             <img

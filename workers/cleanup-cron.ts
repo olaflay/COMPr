@@ -1,14 +1,14 @@
 import * as Sentry from '@sentry/node';
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { prisma } from '../lib/prisma.ts';
-import { r2Client } from '../server/services/storage.ts';
+import { storageClient } from '../server/services/storage.ts';
 
-const OUTPUTS_BUCKET = process.env.SUPABASE_OUTPUTS_BUCKET || 'noblur-outputs';
-const UPLOADS_BUCKET = process.env.SUPABASE_UPLOADS_BUCKET || 'noblur-uploads';
+const OUTPUTS_BUCKET = process.env.TIGRIS_OUTPUTS_BUCKET || 'noblur-outputs';
+const UPLOADS_BUCKET = process.env.TIGRIS_UPLOADS_BUCKET || 'noblur-uploads';
 
 /**
  * Sweep expired MediaFiles:
- * 1. Delete matching object from Cloudflare R2 bucket.
+ * 1. Delete matching object from the object-storage bucket.
  * 2. Set deletedAt = new Date() in the Postgres DB.
  * Written exclusively by this worker path (no duplicate deletion paths).
  */
@@ -31,14 +31,14 @@ export async function cleanupExpiredFiles(): Promise<void> {
         ? UPLOADS_BUCKET
         : OUTPUTS_BUCKET;
 
-      console.log(`[Cleanup Cron] Deleting R2 object key: ${file.storageKey} from bucket: ${bucket}`);
+      console.log(`[Cleanup Cron] Deleting object key: ${file.storageKey} from bucket: ${bucket}`);
 
-      // Delete from Cloudflare R2
+      // Delete from object storage
       const command = new DeleteObjectCommand({
         Bucket: bucket,
         Key: file.storageKey,
       });
-      await r2Client.send(command);
+      await storageClient.send(command);
 
       // Write deletedAt in Postgres database
       await prisma.mediaFile.update({

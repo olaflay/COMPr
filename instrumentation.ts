@@ -10,6 +10,7 @@ export async function register() {
       environment: process.env.NODE_ENV || 'development',
       tracesSampleRate: 0.1,
       enabled: !isDummyDsn,
+      enableLogs: true,
     });
   }
 
@@ -19,6 +20,7 @@ export async function register() {
       environment: process.env.NODE_ENV || 'development',
       tracesSampleRate: 0.1,
       enabled: !isDummyDsn,
+      enableLogs: true,
     });
   }
 }

@@ -2,11 +2,14 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import SiteHeader from '../../../components/marketing/SiteHeader';
 import SiteFooter from '../../../components/marketing/SiteFooter';
+import { buildMetadata } from '../../../lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Pricing | NoBlur',
-  description: 'NoBlur pricing: 5 free optimizations daily, up to 90% smaller files. Premium (₦2,500/month, unlimited use) is coming soon.',
-};
+export const metadata: Metadata = buildMetadata({
+  title: 'Pricing',
+  description:
+    'NoBlur pricing: 5 free optimizations daily, up to 90% smaller files. Premium (₦2,500/month, unlimited use) is coming soon.',
+  path: '/pricing',
+});
 
 export default function PricingPage() {
   return (

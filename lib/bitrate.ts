@@ -36,6 +36,7 @@ export interface BitrateResult {
 }
 
 function clampAudioBitrateKbps(channels: number): number {
+  if (channels <= 0) return 0; // silent video or GIF — allocate full budget to video
   if (channels >= 2) return 96; // stereo default within the 64-128 confirmed range
   return 64; // mono
 }

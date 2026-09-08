@@ -93,3 +93,13 @@ export function buildUpsellCopy({
     ctaLabel: 'Remove today limit',
   };
 }
+
+export function formatDataSaved(sizeBeforeBytes: number, sizeAfterBytes: number): string {
+  const diffBytes = sizeBeforeBytes - sizeAfterBytes;
+  if (diffBytes <= 0) return '';
+  const diffMB = diffBytes / (1024 * 1024);
+  if (diffMB < 0.1) {
+    return 'You just save small data for this download.';
+  }
+  return `You just save ~${diffMB.toFixed(1)} MB of data`;
+}

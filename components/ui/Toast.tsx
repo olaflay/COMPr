@@ -11,9 +11,12 @@ interface ToastProps {
    *  failures always offer a recovery path instead of a dead end. */
   actionLabel?: string;
   onAction?: () => void;
+  /** Optional second action button (e.g. Yes/No feedback prompts). */
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
 }
 
-export default function Toast({ message, type = 'info', onDismiss, duration = 5000, actionLabel, onAction }: ToastProps) {
+export default function Toast({ message, type = 'info', onDismiss, duration = 5000, actionLabel, onAction, secondaryActionLabel, onSecondaryAction }: ToastProps) {
   const [visible, setVisible] = useState(false);
 
   const dismiss = useCallback(() => {
@@ -71,6 +74,17 @@ export default function Toast({ message, type = 'info', onDismiss, duration = 50
           className="shrink-0 ml-m3-x-small px-m3-medium py-m3-xx-small rounded-m3-full bg-on-error-container/10 text-on-error-container font-semibold text-label-large hover:bg-on-error-container/20 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
         >
           {actionLabel}
+        </button>
+      )}
+      {secondaryActionLabel && onSecondaryAction && (
+        <button
+          onClick={() => {
+            onSecondaryAction();
+            dismiss();
+          }}
+          className="shrink-0 ml-m3-x-small px-m3-medium py-m3-xx-small rounded-m3-full bg-on-error-container/10 text-on-error-container font-semibold text-label-large hover:bg-on-error-container/20 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+        >
+          {secondaryActionLabel}
         </button>
       )}
       <button

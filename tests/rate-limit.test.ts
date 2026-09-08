@@ -93,7 +93,7 @@ describe('rate-limit plugin', () => {
     mockStore.delete(`rl:${ipHash}:${path}`);
   });
 
-  it('does not rate limit non-targeted endpoints (e.g. GET /api/v1/usage)', async () => {
+  it('allows normal GET reads under the read budget (e.g. 25x GET /api/v1/usage)', async () => {
     const ipHash = hashString('127.0.0.1');
     const path = '/api/v1/usage';
     mockStore.delete(`rl:${ipHash}:${path}`);
@@ -106,6 +106,33 @@ describe('rate-limit plugin', () => {
       });
       assert.equal(response.statusCode, 200);
     }
+  });
+
+  it('blocks GET read endpoints once they exceed the read budget (anti-scraping, D-6)', async () => {
+    const ipHash = hashString('127.0.0.3');
+    const path = '/api/v1/usage';
+    mockStore.delete(`rl:${ipHash}:${path}`);
+
+    // READ_LIMIT is 100; exceed it to trigger 429.
+    for (let i = 0; i < 100; i++) {
+      const resp = await app.inject({
+        method: 'GET',
+        url: path,
+        headers: { 'x-forwarded-for': '127.0.0.3' },
+      });
+      assert.equal(resp.statusCode, 200);
+    }
+
+    const blocked = await app.inject({
+      method: 'GET',
+      url: path,
+      headers: { 'x-forwarded-for': '127.0.0.3' },
+    });
+    assert.equal(blocked.statusCode, 429);
+    const body = JSON.parse(blocked.body);
+    assert.equal(body.error.code, 'RATE_LIMIT_EXCEEDED');
+
+    mockStore.delete(`rl:${ipHash}:${path}`);
   });
 
   it('blocks requests once they exceed 20 per minute on rate-limited endpoints', async () => {

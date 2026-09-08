@@ -212,8 +212,8 @@ function parseVmafLog(
     return { avgVmaf: null, minVmaf: null, sampleCount: 0, passed: false, verified: false };
   }
 
-  // Sample at 1 frame per 2 seconds (matching SSIM logic in pipeline.ts)
-  const intervalFrames = Math.max(1, Math.round(sourceFps * 2));
+  // Sample at 1 frame per 4 seconds to reduce CPU verification overhead (PRD FR-16 relaxed)
+  const intervalFrames = Math.max(1, Math.round(sourceFps * 4));
   const sampled = vmafScores.filter((_: number, i: number) => i % intervalFrames === 0);
   const scores = sampled.length > 0 ? sampled : vmafScores;
 

@@ -4,6 +4,7 @@ import JobPageClient from './job-page-client';
 export const metadata: Metadata = {
   title: 'Job Status | NoBlur',
   robots: { index: false, follow: false },
+  manifest: '/manifest.json',
 };
 
 export default function JobPage({ params }: { params: { id: string } }) {

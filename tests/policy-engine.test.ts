@@ -50,7 +50,7 @@ describe('selectProfile', () => {
     });
 
     const plan = selectProfile(analysis, 16, 30, 'WHATSAPP_DOCUMENT');
-    assert.equal(plan.codec, 'libsvtav1', 'should use AV1 for face content in document mode');
+    assert.equal(plan.codec, 'libx264', 'should use H.264 for face content in document mode');
     assert.ok(plan.crf <= 28, `CRF should be reduced for faces, got ${plan.crf}`);
     assert.ok(plan.reason.includes('face boost'), 'reason should mention face boost');
   });
@@ -63,7 +63,7 @@ describe('selectProfile', () => {
     });
 
     const plan = selectProfile(analysis, 16, 30, 'WHATSAPP_DOCUMENT');
-    assert.equal(plan.codec, 'libsvtav1', 'should use AV1 for text content in document mode');
+    assert.equal(plan.codec, 'libx264', 'should use H.264 for text content in document mode');
     assert.ok(plan.reason.includes('text sharpness'), 'reason should mention text');
   });
 
@@ -74,7 +74,7 @@ describe('selectProfile', () => {
     });
 
     const plan = selectProfile(analysis, 16, 30, 'WHATSAPP_DOCUMENT');
-    assert.equal(plan.codec, 'libsvtav1', 'should use AV1 for high motion');
+    assert.equal(plan.codec, 'libx264', 'should use H.264 for high motion');
     assert.ok(plan.reason.includes('high motion'), 'reason should mention motion');
     // High motion adds +2 to base CRF — verify the adjustment is applied
     const planBaseline = selectProfile(makeAnalysis(), 16, 30, 'WHATSAPP_DOCUMENT');
@@ -90,7 +90,7 @@ describe('selectProfile', () => {
     });
 
     const plan = selectProfile(analysis, 16, 30, 'WHATSAPP_DOCUMENT');
-    assert.equal(plan.codec, 'libsvtav1', 'should use AV1 for balanced');
+    assert.equal(plan.codec, 'libx264', 'should use H.264 for balanced');
     assert.ok(plan.crf >= 20 && plan.crf <= 40, `CRF should be in valid range, got ${plan.crf}`);
   });
 

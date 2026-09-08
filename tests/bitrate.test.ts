@@ -22,6 +22,12 @@ describe('bitrate.ts', () => {
     assert.equal(r.audioBitrateKbps, 64);
   });
 
+  it('silent video (0 audio channels) allocates 0 audio bitrate and full budget to video', () => {
+    const r = calculateBitrate(16, 30, 0);
+    assert.equal(r.audioBitrateKbps, 0);
+    assert.equal(r.videoBitrateKbps, r.bitrateTotalKbps);
+  });
+
   it('size-triggered retry adjusts bitrate proportionally to overshoot', () => {
     const adjusted = adjustBitrateForSizeRetry(3931, 18, 16);
     assert.ok(adjusted < 3931);

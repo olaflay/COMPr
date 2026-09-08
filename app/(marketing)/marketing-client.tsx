@@ -1,20 +1,57 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import SiteHeader from '../../components/marketing/SiteHeader';
 import SiteFooter from '../../components/marketing/SiteFooter';
 import MediaMessageDemo, { type WhatsAppMode } from '../../components/marketing/MediaMessageDemo';
 
 const MODE_SUB_COPY: Record<WhatsAppMode, string> = {
-  Status: 'NoBlur prepares your video so it stays sharp after Status compression | up to 90% smaller, zero blur.',
-  Chat: 'NoBlur prepares your video so it stays sharp after chat compression | up to 90% smaller, still sends fast.',
-  Product: 'NoBlur prepares your photos so they stay sharp in your catalog | up to 90% smaller, loads fast for buyers.',
+  Status: 'Tuned for Status, so your video keeps more detail when WhatsApp compresses am.',
+  Chat: 'Tuned for Chat, so your photos and videos keep detail when you send am.',
+  Product: 'Tuned for product photos, so dem stay sharp for your buyers.',
+};
+
+const CTA_LABEL: Record<WhatsAppMode, string> = {
+  Status: 'Optimise a Status video',
+  Chat: 'Optimise for Chat',
+  Product: 'Optimise product photos',
+};
+
+const PRESET_BY_MODE: Record<WhatsAppMode, string> = {
+  Status: 'STATUS',
+  Chat: 'CHAT',
+  Product: 'CUSTOM',
 };
 
 export default function MarketingClient() {
+  const router = useRouter();
+  const heroFileInputRef = useRef<HTMLInputElement>(null);
   const [whatsappMode, setWhatsappMode] = useState<WhatsAppMode>('Status');
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [isHeroDragging, setIsHeroDragging] = useState(false);
+
+  const handleHeroFile = (file: File) => {
+    if (typeof window !== 'undefined') {
+      (window as any).__stagedNoBlurFile = file;
+    }
+    router.push(`/dashboard?preset=${PRESET_BY_MODE[whatsappMode]}`);
+  };
+
+  const handleHeroFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleHeroFile(e.target.files[0]);
+    }
+  };
+
+  const handleHeroDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsHeroDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleHeroFile(e.dataTransfer.files[0]);
+    }
+  };
 
   const faqs = [
     {
@@ -82,15 +119,46 @@ export default function MarketingClient() {
               {MODE_SUB_COPY[whatsappMode]}
             </p>
 
-            <div className="flex flex-col items-start gap-m3-small w-full mt-m3-x-small message-reveal" style={{ animationDelay: '0.14s' }}>
-              <Link
-                href="/dashboard"
-                className="bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container transition-all duration-m3-medium-1 ease-m3-standard py-m3-small rounded-m3-full text-title-medium shadow-m3-1 hover:shadow-m3-2 hover:-translate-y-[2px] w-full sm:w-auto sm:px-m3-x-large min-w-[200px] text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] active:shadow-m3-0"
-              >
-                Get Started Free
-              </Link>
+            <div
+              onDrop={handleHeroDrop}
+              onDragOver={(e) => { e.preventDefault(); setIsHeroDragging(true); }}
+              onDragEnter={(e) => { e.preventDefault(); setIsHeroDragging(true); }}
+              onDragLeave={() => setIsHeroDragging(false)}
+              className={`flex flex-col items-start gap-m3-small w-full mt-m3-x-small message-reveal rounded-m3-lg p-m3-x-small transition-all duration-m3-short-2 ${
+                isHeroDragging ? 'border-2 border-dashed border-primary bg-primary-container/10' : ''
+              }`}
+              style={{ animationDelay: '0.14s' }}
+            >
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-m3-small w-full">
+                <button
+                  type="button"
+                  onClick={() => heroFileInputRef.current?.click()}
+                  className="bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container transition-all duration-m3-medium-1 ease-m3-standard py-m3-small px-m3-x-large rounded-m3-full text-title-medium shadow-m3-1 hover:shadow-m3-2 hover:-translate-y-[2px] min-w-[200px] text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] active:shadow-m3-0 flex items-center justify-center gap-m3-x-small cursor-pointer"
+                >
+                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span>Select photo or video</span>
+                </button>
+                <Link
+                  href={`/dashboard?preset=${PRESET_BY_MODE[whatsappMode]}`}
+                  className="text-on-surface hover:text-primary transition-colors py-m3-small px-m3-medium text-center text-label-large underline-offset-4 hover:underline"
+                >
+                  {CTA_LABEL[whatsappMode]} &rarr;
+                </Link>
+              </div>
+
+              <input
+                ref={heroFileInputRef}
+                type="file"
+                accept="video/*,image/*"
+                onChange={handleHeroFileSelect}
+                className="hidden"
+                aria-label="Select a photo or video to optimize"
+              />
+
               <span className="text-label-small text-on-surface-variant">
-                Free to use. No account required.
+                {isHeroDragging ? 'Drop your file here to optimize' : 'Free to use: no account required. Drag and drop supported.'}
               </span>
             </div>
           </div>
@@ -104,19 +172,6 @@ export default function MarketingClient() {
         {/* Trust Signal Strip */}
         <div className="w-full flex flex-wrap justify-center items-center gap-x-m3-x-large gap-y-m3-small py-m3-medium border-y border-outline-variant/40 mt-m3-xxx-large md:mt-m3-6xl">
           <div className="flex items-center gap-m3-x-small text-body-small text-on-surface-variant">
-            <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            <span>Up to <span className="font-mono font-semibold text-on-surface">90%</span> smaller, still sharp</span>
-          </div>
-          <div className="flex items-center gap-m3-x-small text-body-small text-on-surface-variant">
-            <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4" />
-            </svg>
-            <span><span className="font-mono font-semibold text-on-surface">5</span> free files every day</span>
-          </div>
-          <div className="flex items-center gap-m3-x-small text-body-small text-on-surface-variant">
             <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
@@ -124,9 +179,10 @@ export default function MarketingClient() {
           </div>
           <div className="flex items-center gap-m3-x-small text-body-small text-on-surface-variant">
             <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              <circle cx="12" cy="12" r="10" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4" />
             </svg>
-            <span>No account required</span>
+            <span><span className="font-mono font-semibold text-on-surface">5</span> free files every day</span>
           </div>
         </div>
 
@@ -225,7 +281,7 @@ export default function MarketingClient() {
             Ready to send sharp media on WhatsApp?
           </h2>
           <p className="text-body-large text-on-primary/80 max-w-sm">
-            Up to 90% smaller, still sharp. Free. No account. 5 uses daily.
+            Keep your media sharp. Free to use. No account. 5 files daily.
           </p>
           <Link
             href="/dashboard"

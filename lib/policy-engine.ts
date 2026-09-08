@@ -111,10 +111,9 @@ function scoreProfile(profile: EncodingProfile, analysis: SceneAnalysis, destina
   // Destination-specific profile routing constraints (PRD §16, §25)
   if (destination === 'WHATSAPP_NORMAL') {
     if (!profile.name.startsWith('whatsapp_normal_')) return -1;
-  } else if (destination === 'WHATSAPP_HD') {
+  } else if (destination === 'WHATSAPP_HD' || destination === 'WHATSAPP_DOCUMENT' || destination === 'PREVIEW_WEB') {
     if (!profile.name.startsWith('whatsapp_hd_')) return -1;
   } else {
-    // WHATSAPP_DOCUMENT or PREVIEW_WEB prioritizes AV1
     if (!profile.name.startsWith('av1_document_')) return 0;
   }
 
@@ -161,8 +160,11 @@ export function selectProfile(
   durationSec: number,
   destination: string = 'WHATSAPP_NORMAL',
   isHdr: boolean = false,
+  speedPresetOverride?: 'slow' | 'medium' | 'fast',
 ): EncodingPlan {
-  const profiles = loadProfiles();
+  const allProfiles = loadProfiles();
+  // Disable AV1 codec selection in MVP per locked-choice amendment 1
+  const profiles = allProfiles.filter((p) => p.codec !== 'libsvtav1');
 
   // Compute base CRF from target size
   const targetBitrateKbps = (targetSizeMB * 8 * 1024) / durationSec;
@@ -221,7 +223,7 @@ export function selectProfile(
     profileName: bestProfile.name,
     codec: bestProfile.codec,
     crf: adjustedCRF,
-    speedPreset: bestProfile.speedPreset,
+    speedPreset: speedPresetOverride || bestProfile.speedPreset,
     videoBitrateMax: bestProfile.videoBitrateMax,
     audioCodec: bestProfile.audioCodec,
     audioBitrate: bestProfile.audioBitrate,
@@ -236,16 +238,30 @@ export function selectProfile(
  * Build the complete FFmpeg argument array for an encoding plan.
  * All args are arrays — never shell-interpolated (AGENTS.md Q3 Rule 20).
  */
-export function buildFFmpegArgs(inputPath: string, outputPath: string, plan: EncodingPlan): string[] {
+export function buildFFmpegArgs(
+  inputPath: string,
+  outputPath: string,
+  plan: EncodingPlan,
+  width?: number,
+  height?: number,
+): string[] {
   const args: string[] = [
     '-y',
     '-threads', '0',
     '-i', inputPath,
   ];
 
-  // Apply HDR to SDR tone mapping if needed
+  // Apply HDR to SDR tone mapping and/or resolution scaling if needed
+  const vfFilters: string[] = [];
   if (plan.isHdr) {
-    args.push('-vf', 'tonemap=tonemap=hable,format=yuv420p');
+    vfFilters.push('tonemap=tonemap=hable,format=yuv420p');
+  }
+  if (width !== undefined && height !== undefined) {
+    vfFilters.push(`scale=${width}:${height}`);
+  }
+
+  if (vfFilters.length > 0) {
+    args.push('-vf', vfFilters.join(','));
   }
 
   args.push(

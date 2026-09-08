@@ -13,28 +13,33 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: noblur
-      POSTGRES_PASSWORD: noblur
-      POSTGRES_DB: noblur
+      POSTGRES_USER: ${POSTGRES_USER:-noblur}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-noblur}
     ports:
-      - "5432:5432"
+      # Bound to localhost only (D-2): DB must not be reachable on the public
+      # host interface in a production-like deployment. Internal services
+      # reach it via the compose network (`postgres:5432`), which needs no
+      # host mapping.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U noblur"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-noblur}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     ports:
-      - "6379:6379"
+      # Localhost-only binding (D-2) — see note on postgres above.
+      - "127.0.0.1:6379:6379"
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -48,14 +53,14 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - DATABASE_URL=postgresql://noblur:noblur@postgres:5432/noblur
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_S3_ENDPOINT=${SUPABASE_S3_ENDPOINT:-}
-      - SUPABASE_S3_REGION=${SUPABASE_S3_REGION:-us-east-1}
-      - SUPABASE_S3_ACCESS_KEY_ID=${SUPABASE_S3_ACCESS_KEY_ID:-}
-      - SUPABASE_S3_SECRET_ACCESS_KEY=${SUPABASE_S3_SECRET_ACCESS_KEY:-}
-      - SUPABASE_UPLOADS_BUCKET=${SUPABASE_UPLOADS_BUCKET:-noblur-uploads}
-      - SUPABASE_OUTPUTS_BUCKET=${SUPABASE_OUTPUTS_BUCKET:-noblur-outputs}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-noblur}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-noblur}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - TIGRIS_ENDPOINT=${TIGRIS_ENDPOINT:-}
+      - TIGRIS_REGION=${TIGRIS_REGION:-auto}
+      - TIGRIS_ACCESS_KEY_ID=${TIGRIS_ACCESS_KEY_ID:-}
+      - TIGRIS_SECRET_ACCESS_KEY=${TIGRIS_SECRET_ACCESS_KEY:-}
+      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-noblur-uploads}
+      - TIGRIS_OUTPUTS_BUCKET=${TIGRIS_OUTPUTS_BUCKET:-noblur-outputs}
       - SENTRY_DSN=${SENTRY_DSN:-}
       - POSTHOG_API_KEY=${POSTHOG_API_KEY:-}
       - NEXT_PUBLIC_APP_URL=http://localhost
@@ -96,14 +101,14 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     environment:
-      - DATABASE_URL=postgresql://noblur:noblur@postgres:5432/noblur
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_S3_ENDPOINT=${SUPABASE_S3_ENDPOINT:-}
-      - SUPABASE_S3_REGION=${SUPABASE_S3_REGION:-us-east-1}
-      - SUPABASE_S3_ACCESS_KEY_ID=${SUPABASE_S3_ACCESS_KEY_ID:-}
-      - SUPABASE_S3_SECRET_ACCESS_KEY=${SUPABASE_S3_SECRET_ACCESS_KEY:-}
-      - SUPABASE_UPLOADS_BUCKET=${SUPABASE_UPLOADS_BUCKET:-noblur-uploads}
-      - SUPABASE_OUTPUTS_BUCKET=${SUPABASE_OUTPUTS_BUCKET:-noblur-outputs}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-noblur}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-noblur}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - TIGRIS_ENDPOINT=${TIGRIS_ENDPOINT:-}
+      - TIGRIS_REGION=${TIGRIS_REGION:-auto}
+      - TIGRIS_ACCESS_KEY_ID=${TIGRIS_ACCESS_KEY_ID:-}
+      - TIGRIS_SECRET_ACCESS_KEY=${TIGRIS_SECRET_ACCESS_KEY:-}
+      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-noblur-uploads}
+      - TIGRIS_OUTPUTS_BUCKET=${TIGRIS_OUTPUTS_BUCKET:-noblur-outputs}
     command: ["node", "--experimental-strip-types", "workers/analysis-worker.ts"]
     volumes:
       - ./temp:/app/temp
@@ -125,14 +130,14 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     environment:
-      - DATABASE_URL=postgresql://noblur:noblur@postgres:5432/noblur
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_S3_ENDPOINT=${SUPABASE_S3_ENDPOINT:-}
-      - SUPABASE_S3_REGION=${SUPABASE_S3_REGION:-us-east-1}
-      - SUPABASE_S3_ACCESS_KEY_ID=${SUPABASE_S3_ACCESS_KEY_ID:-}
-      - SUPABASE_S3_SECRET_ACCESS_KEY=${SUPABASE_S3_SECRET_ACCESS_KEY:-}
-      - SUPABASE_UPLOADS_BUCKET=${SUPABASE_UPLOADS_BUCKET:-noblur-uploads}
-      - SUPABASE_OUTPUTS_BUCKET=${SUPABASE_OUTPUTS_BUCKET:-noblur-outputs}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-noblur}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-noblur}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - TIGRIS_ENDPOINT=${TIGRIS_ENDPOINT:-}
+      - TIGRIS_REGION=${TIGRIS_REGION:-auto}
+      - TIGRIS_ACCESS_KEY_ID=${TIGRIS_ACCESS_KEY_ID:-}
+      - TIGRIS_SECRET_ACCESS_KEY=${TIGRIS_SECRET_ACCESS_KEY:-}
+      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-noblur-uploads}
+      - TIGRIS_OUTPUTS_BUCKET=${TIGRIS_OUTPUTS_BUCKET:-noblur-outputs}
       - VMAF_MODEL_PATH=/usr/share/model/vmaf_v0.6.1.json
     command: ["node", "--experimental-strip-types", "workers/encode-worker.ts"]
     volumes:
@@ -155,13 +160,13 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     environment:
-      - DATABASE_URL=postgresql://noblur:noblur@postgres:5432/noblur
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_S3_ENDPOINT=${SUPABASE_S3_ENDPOINT:-}
-      - SUPABASE_S3_REGION=${SUPABASE_S3_REGION:-us-east-1}
-      - SUPABASE_S3_ACCESS_KEY_ID=${SUPABASE_S3_ACCESS_KEY_ID:-}
-      - SUPABASE_S3_SECRET_ACCESS_KEY=${SUPABASE_S3_SECRET_ACCESS_KEY:-}
-      - SUPABASE_UPLOADS_BUCKET=${SUPABASE_UPLOADS_BUCKET:-noblur-uploads}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-noblur}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-noblur}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - TIGRIS_ENDPOINT=${TIGRIS_ENDPOINT:-}
+      - TIGRIS_REGION=${TIGRIS_REGION:-auto}
+      - TIGRIS_ACCESS_KEY_ID=${TIGRIS_ACCESS_KEY_ID:-}
+      - TIGRIS_SECRET_ACCESS_KEY=${TIGRIS_SECRET_ACCESS_KEY:-}
+      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-noblur-uploads}
       - RUN_CLEANUP_LOOP=true
     command: ["node", "--experimental-strip-types", "workers/cleanup-cron.ts"]
     depends_on:

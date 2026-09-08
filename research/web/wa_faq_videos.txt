@@ -1,0 +1,28 @@
+Title: Can’t send longer videos | WhatsApp Help Center
+
+URL Source: https://faq.whatsapp.com/823886715479103
+
+Markdown Content:
+Copy link
+
+If you’re unable to send long videos, try these troubleshooting steps:
+
+**Check your connection and file size**
+
+Users who have a slower internet connection might have difficulty sending large media files and HD media. The maximum file size for videos sent or forwarded through WhatsApp is 64MB on all platforms.
+
+For users with a faster internet connection, the default video size limit is 100MB and 720p resolution. For users with a slower internet connection, the default video size limit is 64MB and 480p resolution.
+
+**Lower the video quality**
+
+The maximum video duration varies based on the quality of your phone's video camera. To send a longer video, you can record a lower resolution video outside of WhatsApp and use the attach media feature to send it to your contacts.
+
+**Shorten the video or upload as a Document**
+
+You have the option to trim the length of the video before sending it. However, if you’d like to send longer or larger media, you can also choose Document and select a photo or video. The maximum allowed document size is 2 GB.
+
+**Forward the video instead**
+
+To send a video you've previously received, use the forward media feature in a chat to forward the video. Learn how [here](https://faq.whatsapp.com/982833196228708?helpref=faq_content).
+
+**Note**: For Status, you can share a video with a maximum duration of 90 seconds. Supported video formats include 3GP, AVI, FLV, MKV, MOV, and MP4

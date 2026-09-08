@@ -4,9 +4,33 @@ import { extname } from 'node:path';
 import { prisma } from '../../lib/prisma.ts';
 import { getPresignedUploadUrl, startMultipartUpload, getPresignedPartUploadUrl, completeMultipartUpload } from '../services/storage.ts';
 
+// Server-side MIME whitelist (PRD §23 / D-3), kept in sync with the
+// client-side allowlist in lib/file-validation.ts so a file that passes
+// client validation is never rejected server-side. `application/octet-stream`
+// is the generic binary fallback some clients send; the actual format is
+// still verified by magic-byte sniffing in the analysis worker (never trust a
+// client-supplied type alone).
+const ALLOWED_MIME_TYPES = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'video/3gpp',
+  'video/x-msvideo',
+  'application/octet-stream',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/heic',
+  'image/heif',
+] as const;
+
 const startUploadBodySchema = z.object({
   filename: z.string(),
-  mimeType: z.string(),
+  mimeType: z.string().refine(
+    (v) => (ALLOWED_MIME_TYPES as readonly string[]).includes(v),
+    { message: 'Unsupported file type.' },
+  ),
   sizeBytes: z.number().int().positive().max(50 * 1024 * 1024, {
     message: 'Maximum file size is 50MB.',
   }),
@@ -69,6 +93,12 @@ const uploadsRoutes: FastifyPluginAsyncZod = async (app) => {
     });
   });
 
+  const presignPartsBodySchema = z.object({
+    fileKey: z.string(),
+    uploadId: z.string(),
+    partNumbers: z.array(z.number().int().positive()),
+  });
+
   // POST /api/v1/uploads/multipart/start
   app.post('/api/v1/uploads/multipart/start', {
     schema: {
@@ -101,15 +131,43 @@ const uploadsRoutes: FastifyPluginAsyncZod = async (app) => {
 
     try {
       const uploadId = await startMultipartUpload(key, mimeType);
+      
+      const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+      const totalParts = Math.ceil(sizeBytes / CHUNK_SIZE);
+      const parts = [];
+      
+      for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+        const uploadPartUrl = await getPresignedPartUploadUrl(key, uploadId, partNumber);
+        parts.push({ partNumber, uploadPartUrl });
+      }
+
       return reply.send({
         uploadId,
         fileKey: key,
         expiresAt: expiresAt.toISOString(),
+        parts,
       });
     } catch (err: any) {
       await prisma.mediaFile.delete({ where: { id: mediaFile.id } }).catch(() => {});
       throw err;
     }
+  });
+
+  // POST /api/v1/uploads/multipart/presign-parts
+  app.post('/api/v1/uploads/multipart/presign-parts', {
+    schema: {
+      body: presignPartsBodySchema,
+    },
+  }, async (request, reply) => {
+    const { fileKey, uploadId, partNumbers } = request.body;
+
+    const parts = [];
+    for (const partNumber of partNumbers) {
+      const uploadPartUrl = await getPresignedPartUploadUrl(fileKey, uploadId, partNumber);
+      parts.push({ partNumber, uploadPartUrl });
+    }
+
+    return reply.send({ parts });
   });
 
   // POST /api/v1/uploads/multipart/presign-part

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import { Roboto } from 'next/font/google';
 import { BASE_URL, buildMetadata, organizationSchema, softwareApplicationSchema } from '../lib/seo';
 import './globals.css';
@@ -23,9 +24,12 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // D-5: read the per-request nonce set by middleware.ts and surface it on
+  // <html>, which Next.js uses to nonce its inline bootstrap scripts.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
-    <html lang="en" dir="ltr" className={roboto.variable}>
+    <html lang="en" dir="ltr" className={roboto.variable} nonce={nonce} suppressHydrationWarning>
       <head>
         <meta name="description" content="Pre-optimize your photos and videos to stay sharp and clear after sending them on WhatsApp. No account required." />
         <link rel="alternate" hrefLang="pcm" href={BASE_URL} />

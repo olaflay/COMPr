@@ -14,6 +14,7 @@ export interface MetadataInput {
   description?: string;
   path?: string;
   ogImage?: string;
+  includeManifest?: boolean;
 }
 
 export interface PageMetadata {
@@ -41,7 +42,7 @@ export interface PageMetadata {
     shortcut: string;
     apple?: string;
   };
-  manifest: string;
+  manifest?: string;
 }
 
 export function buildMetadata({
@@ -49,6 +50,7 @@ export function buildMetadata({
   description = DEFAULT_DESCRIPTION,
   path = '',
   ogImage = '/og-default.jpg',
+  includeManifest = false,
 }: MetadataInput = {}): PageMetadata {
   const fullTitle = title
     ? `${title} | ${SITE_NAME}`
@@ -80,7 +82,7 @@ export function buildMetadata({
       shortcut: '/favicon.ico',
       apple: '/favicon.svg',
     },
-    manifest: '/manifest.json',
+    ...(includeManifest ? { manifest: '/manifest.json' } : {}),
   };
 }
 
@@ -88,6 +90,27 @@ export interface SchemaOrg {
   '@context': string;
   '@type': string;
   [key: string]: unknown;
+}
+
+/** PRD 37: FAQPage structured data for the marketing FAQ section. */
+export interface FaqPair {
+  question: string;
+  answer: string;
+}
+
+export function faqSchema(faqs: FaqPair[]): SchemaOrg {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: f.answer,
+      },
+    })),
+  };
 }
 
 /** PRD 37: Organization structured data, rendered once in root layout. */

@@ -39,8 +39,8 @@ This document outlines the specific human-computer interaction (HCI), user psych
 ## V. Layout & Typography Systems
 
 - **Modular Spacing**: Spacing is configured strictly using M3 spacing tokens mapped to CSS variables (e.g. `m3-medium` / `--md-sys-spacing-medium: 1rem` / 16px). All spacing in components uses `p-m3-*`, `gap-m3-*`, `m-m3-*` classes, never raw `p-4`, `gap-6`, etc.
-- **Responsive Fluid Typography**: The hero heading size scales smoothly across devices using a CSS `clamp(2rem, 1.5rem + 2.5vw, 2.8125rem)` formula rather than static breakpoints.
-- **Dynamic Letter-Spacing**: The letter-spacing dynamically widens on smaller mobile screens using `clamp(-0.8px, calc(0.4px - 0.1vw), 0px)` to maintain readability when text is shrunk, preventing it from feeling squeezed.
+- **Responsive Fluid Typography**: The hero heading size scales smoothly across devices using a CSS `clamp(1.625rem, 1.25rem + 1.5vw, 2.25rem)` formula rather than static breakpoints.
+- **Dynamic Letter-Spacing**: The letter-spacing dynamically widens on smaller mobile screens using `clamp(-0.5px, calc(0.2px - 0.05vw), 0px)` to maintain readability when text is shrunk, preventing it from feeling squeezed.
 - **Rem Units**: All sizes, line heights, and spacings are configured in `rem` units, allowing native browser text scaling and zoom behaviors to function correctly for accessibility.
 - **Three-Tier Responsive Type Scale**: All 15 M3 type scale tokens (display, headline, title, body, label, each in large/medium/small) have explicit overrides at 3 viewport stages:
   - **Mobile (< 768px)**: Scaled-down sizes optimized for narrow screens and thumb reach. Display large: 2.75rem, body large: 0.875rem, label large: 0.75rem.

@@ -2,7 +2,8 @@
   "name": "NoBlur - WhatsApp Media Optimizer",
   "short_name": "NoBlur",
   "description": "Pre-optimize photos and videos so they stay sharp after WhatsApp compresses them. No account needed.",
-  "start_url": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#075E54",
@@ -19,6 +20,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Status Video",
+      "short_name": "Status",
+      "description": "Optimize video for WhatsApp Status",
+      "url": "/dashboard?preset=STATUS",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Chat Media",
+      "short_name": "Chat",
+      "description": "Optimize media for WhatsApp Chat",
+      "url": "/dashboard?preset=CHAT",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

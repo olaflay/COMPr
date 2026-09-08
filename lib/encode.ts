@@ -211,6 +211,7 @@ export async function processImage({
     '-i', inputPath,
     '-vf', `scale='min(${maxLongEdgePx},iw)':'min(${maxLongEdgePx},ih)':force_original_aspect_ratio=decrease`,
     '-map_metadata', '-1',
+    '-q:v', '2',
     '-loglevel', 'error',
     outputPath,
   ], { timeout: 30_000 });

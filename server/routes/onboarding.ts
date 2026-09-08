@@ -5,9 +5,12 @@ import { hashString } from '../../lib/crypto.ts';
 import { applyOnboardingPreferences } from '../../lib/growth-ux.ts';
 
 const onboardingBodySchema = z.object({
-  fingerprint: z.string(),
-  primary_use: z.string().optional(),
-  priority: z.string().optional(),
+  // Bound all user-supplied strings (D-7): valid values are short enum
+  // values (e.g. "products", "quality"); generous caps prevent unbounded
+  // payload bloat while never rejecting legitimate answers.
+  fingerprint: z.string().max(256),
+  primary_use: z.string().max(50).optional(),
+  priority: z.string().max(50).optional(),
 });
 
 const onboardingRoutes: FastifyPluginAsyncZod = async (app) => {

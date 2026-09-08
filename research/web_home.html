@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ISA EDITOR - Batch Blur & Denoise</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb; --success: #22c55e; --danger: #ef4444;
+            --bg-body: #f0f2f5; --card-bg: #ffffff; --border: #d1d5db;
+            --text: #1f2937; --input-bg: #ffffff; --grid-color: rgba(37, 99, 235, 0.1);
+        }
+
+        /* 36 Variasi Tema Lengkap */
+        body.light-clean { --primary: #2563eb; --bg-body: #f0f2f5; --card-bg: #ffffff; --text: #1f2937; --input-bg: #ffffff; --border: #d1d5db; }
+        body.luxury-gold { --primary: #d4af37; --bg-body: #1a1a1a; --card-bg: #2d2d2d; --text: #d4af37; --input-bg: #3d3d3d; --border: #d4af37; }
+        body.dark-pro { --primary: #3b82f6; --bg-body: #050505; --card-bg: #121212; --text: #e0e0e0; --input-bg: #1e1e1e; --border: #333; }
+        body.midnight-navy { --primary: #1e3a8a; --bg-body: #020617; --card-bg: #0f172a; --text: #cbd5e1; --input-bg: #020617; --border: #1e3a8a; }
+        body.ocean-breeze { --primary: #0891b2; --bg-body: #ecfeff; --card-bg: #ffffff; --text: #164e63; --input-bg: #f0f9ff; --border: #0891b2; }
+        body.cyberpunk { --primary: #ff00ff; --bg-body: #0d0221; --card-bg: #0f082d; --text: #00ff41; --input-bg: #1a1a1a; --border: #00ff41; }
+        body.deep-forest { --primary: #15803d; --bg-body: #052e16; --card-bg: #064e3b; --text: #ecfdf5; --input-bg: #022c22; --border: #065f46; }
+        body.deep-ocean { --primary: #0369a1; --bg-body: #082f49; --card-bg: #0c4a6e; --text: #e0f2fe; --input-bg: #082f49; --border: #0369a1; }
+        body.sunset-vibes { --primary: #be123c; --bg-body: #4c0519; --card-bg: #881337; --text: #fff1f2; --input-bg: #4c0519; --border: #be123c; }
+        body.warm-coffee { --primary: #6f4e37; --bg-body: #fdf5e6; --card-bg: #faf0e6; --text: #4b3621; --input-bg: #fff; --border: #6f4e37; }
+        body.retro-paper { --primary: #854d0e; --bg-body: #fef3c7; --card-bg: #fffbeb; --text: #451a03; --input-bg: #fef3c7; --border: #d97706; }
+        body.dracula { --primary: #bd93f9; --bg-body: #282a36; --card-bg: #44475a; --text: #f8f8f2; --input-bg: #282a36; --border: #6272a4; }
+        body.ultra-minimal { --primary: #111; --bg-body: #fff; --card-bg: #fff; --text: #111; --input-bg: #f5f5f5; --border: #eee; }
+        body.rose-valentine { --primary: #e11d48; --bg-body: #fff1f2; --card-bg: #ffffff; --text: #881337; --input-bg: #fff1f2; --border: #e11d48; }
+        body.violet-night { --primary: #7c3aed; --bg-body: #0f0720; --card-bg: #1e1039; --text: #ede9fe; --input-bg: #0f0720; --border: #7c3aed; }
+        body.sunset-glow { --primary: #f59e0b; --bg-body: #fff7ed; --card-bg: #ffffff; --text: #7c2d12; --input-bg: #fff7ed; --border: #f59e0b; }
+        body.slate-grey { --primary: #475569; --bg-body: #f1f5f9; --card-bg: #ffffff; --text: #0f172a; --input-bg: #f1f5f9; --border: #475569; }
+        body.emerald-city { --primary: #10b981; --bg-body: #064e3b; --card-bg: #065f46; --text: #ecfdf5; --input-bg: #042f2e; --border: #10b981; }
+        body.vaporwave { --primary: #ff71ce; --bg-body: #2d0b5a; --card-bg: #01cdfe; --text: #fff; --input-bg: #2d0b5a; --border: #fff501; }
+        body.pastel-dream { --primary: #fbcfe8; --bg-body: #fdf2f8; --card-bg: #ffffff; --text: #be185d; --input-bg: #fdf2f8; --border: #fbcfe8; }
+        body.neon-lime { --primary: #bef264; --bg-body: #0a0a0a; --card-bg: #1a1a1a; --text: #bef264; --input-bg: #000000; --border: #bef264; }
+        body.royal-purple { --primary: #a855f7; --bg-body: #2e1065; --card-bg: #4c1d95; --text: #f5f3ff; --input-bg: #2e1065; --border: #a855f7; }
+        body.burning-orange { --primary: #f97316; --bg-body: #451a03; --card-bg: #7c2d12; --text: #fff7ed; --input-bg: #451a03; --border: #f97316; }
+        body.arctic-white { --primary: #0ea5e9; --bg-body: #f8fafc; --card-bg: #ffffff; --text: #0f172a; --input-bg: #f1f5f9; --border: #e2e8f0; }
+        body.sweet-candy { --primary: #f472b6; --bg-body: #fff1f2; --card-bg: #ffffff; --text: #9d174d; --input-bg: #fff1f2; --border: #f472b6; }
+        body.military-base { --primary: #84cc16; --bg-body: #1a2e05; --card-bg: #365314; --text: #f7fee7; --input-bg: #1a2e05; --border: #4d7c0f; }
+        body.deep-space { --primary: #6366f1; --bg-body: #020617; --card-bg: #0f172a; --text: #f8fafc; --input-bg: #000000; --border: #1e293b; }
+        body.mint-fresh { --primary: #10b981; --bg-body: #f0fdf4; --card-bg: #ffffff; --text: #064e3b; --input-bg: #f0fdf4; --border: #10b981; }
+        body.volcano-ash { --primary: #ef4444; --bg-body: #1c1917; --card-bg: #292524; --text: #fafaf9; --input-bg: #1c1917; --border: #44403c; }
+        body.electric-blue { --primary: #22d3ee; --bg-body: #083344; --card-bg: #155e75; --text: #ecfeff; --input-bg: #083344; --border: #22d3ee; }
+        body.soft-lavender { --primary: #8b5cf6; --bg-body: #f5f3ff; --card-bg: #ffffff; --text: #4c1d95; --input-bg: #f5f3ff; --border: #ddd6fe; }
+        body.forest-moss { --primary: #556b2f; --bg-body: #2e3b23; --card-bg: #3d4f30; --text: #d4e0c0; --input-bg: #2e3b23; --border: #556b2f; }
+        body.nordic-frost { --primary: #5da7b1; --bg-body: #e5e9ec; --card-bg: #ffffff; --text: #2c3e50; --input-bg: #f4f7f9; --border: #5da7b1; }
+        body.industrial-rust { --primary: #a0522d; --bg-body: #2b2b2b; --card-bg: #383838; --text: #e0d5c1; --input-bg: #262626; --border: #cd853f; }
+        body.sakura-night { --primary: #ffb7c5; --bg-body: #1c1c1c; --card-bg: #2d2d2d; --text: #ffb7c5; --input-bg: #383838; --border: #ffb7c5; }
+        body.toxic-neon { --primary: #39ff14; --bg-body: #0a0a0a; --card-bg: #151515; --text: #39ff14; --input-bg: #000000; --border: #39ff14; }
+
+        body {
+            font-family: 'Share Tech', sans-serif;
+            background-color: var(--bg-body);
+            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: var(--text);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box;
+        }
+
+        #mainApp {
+            display: flex; flex-direction: column; align-items: center;
+            width: 100%; max-width: 600px; /* Lebar sama dengan KOLINKS */
+            position: relative; z-index: 5;
+        }
+
+        .title-card {
+            background-color: var(--card-bg); width: 100%; padding: 15px 0;
+            border: 2px solid var(--border); border-bottom: none;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .title-card h1 { margin: 0; color: var(--primary); font-size: 32px; font-weight: 1000; letter-spacing: 4px; }
+
+        .container {
+            background-color: var(--card-bg); width: 100%; padding: 20px;
+            border: 2px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: flex; flex-direction: column; box-sizing: border-box; gap: 15px;
+        }
+
+        /* --- NAVIGASI --- */
+        .top-nav { display: flex; justify-content: space-between; align-items: center; }
+        .nav-actions { display: flex; gap: 10px; align-items: center; position: relative; }
+        .btn-nav-icon {
+            background: var(--primary); color: white !important; border: none; 
+            width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 3px 0 rgba(0,0,0,0.2); transition: all 0.1s;
+        }
+        .btn-nav-icon:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
+        .theme-menu {
+            position: absolute; top: 45px; right: 0; background: var(--card-bg);
+            border: 2px solid var(--border); box-shadow: 0 5px 15px rgba(0,0,0,0.2); 
+            display: none; flex-direction: column; z-index: 100; width: 180px; max-height: 250px; overflow-y: auto;
+        }
+        .theme-opt { padding: 10px 12px; cursor: pointer; font-size: 11px; border-bottom: 1px solid var(--border); font-weight: bold; }
+        .theme-opt:hover { background: var(--primary); color: white; }
+
+        /* --- DROP ZONE MULTIPLE FILES --- */
+        .drop-zone {
+            width: 100%; padding: 20px; background-color: var(--input-bg);
+            border: 2px dashed var(--primary); color: var(--text); text-align: center;
+            cursor: pointer; box-sizing: border-box; transition: all 0.3s;
+            font-size: 14px; font-weight: bold; display: flex; flex-direction: column; align-items: center; gap: 5px;
+        }
+        .drop-zone:hover { background-color: var(--primary); color: white; border-style: solid; }
+        
+        /* --- FILE LIST (SCROLLABLE) --- */
+        .file-list-container {
+            max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+            border: 2px solid var(--border); padding: 8px; background: var(--input-bg);
+        }
+        .file-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--card-bg); border: 1px solid var(--border); padding: 6px 10px;
+            box-shadow: 0 2px 0 var(--border); transition: all 0.2s;
+        }
+        .file-item.active { border-color: var(--primary); box-shadow: 0 2px 0 var(--primary); }
+        .file-name { font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+        .file-actions { display: flex; gap: 6px; }
+        .btn-icon {
+            background: var(--input-bg); border: 1px solid var(--border); color: var(--text);
+            width: 28px; height: 28px; cursor: pointer; display: flex; justify-content: center; align-items: center;
+        }
+        .btn-icon:hover { background: var(--primary); color: white; border-color: var(--primary); }
+        .btn-icon.danger:hover { background: var(--danger); border-color: var(--danger); }
+
+        /* --- CANVAS PREVIEW --- */
+        .canvas-container {
+            background: var(--input-bg); border: 2px solid var(--border);
+            height: 200px; display: flex; justify-content: center; align-items: center;
+            overflow: hidden; position: relative;
+        }
+        canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .no-preview-text { position: absolute; font-size: 12px; font-weight: bold; opacity: 0.5; }
+
+        /* --- LAYOUT GRID 50:50 --- */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        
+        /* Responsif untuk HP (Susun atas bawah) */
+        @media (max-width: 500px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .control-group { background: var(--input-bg); border: 2px solid var(--border); padding: 10px; }
+        .control-group label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: var(--primary); }
+        
+        input[type="range"] { width: 100%; appearance: none; background: transparent; cursor: pointer; }
+        input[type="range"]::-webkit-slider-runnable-track { background: var(--border); height: 4px; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; margin-top: -6px; background: var(--primary); height: 16px; width: 8px; }
+
+        .btn-action {
+            background: var(--primary); color: white; border: 2px solid var(--primary);
+            padding: 10px; font-size: 14px; font-family: 'Share Tech', sans-serif; font-weight: bold;
+            cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: all 0.1s;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .btn-action:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--bg-body); } ::-webkit-scrollbar-thumb { background: var(--primary); }
+    </style>
+</head>
+<body class="light-clean">
+
+    <div id="mainApp">
+        <div class="title-card">
+            <h1>ISA EDITOR</h1>
+        </div>
+
+        <div class="container">
+            <div class="top-nav">
+                <div id="datetime">
+                    <div id="clock" style="font-size: 20px; font-weight: bold;">00:00:00</div>
+                    <div id="date" style="font-size: 11px; opacity: 0.8; font-weight: bold;">00/00/0000</div>
+                </div>
+
+                <div class="nav-actions">
+                    <a href="https://lynk.id/isaproject/0581ez0729vx" target="_blank" class="btn-nav-icon" style="background: #6f4e37;" title="Support Me">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                    </a>
+
+                    <div style="position: relative;">
+                        <button class="btn-nav-icon" onclick="toggleThemeMenu()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                        </button>
+                        <div id="themeMenu" class="themeMenu theme-menu">
+                            </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                <span>UPLOAD FILE (BISA BANYAK)</span>
+                <input type="file" id="fileInput" accept="image/*" multiple hidden>
+            </div>
+
+            <div class="file-list-container" id="fileListContainer" style="display: none;"></div>
+
+            <div class="canvas-container">
+                <span class="no-preview-text" id="noPreviewTxt">PILIH PREVIEW GAMBAR</span>
+                <canvas id="imageCanvas"></canvas>
+            </div>
+
+            <div class="grid-2">
+                <div class="control-group">
+                    <label>GAUSSIAN BLUR <span id="blurVal">0px</span></label>
+                    <input type="range" id="blurSlider" min="0" max="20" step="0.5" value="0">
+                </div>
+                <div class="control-group">
+                    <label>DENOISE <span id="denoiseVal">0%</span></label>
+                    <input type="range" id="denoiseSlider" min="0" max="100" step="1" value="0">
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="control-group">
+                    <label>KUALITAS (BITRATE) <span id="bitrateVal">100%</span></label>
+                    <input type="range" id="bitrateSlider" min="10" max="100" step="1" value="100">
+                </div>
+                <button id="downloadBtn" class="btn-action">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    DOWNLOAD
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+<script>
+    // --- LIST TEMA LENGKAP ---
+    const themes = ['light-clean', 'luxury-gold', 'dark-pro', 'midnight-navy', 'ocean-breeze', 'cyberpunk', 'deep-forest', 'deep-ocean', 'sunset-vibes', 'warm-coffee', 'retro-paper', 'dracula', 'ultra-minimal', 'rose-valentine', 'violet-night', 'sunset-glow', 'slate-grey', 'emerald-city', 'vaporwave', 'pastel-dream', 'neon-lime', 'royal-purple', 'burning-orange', 'arctic-white', 'sweet-candy', 'military-base', 'deep-space', 'mint-fresh', 'volcano-ash', 'electric-blue', 'soft-lavender', 'forest-moss', 'nordic-frost', 'industrial-rust', 'sakura-night', 'toxic-neon'];
+    const themeMenu = document.getElementById('themeMenu');
+    themes.forEach(t => {
+        let div = document.createElement('div');
+        div.className = 'theme-opt'; div.innerText = t.replace('-', ' ').toUpperCase();
+        div.onclick = () => setTheme(t);
+        themeMenu.appendChild(div);
+    });
+
+    function toggleThemeMenu() { themeMenu.style.display = themeMenu.style.display === 'flex' ? 'none' : 'flex'; }
+    function setTheme(t) { document.body.className = t; themeMenu.style.display = 'none'; localStorage.setItem('isaeditor_theme', t); }
+    if(localStorage.getItem('isaeditor_theme')) document.body.className = localStorage.getItem('isaeditor_theme');
+
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toTimeString().split(' ')[0];
+        document.getElementById('date').textContent = now.toLocaleDateString('id-ID');
+    }
+    setInterval(updateClock, 1000); updateClock();
+
+    document.addEventListener('click', e => { if (!document.querySelector('.nav-actions').contains(e.target)) themeMenu.style.display = 'none'; });
+
+    // --- LOGIKA EDITOR & MULTIPLE FILES ---
+    let uploadedFiles = [];
+    let activeIndex = -1;
+    let img = new Image();
+
+    const fileInput = document.getElementById('fileInput');
+    const fileListContainer = document.getElementById('fileListContainer');
+    const canvas = document.getElementById('imageCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const noPreviewTxt = document.getElementById('noPreviewTxt');
+
+    const sliders = {
+        blur: document.getElementById('blurSlider'),
+        denoise: document.getElementById('denoiseSlider'),
+        bitrate: document.getElementById('bitrateSlider')
+    };
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            Array.from(e.target.files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    uploadedFiles.push({ file: file, name: file.name, url: URL.createObjectURL(file) });
+                }
+            });
+            renderFileList();
+        }
+    });
+
+    function renderFileList() {
+        fileListContainer.innerHTML = '';
+        if (uploadedFiles.length > 0) fileListContainer.style.display = 'flex';
+        else fileListContainer.style.display = 'none';
+
+        uploadedFiles.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = `file-item ${activeIndex === index ? 'active' : ''}`;
+            
+            // Icon Preview (Mata) & Delete (X)
+            div.innerHTML = `
+                <div class="file-name" title="${item.name}">${item.name}</div>
+                <div class="file-actions">
+                    <button class="btn-icon" onclick="previewFile(${index})" title="Preview">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                    <button class="btn-icon danger" onclick="deleteFile(${index})" title="Hapus">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+            `;
+            fileListContainer.appendChild(div);
+        });
+    }
+
+    function deleteFile(index) {
+        uploadedFiles.splice(index, 1);
+        if (activeIndex === index) {
+            activeIndex = -1;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            noPreviewTxt.style.display = 'block';
+        } else if (activeIndex > index) {
+            activeIndex--; 
+        }
+        renderFileList();
+    }
+
+    function previewFile(index) {
+        activeIndex = index;
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            noPreviewTxt.style.display = 'none';
+            applyFilters();
+        };
+        img.src = uploadedFiles[index].url;
+        renderFileList();
+    }
+
+    // Trigger Update Filter
+    Object.keys(sliders).forEach(key => {
+        sliders[key].addEventListener('input', () => {
+            document.getElementById(key + 'Val').innerText = key === 'blur' ? sliders[key].value + 'px' : sliders[key].value + '%';
+            if (key !== 'bitrate') applyFilters(); // Bitrate tidak mengubah visual canvas, hanya saat diekspor
+        });
+    });
+
+    function applyFilters() {
+        if (activeIndex === -1 || !img.src) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.filter = `blur(${sliders.blur.value}px)`;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        if (sliders.denoise.value > 0) {
+            const alpha = (sliders.denoise.value / 100) * 0.5;
+            ctx.globalAlpha = alpha; ctx.filter = 'none';
+            ctx.drawImage(canvas, 1, 1); ctx.drawImage(canvas, -1, -1);
+            ctx.globalAlpha = 1.0;
+        }
+    }
+
+    // Ekspor Kustom berdasarkan Bitrate (Kualitas Kompresi JPG)
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+        if (activeIndex === -1) { alert("Pilih preview gambar terlebih dahulu!"); return; }
+        
+        const quality = sliders.bitrate.value / 100;
+        const dataUrl = canvas.toDataURL('image/jpeg', quality); // Paksa ke JPG agar Bitrate berfungsi
+        
+        let originalName = uploadedFiles[activeIndex].name.split('.')[0];
+        
+        const link = document.createElement('a');
+        link.download = `QC_${originalName}_Edited.jpg`;
+        link.href = dataUrl;
+        link.click();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "PeerStatus app whatsapp": [],
+  "PeerStatus status page tool": [
+    {
+      "title": "GitHub - ivbeg/awesome-status-pages: Awesome list of status page open ...",
+      "url": "https://github.com/ivbeg/awesome-status-pages",
+      "snippet": "Awesome list ofstatuspagesopensource software, online services, and publicstatuspagesof major internet companies."
+    },
+    {
+      "title": "PeerStatus - Syntax, Parameters & Examples | Asterisk AMI Events",
+      "url": "https://asteriskrecipes.com/reference/ami-events/peerstatus",
+      "snippet": "Complete reference forPeerStatusincluding syntax, arguments, return values, and practical examples."
+    },
+    {
+      "title": "Status.io - Status Pages & Incident Communications",
+      "url": "https://status.io/",
+      "snippet": "Customizable Design Align yourstatuspagewith your brand using our designtools- rearrange sections, upload graphics, adjust colors, and more. For full control, inject your own HTML, JavaScript, and CSS."
+    },
+    {
+      "title": "PeerStatus - Asterisk Documentation",
+      "url": "https://docs.asterisk.org/Asterisk_20_Documentation/API_Documentation/AMI_Events/PeerStatus/",
+      "snippet": "Arguments ChannelType - The channel technology of the peer. Peer - The name of the peer (including channel technology).PeerStatus- Newstatusof the peer. Unknown Registered Unregistered Rejected Lagged Cause - The reason thestatushas changed. Address - New address of the peer. Port - New port for the peer. Time - Time it takes to reach the peer and receive a response. Class SYSTEM ..."
+    },
+    {
+      "title": "8 Best Free & Open Source Status Page Tools in 2026",
+      "url": "https://betterstack.com/community/comparisons/free-status-page-tools/",
+      "snippet": "Statuspagesare today a must for any online business. In case of incidents or downtimestatuspagesprovide a modern platform for communication with users."
+    },
+    {
+      "title": "Best Status Page Tools (Free & Cheap Picks) - Pulse Release",
+      "url": "https://pulserelease.com/blog/best-status-page-tools",
+      "snippet": "Compare the beststatuspagetoolsin 2026, from free and cheap options to enterprise: pricing, custom domains, subscribers, monitoring, and best-for picks."
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+Title: About HD photos and videos
+
+URL Source: https://faq.whatsapp.com/759301289012856
+
+Markdown Content:
+Copy link
+
+Android
+
+iOS
+
+Android
+
+iOS
+
+You can share special moments with friends and family in high definition by changing the quality settings of your photo or video. Select HD in your message media to share photos and video that enhance everyday moments or special occasions.
+
+**Note**: HD media isn’t currently available for status updates or profile pictures.
+
+## Send HD media
+
+To send HD media in a chat:
+
+1.   Open an individual or group chat.
+2.   To take a photo or video to send, tap 
+![Image 1: Camera](https://static.xx.fbcdn.net/assets/?set=whatsapp_help_article_assets&name=android-camera&density=1)
+
+ to send. To attach an existing photo or video, press and hold 
+![Image 2: Attach (paper clip)](https://static.xx.fbcdn.net/assets/?set=whatsapp_help_article_assets&name=android-attach&density=1)
+
+> tap **Gallery**> select photos or videos to send. 
+3.   Tap 
+![Image 3: HD Media (the letters H-D within a rectangle with a gear in the bottom right corner)](https://static.xx.fbcdn.net/assets/?set=whatsapp_help_article_assets&name=platform-agnostic-hd-media-en-us&density=1)
+
+ and select **Standard quality** or **HD quality**. 
+
+    *   If you attach an existing photo or video, you don't have to select between **Standard quality** or **HD quality**. 
+
+4.   You can also choose to edit your media and add a caption.
+
+    *   **Note:** If you share HD media using your cellular network, a **Continue without WiFi?** might appear. Tap **Continue** if you’d like to share HD media using your cellular network.
+
+5.   Tap
+![Image 4: Send (paper airplane)](https://static.xx.fbcdn.net/assets/?set=whatsapp_help_article_assets&name=android-send&density=1)
+
+.
+
+To set HD quality as the default:
+
+1.   Open WhatsApp **Settings**>**Storage and data**>**Media upload quality.**
+2.   Select **HD quality**.
+
+**Note:**
+
+*   You can still send individual items in standard quality by tapping 
+![Image 5: HD Media (the letters H-D within a rectangle with a gear in the bottom right corner)](https://static.xx.fbcdn.net/assets/?set=whatsapp_help_article_assets&name=platform-agnostic-hd-media-en-us&density=1)
+
+ and selecting **Standard quality**each time you send media.
+*   Sending HD media might be faster when using WiFi instead of your cellular network.
+
+*   You can’t upgrade the quality of an existing photo you’ve sent, but you can send it again in **HD quality**.
+
+*   The internet connection will impact the quality of media being sent and received, even if the media is sent in HD quality.
+
+*   How to [configure auto-download](https://faq.whatsapp.com/366146522333492?helpref=faq_content)
+*   How to [edit photos and videos](https://faq.whatsapp.com/812276063311533?helpref=faq_content)
+*   Can’t [send longer videos](https://faq.whatsapp.com/823886715479103/?helpref=faq_content)

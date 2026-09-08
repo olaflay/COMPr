@@ -1,7 +1,7 @@
 /**
  * Classifies whether an error is permanent or transient.
  * Permanent failures (e.g. invalid file format, unknown codec, bad parameters) should not be retried.
- * Transient failures (e.g. database connection issues, R2 timeouts) should be retried.
+ * Transient failures (e.g. database connection issues, object-storage timeouts) should be retried.
  */
 export function isPermanentFailure(errorMessage: string): boolean {
   const normalized = errorMessage.toLowerCase();
