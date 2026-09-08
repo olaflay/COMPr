@@ -1,0 +1,3 @@
+## 2024-05-18 - Replacing useEffect derived state with useMemo
+**Learning:** Found a common anti-pattern where a component's state (`sizePrediction` in `DashboardPageClient`) was derived from other states (`selectedFile`, `preset`, etc) via `useEffect` updating a separate `useState`. This causes two render cycles whenever a dependency changes: one for the initial dependency change, and a second when the effect fires and updates the derived state.
+**Action:** Always prefer `useMemo` over `useEffect` + `useState` when computing values directly derived from props or other state. This computes the value synchronously during render, eliminating the extra render cycle and avoiding the flash of stale data.

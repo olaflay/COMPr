@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, ChangeEvent, useCallback, DragEvent } from 'react';
+import { useState, useEffect, useRef, ChangeEvent, useCallback, DragEvent, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import BeforeAfterSlider from '../../components/BeforeAfterSlider.tsx';
@@ -11,7 +11,7 @@ import Toast from '../../components/ui/Toast';
 import EmptyState from '../../components/ui/EmptyState';
 import { validateFile, type ValidationError } from '../../lib/file-validation';
 import { buildUpsellCopy } from '../../lib/growth-ux';
-import { predictOutputSize, type SizePrediction } from '../../lib/size-predictor';
+import { predictOutputSize } from '../../lib/size-predictor';
 import { addToHistory } from '../../lib/job-history';
 import { buildWhatsAppShareUrl, buildWhatsAppStatusShareUrl } from '../../lib/whatsapp-share';
 import { apiFetch, apiUrl } from '../../lib/api-client';
@@ -59,7 +59,7 @@ export default function DashboardPageClient() {
   const [feedbackGiven, setFeedbackGiven] = useState(false);
   const [usageLoading, setUsageLoading] = useState(true);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
-  const [sizePrediction, setSizePrediction] = useState<SizePrediction | null>(null);
+
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollIntervalRef = useRef<any>(null);
@@ -104,19 +104,17 @@ export default function DashboardPageClient() {
   };
 
   // Compute size prediction when file or preset changes
-  useEffect(() => {
+  const sizePrediction = useMemo(() => {
     if (selectedFile) {
-      const prediction = predictOutputSize(
+      return predictOutputSize(
         selectedFile.size,
         videoDuration,
         selectedFile.type,
         preset,
         preset === 'CUSTOM' ? customSizeMB : undefined,
       );
-      setSizePrediction(prediction);
-    } else {
-      setSizePrediction(null);
     }
+    return null;
   }, [selectedFile, preset, customSizeMB, videoDuration]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -494,7 +492,7 @@ export default function DashboardPageClient() {
     setValidationErrors([]);
     setFeedbackGiven(false);
     setVideoDuration(null);
-    setSizePrediction(null);
+
   }, []);
 
   const claimShareBonus = async () => {
