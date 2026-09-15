@@ -1,0 +1,3 @@
+## 2024-05-19 - Removed unnecessary double-render in Dashboard Client
+**Learning:** React components that compute derived state (like `sizePrediction` in `app/dashboard/dashboard-client.tsx`) using `useState` updated by a `useEffect` trigger an unnecessary double-render cycle. The first render is for the dependency change, and the second is triggered by the state update inside `useEffect`.
+**Action:** Always compute derived state synchronously during the render phase using `useMemo` (or a regular variable if inexpensive) to eliminate the second render pass. This is a common pattern in complex forms like the main upload dashboard.
