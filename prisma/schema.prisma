@@ -44,7 +44,7 @@ model Job {
   targetSizeMB             Int? // only set when preset = CUSTOM, validated 1-16 at API layer
   prioritizeDetail         Boolean     @default(false)
   mediaKind                MediaKind
-  queuePosition            Int?        // denormalized from Redis queue (1-indexed), reduces O(n) polling
+  queuePosition            Int? // denormalized from Redis queue (1-indexed), reduces O(n) polling
   destination              String      @default("WHATSAPP_NORMAL")
   sourceFile               MediaFile?  @relation("SourceFile", fields: [sourceFileId], references: [id])
   sourceFileId             String?     @unique
@@ -56,19 +56,21 @@ model Job {
   isFirstJobForFingerprint Boolean     @default(false) // drives FR-11 reciprocity exemption
 
   // Adaptive engine fields
-  analysisResult           Json?       // SceneAnalysis: face/text/motion scores per sampled frame
-  profileId                String?     // Selected EncodingProfile for this job
-  profile                  EncodingProfile? @relation(fields: [profileId], references: [id])
-  vmafScore                Float?      // Final VMAF quality score after verification
-  reencodeCount            Int         @default(0) // VMAF-triggered re-encode count
+  analysisResult Json? // SceneAnalysis: face/text/motion scores per sampled frame
+  profileId      String? // Selected EncodingProfile for this job
+  profile        EncodingProfile? @relation(fields: [profileId], references: [id])
+  vmafScore      Float? // Final VMAF quality score after verification
+  reencodeCount  Int              @default(0) // VMAF-triggered re-encode count
 
-  createdAt                DateTime    @default(now())
-  updatedAt                DateTime    @updatedAt
-  completedAt              DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
 
   @@index([fingerprintHash, createdAt])
   @@index([status])
   @@index([profileId])
+  // Fixes full table scan in lib/job-intake.ts fallback rate limiter
+  @@index([ipHash, createdAt])
 }
 
 model MediaFile {
@@ -115,27 +117,27 @@ model PlatformLimit {
 }
 
 model EncodingProfile {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  codec           String   // "libsvtav1" | "libx264" | "libaom-av1" | "librav1e"
-  container       String   @default("mp4")
+  id              String @id @default(cuid())
+  name            String @unique
+  codec           String // "libsvtav1" | "libx264" | "libaom-av1" | "librav1e"
+  container       String @default("mp4")
   crf             Int
-  videoBitrateMax Int?     // Optional bitrate ceiling (kbps), null for pure CRF
-  speedPreset     String   // SVT-AV1: "0-13", x264: "ultrafast-slow"
-  pixelFormat     String   @default("yuv420p")
-  audioCodec      String   @default("aac")
-  audioBitrate    Int      @default(96) // kbps
+  videoBitrateMax Int? // Optional bitrate ceiling (kbps), null for pure CRF
+  speedPreset     String // SVT-AV1: "0-13", x264: "ultrafast-slow"
+  pixelFormat     String @default("yuv420p")
+  audioCodec      String @default("aac")
+  audioBitrate    Int    @default(96) // kbps
 
   // Adaptive policy metadata — scene scores that select this profile
-  minFaceScore    Float?   // Minimum face detection score to use this profile
-  minTextScore    Float?   // Minimum text edge score to use this profile
-  minMotionScore  Float?   // Minimum motion score to use this profile
-  maxMotionScore  Float?   // Maximum motion score to use this profile
+  minFaceScore   Float? // Minimum face detection score to use this profile
+  minTextScore   Float? // Minimum text edge score to use this profile
+  minMotionScore Float? // Minimum motion score to use this profile
+  maxMotionScore Float? // Maximum motion score to use this profile
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  jobs            Job[]
+  jobs Job[]
 
   @@index([codec])
 }
