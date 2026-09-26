@@ -117,8 +117,13 @@ async function createJobForFingerprintValidated(input: {
     }
 
     // 2. Fetch current fingerprint jobs to determine first job status
-    const jobCount = await tx.job.count({ where: { fingerprintHash } });
-    const isFirstJob = jobCount === 0;
+    // Performance optimization: Using findFirst instead of count() to prevent an O(N) full table scan.
+    // An existence check via findFirst completes in O(1) time and is much more efficient.
+    const priorJob = await tx.job.findFirst({
+      where: { fingerprintHash },
+      select: { id: true },
+    });
+    const isFirstJob = priorJob === null;
 
     // 3. Quota gate check (FR-11): first job is always exempt
     if (!isFirstJob) {
