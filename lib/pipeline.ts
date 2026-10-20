@@ -1,5 +1,5 @@
 /**
- * Media processing pipeline orchestration — PRD Section 13.
+ * Media processing pipeline orchestration : PRD Section 13.
  *
  * Implements: dual retry paths (FR-7), and the adaptive engine pipeline.
  * Coordinates modular tasks (probe, encode, ssim) to maintain file sizes under 200 lines.
@@ -148,7 +148,7 @@ export async function runPipeline({
     } else if (!qualityOk && !prioritizeDetail) {
       // Quality-triggered retry path: drop one resolution tier
       resolution = dropOneResolutionTier(resolution.height, isPortrait);
-      ({ videoBitrateFinalKbps } = calculateBitrate(effectiveTargetSizeMB, source.durationSec, 2));
+      ({ videoBitrateFinalKbps } = calculateBitrate(effectiveTargetSizeMB, source.durationSec, audioChannels));
     }
   }
 
@@ -296,3 +296,39 @@ export async function runAdaptivePipeline({
 function round(n: number): number {
   return Math.round(n * 1000) / 1000;
 }
+
+export interface VecteusPipelineOptions {
+  inputPath: string;
+  outputDir: string;
+  targetVmaf?: number;
+  maxBitrateKbps?: number;
+  segmentDurationSec?: number | null;
+  codec?: 'libsvtav1' | 'libx264';
+  targetSizeMB?: number;
+  speedPresetOverride?: 'slow' | 'medium' | 'fast';
+}
+
+export type VectisPipelineOptions = VecteusPipelineOptions;
+
+/**
+ * Vecteus B2B pipeline entry point:
+ * Preserves source dimensions, runs SVT-AV1 or x264, and enforces VMAF quality gate.
+ */
+export async function runVecteusPipeline(opts: VecteusPipelineOptions): Promise<AdaptivePipelineResult> {
+  const source = await probe(opts.inputPath);
+  const sourceSizeMB = fileSizeMB(opts.inputPath);
+  // Default target is 65% reduction (35% of source size)
+  const targetSizeMB = opts.targetSizeMB ?? Math.max(1, Math.round(sourceSizeMB * 0.35));
+
+  return runAdaptivePipeline({
+    inputPath: opts.inputPath,
+    outputDir: opts.outputDir,
+    targetSizeMB,
+    presetMaxHeight: source.height,
+    destination: opts.codec === 'libx264' ? 'WHATSAPP_NORMAL' : 'WHATSAPP_DOC',
+    speedPresetOverride: opts.speedPresetOverride ?? 'medium',
+  });
+}
+
+export const runVectisPipeline = runVecteusPipeline;
+

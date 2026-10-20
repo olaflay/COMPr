@@ -2,57 +2,34 @@
 trigger: always_on
 ---
 
+Operational checklist for security-sensitive code across the Vecteus platform.
 
-Operational checklist for security-sensitive code. Source rules live in
-AGENTS.md Q3 (10–19) and PRD §23; this file is how an agent verifies them
-while building, not a second copy of the same law.
+## Input & File Handling
 
-## Input and file handling
+- Never trust client-supplied MIME types or extensions. Verify real file type via magic-byte sniffing server-side before enqueuing work.
+- Never shell-interpolate a filename, path, or any user-derived string into an FFmpeg or ffprobe command. Arguments must always be passed as an array (`execFile` or `spawn`), never a shell string.
+- Worker processes run FFmpeg in a sandboxed container environment with strict temporary directory isolation.
 
-- Never trust a client-supplied MIME type or file extension. Verify real
-  file type via magic-byte sniffing server-side before any processing
-  (PRD §23, AGENTS.md #14).
-- Never shell-interpolate a filename, path, or any user-derived string into
-  an FFmpeg/ffprobe command. Arguments are always passed as an array
-  (`execFile`/`execFileSync`), never a shell string (AGENTS.md #19, PRD §23).
-- Worker processes run FFmpeg in a sandboxed/containerized environment —
-  never assume the host filesystem is a safe place to write user-derived paths.
+## API Keys & Authentication
 
-## Network and transport
+- Tenant API keys (`X-Vecteus-Key` or `X-Vectis-Key`) must be hashed with SHA-256 and salt before database storage.
+- Never store, log, or display raw API keys after initial issuance.
+- Outbound webhooks must be cryptographically signed using HMAC-SHA256 (`X-Vecteus-Signature`) over the raw JSON payload with a unique tenant signing secret.
 
-- All traffic over HTTPS/TLS; HSTS enabled.
-- Rate limiting on `/jobs` and `/uploads/presign`: 20 requests/minute/IP
-  (PRD §23). Don't relax this "temporarily" for testing in a way that ships.
-- `Content-Security-Policy` is scoped only to third parties NoBlur actually
-  uses (GA4/GTM, Sentry) — never add a wildcard or a new third-party origin
-  without updating this rule and confirming with a human.
+## Network & Transport
 
-## Presigned URLs
+- All traffic over HTTPS/TLS with HSTS enabled.
+- Webhook dispatchers must enforce SSRF protection: reject dispatch attempts targeting private or local loopback IP ranges (RFC 1918, 127.0.0.1, 169.254.169.254).
 
-- Scoped to a single object. Upload URLs: 60-minute expiry. Download URLs:
-  24-hour expiry, matching retention (PRD §22, §23).
-- The API server never proxies raw file bytes — uploads and downloads go
-  client↔R2 directly. If a task seems to require the API to read/write file
-  bytes itself, that's a signal something is wrong with the approach — flag it.
+## Presigned Storage URLs
 
-## Identity and privacy
+- Presigned upload URLs expire within 60 minutes.
+- The API server never proxies raw file bytes. Uploads and downloads flow client-to-storage directly.
 
-- Fingerprint and IP are hashed (salted, one-way) before storage. Never log,
-  store, or pass a raw IP address anywhere, including error logs sent to
-  Sentry (AGENTS.md #13).
-- Sentry error reports include job metadata, never file content or derived
-  thumbnails (PRD §25).
+## Definition of Done (Security Level)
 
-## Dependencies
-
-- Dependency and container image scanning runs in CI. A new dependency is
-  called out explicitly in the task summary, not silently added — especially
-  anything that shells out, touches the filesystem, or handles network input.
-
-## Definition of done (security-level)
-
-- [ ] No shell-interpolated FFmpeg/ffprobe command was introduced.
-- [ ] File type validated by magic bytes, not client-supplied MIME/extension.
-- [ ] No raw IP logged or stored anywhere in the change.
-- [ ] Presigned URL expiries match the PRD values (60min upload / 24hr download).
-- [ ] No new third-party origin added to CSP without explicit confirmation.
+- [ ] No shell-interpolated FFmpeg commands.
+- [ ] File types verified by magic bytes.
+- [ ] API keys hashed before storage; webhook payloads HMAC-signed.
+- [ ] SSRF defenses active on outbound webhook URLs.
+- [ ] Zero em dashes or double hyphens used.

@@ -1,22 +1,24 @@
 'use client';
 
-import { useState, useEffect, useRef, ChangeEvent, useCallback, DragEvent } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import BeforeAfterSlider from '../../components/BeforeAfterSlider.tsx';
-import WhatsAppStatusPreview from '../../components/WhatsAppStatusPreview.tsx';
+import WhatsAppStatusPreview from '../../components/WhatsAppStatusPreview';
 import ProcessingHistory from '../../components/ProcessingHistory';
 import Toast from '../../components/ui/Toast';
 import EmptyState from '../../components/ui/EmptyState';
-import { validateFile, type ValidationError } from '../../lib/file-validation';
 import { buildUpsellCopy } from '../../lib/growth-ux';
 import { predictOutputSize, type SizePrediction } from '../../lib/size-predictor';
 import { addToHistory } from '../../lib/job-history';
-import { buildWhatsAppShareUrl, buildWhatsAppStatusShareUrl } from '../../lib/whatsapp-share';
-import { apiFetch, apiUrl } from '../../lib/api-client';
+import { buildWhatsAppShareUrl } from '../../lib/whatsapp-share';
+import { apiFetch } from '../../lib/api-client';
 import { trackEvent } from '../providers';
 
-// Upload progress ring geometry (r=18 circle inside the button's viewBox).
+import { useFileUpload } from './hooks/useFileUpload';
+import { useJobPolling, type JobState } from './hooks/useJobPolling';
+import UpsellModal from './components/UpsellModal';
+import DashboardResultView from './components/DashboardResultView';
+
 const UPLOAD_RING_RADIUS = 18;
 const UPLOAD_RING_CIRCUMFERENCE = 2 * Math.PI * UPLOAD_RING_RADIUS;
 
@@ -28,81 +30,72 @@ interface UsageState {
   shareBonusAvailable?: boolean;
 }
 
-interface JobState {
-  jobId: string;
-  status: 'QUEUED' | 'ANALYZING' | 'ENCODING' | 'VERIFYING' | 'DONE' | 'FAILED';
-  stage: string;
-  progressPercent: number;
-  stepsRemaining: number;
-  outputs: Array<{ id: string; segmentIndex: number | null; downloadPath: string; sizeBytes: number }>;
-  errorMessage?: string;
-  resolutionDropped?: boolean;
-  prioritizeDetail?: boolean;
-  queuePosition?: number;
-}
-
 export default function DashboardPageClient() {
   const [fingerprint, setFingerprint] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preset, setPreset] = useState<'STATUS' | 'CHAT' | 'CUSTOM'>('STATUS');
   const [customSizeMB, setCustomSizeMB] = useState<number>(8);
   const [usage, setUsage] = useState<UsageState | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [activeJob, setActiveJob] = useState<JobState | null>(null);
-  const [sourceFileUrl, setSourceFileUrl] = useState<string>('');
-  const [uploadedFileKey, setUploadedFileKey] = useState<string>('');
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; actionLabel?: string; onAction?: () => void } | null>(null);
-  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [usageLoading, setUsageLoading] = useState(true);
   const [showUpsell, setShowUpsell] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState(false);
-  const [usageLoading, setUsageLoading] = useState(true);
-  const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const [sizePrediction, setSizePrediction] = useState<SizePrediction | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const pollIntervalRef = useRef<any>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info';
+    actionLabel?: string;
+    onAction?: () => void;
+  } | null>(null);
 
-  useEffect(() => {
-    let fp = localStorage.getItem('noblur_fingerprint');
-    if (!fp) {
-      fp = 'fp_' + Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('noblur_fingerprint', fp);
-    }
-    setFingerprint(fp);
-    fetchUsage(fp);
-    return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    };
-  }, []);
+  const {
+    selectedFile,
+    sourceFileUrl,
+    videoDuration,
+    validationErrors,
+    isUploading,
+    uploadProgress,
+    uploadedFileKey,
+    isDragging,
+    fileInputRef,
+    setSelectedFile,
+    setVideoDuration,
+    setValidationErrors,
+    setIsDragging,
+    handleFileChange,
+    handleFileDrop,
+    clearFile,
+    uploadMultipart,
+  } = useFileUpload();
 
-  useEffect(() => {
-    if (!selectedFile) {
-      setSourceFileUrl('');
-      return;
-    }
-    const url = URL.createObjectURL(selectedFile);
-    setSourceFileUrl(url);
-    return () => {
-      URL.revokeObjectURL(url);
-    };
-  }, [selectedFile]);
+  const {
+    activeJob,
+    setActiveJob,
+    startPollingJob,
+    stopPolling,
+  } = useJobPolling();
 
-  const fetchUsage = async (fp: string) => {
+  const fetchUsage = useCallback(async (fp: string) => {
     setUsageLoading(true);
     try {
       const res = await apiFetch(`/api/v1/usage?fingerprint=${fp}`);
-      const data = await res.json() as UsageState;
+      const data = (await res.json()) as UsageState;
       setUsage(data);
     } catch (e) {
       console.error('Failed to fetch usage', e);
     } finally {
       setUsageLoading(false);
     }
-  };
+  }, []);
 
-  // Compute size prediction when file or preset changes
+  useEffect(() => {
+    let fp = localStorage.getItem('vecteus_fingerprint');
+    if (!fp) {
+      fp = 'fp_' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('vecteus_fingerprint', fp);
+    }
+    setFingerprint(fp);
+    fetchUsage(fp);
+  }, [fetchUsage]);
+
   useEffect(() => {
     if (selectedFile) {
       const prediction = predictOutputSize(
@@ -118,268 +111,62 @@ export default function DashboardPageClient() {
     }
   }, [selectedFile, preset, customSizeMB, videoDuration]);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const target = e.target as HTMLInputElement;
-    if (target.files && target.files.length > 0) {
-      const file = target.files[0];
-      const errors = validateFile(file);
-      setValidationErrors(errors);
-      if (errors.length === 0) {
-        setSelectedFile(file);
-        trackEvent('file_selected', { file_type: file.type, file_size_bytes: file.size });
-        if (file.type.startsWith('video/')) {
-          const video = document.createElement('video');
-          video.preload = 'metadata';
-          video.onloadedmetadata = () => {
-            setVideoDuration(video.duration);
-            URL.revokeObjectURL(video.src);
-          };
-          video.src = URL.createObjectURL(file);
-        } else {
-          setVideoDuration(null);
-        }
-      }
+  const handleJobCompleted = useCallback((completedJob: JobState) => {
+    if (completedJob.status === 'DONE' && selectedFile && completedJob.outputs.length > 0) {
+      addToHistory({
+        jobId: completedJob.jobId,
+        fileName: selectedFile.name,
+        fileType: selectedFile.type,
+        preset,
+        inputSizeBytes: selectedFile.size,
+        outputSizeBytes: completedJob.outputs[0].sizeBytes,
+        downloadPath: completedJob.outputs[0].downloadPath,
+        createdAt: Date.now(),
+        status: 'DONE',
+      });
     }
-  };
-
-  const handleFileDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const dt = e.dataTransfer;
-    if (dt.files && dt.files.length > 0) {
-      const file = dt.files[0];
-      const errors = validateFile(file);
-      setValidationErrors(errors);
-      if (errors.length === 0) {
-        setSelectedFile(file);
-        trackEvent('upload_started', { file_type: file.type, file_size_bytes: file.size });
-        if (file.type.startsWith('video/')) {
-          const video = document.createElement('video');
-          video.preload = 'metadata';
-          video.onloadedmetadata = () => {
-            setVideoDuration(video.duration);
-            URL.revokeObjectURL(video.src);
-          };
-          video.src = URL.createObjectURL(file);
-        } else {
-          setVideoDuration(null);
-        }
-      }
+    if (fingerprint) {
+      fetchUsage(fingerprint);
     }
-  }, []);
-
-  // Focus trap for upsell modal
-  useEffect(() => {
-    if (!showUpsell || !modalRef.current) return;
-    const modal = modalRef.current;
-    const focusable = modal.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    first?.focus();
-
-    const trap = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowUpsell(false);
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-    document.addEventListener('keydown', trap);
-    return () => document.removeEventListener('keydown', trap);
-  }, [showUpsell]);
+  }, [selectedFile, preset, fingerprint, fetchUsage]);
 
   const triggerUpload = async () => {
     if (!selectedFile || !fingerprint) return;
-    setIsUploading(true);
-    setUploadProgress(0);
-    trackEvent('upload_started', { preset, file_type: selectedFile.type, file_size_bytes: selectedFile.size });
+    trackEvent('upload_started', {
+      preset,
+      file_type: selectedFile.type,
+      file_size_bytes: selectedFile.size,
+    });
 
-    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
-    const totalParts = Math.ceil(selectedFile.size / CHUNK_SIZE);
-    const checkpointKey = `upload_cp:${selectedFile.name}:${selectedFile.size}`;
-    let fileKeyToUse = '';
-
+    let fileKey = '';
     try {
-      let uploadIdToUse = '';
-      let completedParts: Array<{ ETag: string; PartNumber: number }> = [];
-
-      // Check for an existing upload checkpoint in localStorage to resume
-      const checkpoint = localStorage.getItem(checkpointKey);
-      if (checkpoint) {
-        try {
-          const cpData = JSON.parse(checkpoint);
-          uploadIdToUse = cpData.uploadId;
-          fileKeyToUse = cpData.fileKey;
-          completedParts = cpData.completedParts || [];
-        } catch (e) {
-          console.warn('Failed to parse upload checkpoint', e);
-        }
-      }
-
-      // Initiate a new multipart upload if none was found
-      if (!uploadIdToUse) {
-        const startRes = await apiFetch('/api/v1/uploads/multipart/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: selectedFile.name,
-            mimeType: selectedFile.type,
-            sizeBytes: selectedFile.size,
-          }),
-        });
-        const startData = await startRes.json() as any;
-        if (!startRes.ok || !startData.uploadId || !startData.fileKey) {
-          throw new Error(startData?.error?.message || `Failed to start upload (status ${startRes.status})`);
-        }
-        uploadIdToUse = startData.uploadId;
-        fileKeyToUse = startData.fileKey;
-
-        localStorage.setItem(
-          checkpointKey,
-          JSON.stringify({
-            uploadId: uploadIdToUse,
-            fileKey: fileKeyToUse,
-            completedParts: [],
-          })
-        );
-      }
-
-      setUploadedFileKey(fileKeyToUse);
-
-      // Upload parts sequentially
-      for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
-        const isDone = completedParts.some((p) => p.PartNumber === partNumber);
-        if (isDone) {
-          setUploadProgress(Math.round((partNumber / totalParts) * 100));
-          continue;
-        }
-
-        const startByte = (partNumber - 1) * CHUNK_SIZE;
-        const endByte = Math.min(selectedFile.size, partNumber * CHUNK_SIZE);
-        const chunk = selectedFile.slice(startByte, endByte);
-
-        let uploadSuccess = false;
-        let etag = '';
-        let attempts = 0;
-
-        // Auto-retry up to 5 times per chunk to survive slow/unstable networks
-        while (!uploadSuccess && attempts < 5) {
-          attempts++;
-          try {
-            const presignPartRes = await apiFetch('/api/v1/uploads/multipart/presign-part', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                fileKey: fileKeyToUse,
-                uploadId: uploadIdToUse,
-                partNumber,
-              }),
-            });
-            const presignData = await presignPartRes.json() as any;
-            const partUploadUrl = presignData.uploadPartUrl;
-            if (!presignPartRes.ok || !partUploadUrl) {
-              // Never fetch(undefined) — that resolves to PUT /undefined on our
-              // own origin and returns a same-site 404 that hides the real error.
-              throw new Error(presignData?.error?.message || `Failed to get upload URL (status ${presignPartRes.status})`);
-            }
-
-            const uploadRes = await fetch(partUploadUrl, {
-              method: 'PUT',
-              body: chunk,
-            });
-
-            if (uploadRes.ok) {
-              etag = (uploadRes.headers.get('ETag') || '').replace(/"/g, '');
-              uploadSuccess = true;
-            } else if (uploadRes.status === 404) {
-              // The multipart uploadId is gone (expired, already completed/aborted,
-              // or left over from a stale localStorage checkpoint). Retrying the
-              // same uploadId can never succeed, so stop immediately instead of
-              // burning all 5 attempts, and clear the checkpoint so the next click
-              // starts a fresh multipart upload rather than repeating this forever.
-              localStorage.removeItem(checkpointKey);
-              throw new Error('Upload session expired. Please try again.');
-            } else {
-              throw new Error(`Upload failed with status ${uploadRes.status}`);
-            }
-          } catch (err) {
-            console.warn(`Part ${partNumber} attempt ${attempts} failed:`, err);
-            if (attempts >= 5 || (err instanceof Error && err.message === 'Upload session expired. Please try again.')) {
-              throw err;
-            }
-            await new Promise((resolve) => setTimeout(resolve, 2000)); // 2s backoff
-          }
-        }
-
-        completedParts.push({ ETag: etag, PartNumber: partNumber });
-        localStorage.setItem(
-          checkpointKey,
-          JSON.stringify({
-            uploadId: uploadIdToUse,
-            fileKey: fileKeyToUse,
-            completedParts,
-          })
-        );
-
-        setUploadProgress(Math.round((partNumber / totalParts) * 100));
-      }
-
-      // Complete multipart upload
-      const completeRes = await apiFetch('/api/v1/uploads/multipart/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileKey: fileKeyToUse,
-          uploadId: uploadIdToUse,
-          parts: completedParts,
-        }),
-      });
-
-      if (!completeRes.ok) {
-        throw new Error('Failed to complete multipart upload');
-      }
-
-      localStorage.removeItem(checkpointKey);
-      setUploadProgress(100);
-      setIsUploading(false);
+      fileKey = await uploadMultipart();
     } catch (e) {
       console.error('Upload flow failed', e);
       const message = e instanceof Error && e.message === 'Upload session expired. Please try again.'
         ? e.message
         : 'Upload failed. Please check your network and try again.';
-      setToast({ message, type: 'error', actionLabel: 'Try Again', onAction: () => { void triggerUpload(); } });
-      setIsUploading(false);
+      setToast({
+        message,
+        type: 'error',
+        actionLabel: 'Try Again',
+        onAction: () => { void triggerUpload(); },
+      });
       return;
     }
 
-    // Create optimization job — the file is already uploaded at this point,
-    // so a failure here is a distinct problem from an upload failure and
-    // must not be reported as one.
     try {
       const jobRes = await apiFetch('/api/v1/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileKey: fileKeyToUse,
+          fileKey,
           preset,
           targetSizeMB: preset === 'CUSTOM' ? customSizeMB : undefined,
           fingerprint,
         }),
       });
-      const jobData = await jobRes.json() as any;
+      const jobData = (await jobRes.json()) as any;
 
       if (jobRes.status === 429) {
         trackEvent('quota_exceeded', { preset });
@@ -392,19 +179,21 @@ export default function DashboardPageClient() {
       }
 
       trackEvent('job_created', { job_id: jobData.jobId, preset });
-      startPollingJob(jobData.jobId);
+      startPollingJob(jobData.jobId, fingerprint, handleJobCompleted);
     } catch (e) {
       console.error('Job creation failed', e);
       const message = e instanceof Error && e.message ? e.message : 'Could not start optimization. Please try again.';
-      setToast({ message, type: 'error', actionLabel: 'Try Again', onAction: () => { void triggerUpload(); } });
+      setToast({
+        message,
+        type: 'error',
+        actionLabel: 'Try Again',
+        onAction: () => { void triggerUpload(); },
+      });
     }
   };
 
   const handlePrioritizeDetail = async () => {
     if (!uploadedFileKey || !fingerprint || !activeJob) return;
-
-    setIsUploading(false);
-    setUploadProgress(0);
     setActiveJob(null);
 
     try {
@@ -419,7 +208,7 @@ export default function DashboardPageClient() {
           fingerprint,
         }),
       });
-      const jobData = await jobRes.json() as any;
+      const jobData = (await jobRes.json()) as any;
 
       if (jobRes.status === 429) {
         trackEvent('quota_exceeded', { preset, source: 'prioritize_detail' });
@@ -428,73 +217,25 @@ export default function DashboardPageClient() {
       }
 
       trackEvent('job_created', { job_id: jobData.jobId, preset, source: 'prioritize_detail' });
-      startPollingJob(jobData.jobId);
+      startPollingJob(jobData.jobId, fingerprint, handleJobCompleted);
     } catch (e) {
       console.error('Failed to run prioritize detail job', e);
-      setToast({ message: 'Failed to re-optimize. Please try again.', type: 'error', actionLabel: 'Try Again', onAction: () => { void handlePrioritizeDetail(); } });
-    }
-  };
-
-  const startPollingJob = (jobId: string) => {
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-
-    const poll = async () => {
-      try {
-        const res = await apiFetch(`/api/v1/jobs/${jobId}?fingerprint=${fingerprint}`);
-        const data = (await res.json()) as JobState;
-        setActiveJob(data);
-
-        if (data.status === 'DONE' || data.status === 'FAILED') {
-          clearInterval(pollIntervalRef.current);
-          trackEvent('job_completed', { job_id: jobId, status: data.status, resolution_dropped: data.resolutionDropped });
-          fetchUsage(fingerprint);
-
-          if (data.status === 'DONE' && selectedFile && data.outputs.length > 0) {
-            addToHistory({
-              jobId,
-              fileName: selectedFile.name,
-              fileType: selectedFile.type,
-              preset,
-              inputSizeBytes: selectedFile.size,
-              outputSizeBytes: data.outputs[0].sizeBytes,
-              downloadPath: data.outputs[0].downloadPath,
-              createdAt: Date.now(),
-              status: 'DONE',
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Job polling error', e);
-      }
-    };
-
-    poll();
-    pollIntervalRef.current = setInterval(poll, 3000);
-  };
-
-      const getStageLabel = (stage: string) => {
-    switch (stage) {
-      case 'queued':
-        return activeJob?.queuePosition
-          ? `In the queue (position #${activeJob.queuePosition})...`
-          : 'In the queue, almost there...';
-      case 'analyzing': return 'Analyzing your file...';
-      case 'encoding': return 'Making it sharper...';
-      case 'verifying': return 'Checking quality...';
-      case 'done': return 'All done!';
-      default: return 'Working on it...';
+      setToast({
+        message: 'Failed to re-optimize. Please try again.',
+        type: 'error',
+        actionLabel: 'Try Again',
+        onAction: () => { void handlePrioritizeDetail(); },
+      });
     }
   };
 
   const resetToUpload = useCallback(() => {
+    stopPolling();
     setActiveJob(null);
-    setSelectedFile(null);
-    setUploadedFileKey('');
-    setValidationErrors([]);
+    clearFile();
     setFeedbackGiven(false);
-    setVideoDuration(null);
     setSizePrediction(null);
-  }, []);
+  }, [stopPolling, setActiveJob, clearFile]);
 
   const claimShareBonus = async () => {
     if (!fingerprint) return;
@@ -506,7 +247,7 @@ export default function DashboardPageClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fingerprint }),
       });
-      const data = await res.json() as { granted?: number; jobsRemainingToday?: number };
+      const data = (await res.json()) as { granted?: number; jobsRemainingToday?: number };
       if (res.ok && (data.granted ?? 0) > 0) {
         setToast({ message: 'Nice one! You got +3 compressions today.', type: 'success' });
         setShowUpsell(false);
@@ -514,6 +255,20 @@ export default function DashboardPageClient() {
       }
     } catch (e) {
       console.error('Share bonus claim failed', e);
+    }
+  };
+
+  const getStageLabel = (stage: string) => {
+    switch (stage) {
+      case 'queued':
+        return activeJob?.queuePosition
+          ? `In the queue (position #${activeJob.queuePosition})...`
+          : 'In the queue, almost there...';
+      case 'analyzing': return 'Analyzing your file...';
+      case 'encoding': return 'Making it sharper...';
+      case 'verifying': return 'Checking quality...';
+      case 'done': return 'All done!';
+      default: return 'Working on it...';
     }
   };
 
@@ -530,24 +285,28 @@ export default function DashboardPageClient() {
 
       <div className="max-w-xl w-full mx-auto flex-1 flex flex-col gap-m3-large">
         {/* Header */}
-        <header className="flex justify-between items-center pb-m3-medium border-b border-outline-variant">
-          <Link href="/" className="flex items-center gap-m3-x-small hover:opacity-85 transition-opacity duration-m3-short-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-            <Image
-              src="/favicon.svg"
-              alt="NoBlur logo"
-              width={28}
-              height={28}
-              className="rounded-m3-md select-none"
-            />
-            <span className="text-title-medium">NoBlur</span>
-          </Link>
+        <header className="flex justify-between items-center pb-m3-small border-b border-outline-variant">
+          <div className="flex items-center gap-m3-large">
+            <Link
+              href="/"
+              className="flex items-center gap-m3-x-small hover:opacity-85 transition-opacity duration-m3-short-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <Image src="/favicon.svg" alt="Vecteus logo" width={24} height={24} className="rounded-m3-md select-none" />
+              <span className="text-title-medium font-semibold tracking-tight">Vecteus</span>
+            </Link>
+            <nav className="hidden sm:flex items-center gap-m3-xx-small text-label-medium" aria-label="Dashboard navigation">
+              <Link href="/" className="text-on-surface-variant hover:text-primary px-m3-small py-m3-xx-small rounded-m3-full transition-colors">Home</Link>
+              <Link href="/how-it-works" className="text-on-surface-variant hover:text-primary px-m3-small py-m3-xx-small rounded-m3-full transition-colors">How it works</Link>
+              <Link href="/pricing" className="text-on-surface-variant hover:text-primary px-m3-small py-m3-xx-small rounded-m3-full transition-colors">Pricing</Link>
+            </nav>
+          </div>
           <div className="text-right" aria-live="polite">
             {usageLoading ? (
-              <div className="skeleton h-4 w-32" />
+              <div className="skeleton h-4 w-28" />
             ) : usage && (
               <>
-            <div className="text-body-small text-on-surface-variant">Daily quota</div>
-                <div className={`text-label-large ${usage.jobsRemainingToday === 0 ? 'text-error' : ''}`}>
+                <div className="text-body-small text-on-surface-variant">Daily quota</div>
+                <div className={`text-label-medium font-medium ${usage.jobsRemainingToday === 0 ? 'text-error' : ''}`}>
                   {usage.jobsRemainingToday} of 5 left today
                 </div>
               </>
@@ -555,7 +314,7 @@ export default function DashboardPageClient() {
           </div>
         </header>
 
-        {/* Upload Card Skeleton - shown while usage loads on first visit */}
+        {/* Upload Card Skeleton */}
         {!activeJob && usageLoading && (
           <section className="bg-surface-container-low border border-outline-variant rounded-m3-lg p-m3-large shadow-m3-1 flex flex-col gap-m3-large">
             <div className="skeleton h-6 w-40 rounded-m3-sm" />
@@ -599,7 +358,7 @@ export default function DashboardPageClient() {
                     <svg className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
                     </svg>
-                    Share NoBlur to WhatsApp
+                    Share Vecteus to WhatsApp
                   </button>
                   <p className="text-label-small text-on-surface-variant">Get +3 compressions today, free</p>
                 </div>
@@ -610,14 +369,9 @@ export default function DashboardPageClient() {
 
         {/* Upload Card Area */}
         {!activeJob && !usageLoading && !(usage && usage.jobsRemainingToday === 0 && !usage.isPremium) && (
-          <section
-            id="upload-section"
-            className="bg-surface-container-low border border-outline-variant rounded-m3-lg p-m3-large shadow-m3-1 flex flex-col gap-m3-large"
-          >
+          <section id="upload-section" className="bg-surface-container-low border border-outline-variant rounded-m3-lg p-m3-large shadow-m3-1 flex flex-col gap-m3-large">
             <h2 className="text-title-large text-on-surface">Choose a file to optimize</h2>
 
-
-            {/* Drag & Drop File Box + Optimize CTA: stacked tight on mobile, side-by-side on desktop */}
             <div className="flex flex-col md:flex-row md:items-stretch gap-m3-x-small">
               <div
                 onClick={() => fileInputRef.current?.click()}
@@ -628,7 +382,9 @@ export default function DashboardPageClient() {
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
-                className={`relative flex-1 border-2 border-dashed rounded-m3-md p-m3-x-large text-center cursor-pointer transition-all duration-m3-short-2 ${isDragging ? 'drop-zone-active border-primary scale-[1.01] select-none' : 'border-outline hover:border-primary focus-within:border-primary'}`}
+                className={`relative flex-1 border-2 border-dashed rounded-m3-md p-m3-x-large text-center cursor-pointer transition-all duration-m3-short-2 ${
+                  isDragging ? 'drop-zone-active border-primary scale-[1.01] select-none' : 'border-outline hover:border-primary focus-within:border-primary'
+                }`}
               >
                 <input
                   ref={fileInputRef}
@@ -652,7 +408,6 @@ export default function DashboardPageClient() {
                       </svg>
                     </button>
                     <div className="w-20 h-20 rounded-m3-md overflow-hidden bg-surface-container-highest shadow-m3-1 flex items-center justify-center shrink-0">
-                      {/* Un-blurs in sync with upload progress — the file goes from blurred to sharp as it uploads, echoing the product's whole premise. */}
                       {selectedFile.type.startsWith('video/') ? (
                         <video
                           src={sourceFileUrl}
@@ -843,8 +598,7 @@ export default function DashboardPageClient() {
               </div>
             )}
 
-
-            {/* Required trust signals per PRD §12 */}
+            {/* Trust signals */}
             <div className="text-label-small text-on-surface-variant space-y-2 flex flex-col items-center">
               <div className="flex items-center gap-m3-x-small">
                 <svg className="w-4 h-4 text-on-surface-variant" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -920,96 +674,19 @@ export default function DashboardPageClient() {
 
         {/* DONE / Results Comparison View */}
         {activeJob && activeJob.status === 'DONE' && (
-          <section className="flex flex-col gap-m3-large" aria-live="polite">
-            {selectedFile && activeJob.outputs.length > 0 && (
-              <BeforeAfterSlider
-                sourceFrameUrl={sourceFileUrl}
-                outputFrameUrl={apiUrl(activeJob.outputs[0].downloadPath)}
-                sizeBefore={selectedFile.size}
-                sizeAfter={activeJob.outputs[0].sizeBytes}
-              />
-            )}
-
-            {activeJob.resolutionDropped && !activeJob.prioritizeDetail && (
-              <div className="bg-surface-container border border-primary/30 rounded-m3-md p-m3-medium flex flex-col gap-m3-small text-left">
-                <div className="text-body-medium text-on-surface leading-normal">
-                  We adjusted the screen size to keep motion smooth. If fine detail (like text or textures) matters more, try Fine Detail mode.
-                </div>
-                <button
-                  onClick={handlePrioritizeDetail}
-                  className="bg-primary-container text-on-primary-container hover:opacity-90 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary text-label-large py-m3-x-small px-m3-medium rounded-m3-full transition-all duration-m3-short-2 text-center font-medium shadow-m3-1 hover:shadow-m3-2"
-                >
-                  Switch to Fine Detail
-                </button>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-m3-small">
-              {/* Primary CTA: Send to WhatsApp (deep link) */}
-              <a
-                href={buildWhatsAppShareUrl(apiUrl(activeJob.outputs[0]?.downloadPath))}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackEvent('share_to_whatsapp_clicked', { job_id: activeJob.jobId, destination: 'chat' })}
-                className="w-full bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] py-m3-small rounded-m3-full text-title-small text-center block shadow-m3-1 hover:shadow-m3-2 transition-all duration-m3-short-2"
-              >
-                Send to WhatsApp
-              </a>
-
-              {/* Secondary: Send to Status (deep link) */}
-              <a
-                href={buildWhatsAppStatusShareUrl(apiUrl(activeJob.outputs[0]?.downloadPath))}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackEvent('share_to_whatsapp_clicked', { job_id: activeJob.jobId, destination: 'status' })}
-                className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] py-m3-small rounded-m3-full text-label-large text-center block border border-outline transition-all duration-m3-short-2"
-              >
-                Send to WhatsApp Status
-              </a>
-
-              {/* Secondary: Download to device */}
-              {activeJob.outputs.map((out, idx) => (
-                <a
-                  key={idx}
-                  href={apiUrl(out.downloadPath)}
-                  download={`noblur_output_${activeJob.jobId}${idx > 0 ? `_part${idx}` : ''}.mp4`}
-                  onClick={() => trackEvent('download_clicked', { job_id: activeJob.jobId, output_index: idx, size_bytes: out.sizeBytes })}
-                  className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] py-m3-small rounded-m3-full text-label-large text-center block border border-outline transition-all duration-m3-short-2"
-                >
-                  Download to device {activeJob.outputs.length > 1 ? `(Part ${idx + 1})` : ''}
-                </a>
-              ))}
-
-              {/* Feedback Prompt */}
-              {!feedbackGiven && (
-                <div className="bg-surface-container rounded-m3-md p-m3-medium text-center flex flex-col gap-m3-x-small" role="group" aria-label="Feedback">
-                  <p className="text-body-medium text-on-surface">How does the result look?</p>
-                  <div className="flex justify-center gap-m3-small">
-                    <button
-                      onClick={() => { setFeedbackGiven(true); trackEvent('feedback_given', { value: 'positive', job_id: activeJob.jobId }); setToast({ message: 'Thank you for your feedback!', type: 'success' }); }}
-                      className="bg-primary-container text-on-primary-container hover:bg-primary/20 text-label-large py-m3-x-small px-m3-large rounded-m3-full border border-primary transition-all duration-m3-short-2"
-                    >
-                      Looks great
-                    </button>
-                    <button
-                      onClick={() => { setFeedbackGiven(true); trackEvent('feedback_given', { value: 'negative', job_id: activeJob.jobId }); setToast({ message: 'Thank you for your feedback!', type: 'info' }); }}
-                      className="bg-surface-container-high text-on-surface hover:bg-surface-container-highest text-label-large py-m3-x-small px-m3-large rounded-m3-full border border-outline transition-all duration-m3-short-2"
-                    >
-                      Could be better
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Tertiary: Go back to upload */}
-              <button
-                onClick={resetToUpload}
-                className="w-full text-label-large text-on-surface-variant hover:text-on-surface py-m3-x-small rounded-m3-full font-medium transition-colors"
-              >
-                Optimize another file
-              </button>
-            </div>
-          </section>
+          <DashboardResultView
+            activeJob={activeJob}
+            selectedFile={selectedFile}
+            sourceFileUrl={sourceFileUrl}
+            feedbackGiven={feedbackGiven}
+            onFeedback={(positive) => {
+              setFeedbackGiven(true);
+              trackEvent('feedback_given', { value: positive ? 'positive' : 'negative', job_id: activeJob.jobId });
+              setToast({ message: 'Thank you for your feedback!', type: positive ? 'success' : 'info' });
+            }}
+            onPrioritizeDetail={handlePrioritizeDetail}
+            onReset={resetToUpload}
+          />
         )}
 
         {/* Failed Job view */}
@@ -1040,54 +717,14 @@ export default function DashboardPageClient() {
       </div>
 
       {/* Upsell Modal */}
-      {showUpsell && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-m3-large backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Upgrade to Premium"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowUpsell(false); }}
-        >
-          <div ref={modalRef} className="bg-surface-container-low border border-outline-variant rounded-m3-lg p-m3-x-large max-w-md w-full shadow-m3-4 flex flex-col gap-m3-large animate-fade-in">
-            <div className="flex flex-col gap-m3-small text-center">
-              <h2 className="text-headline-medium text-on-surface">You don hit today limit</h2>
-              <p className="text-body-medium text-on-surface-variant leading-relaxed">{upsell.anchorLine}</p>
-              <p className="text-body-large text-primary">{upsell.priceLine}</p>
-            </div>
-            <div className="flex flex-col gap-m3-small">
-              <button
-                onClick={() => { setShowUpsell(false); trackEvent('upsell_cta_clicked', { source: 'modal' }); }}
-                className="w-full bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container py-m3-small rounded-m3-full text-title-small shadow-m3-1 transition-all duration-m3-medium-1"
-              >
-                {upsell.ctaLabel}
-              </button>
-              <div className="flex items-center gap-m3-small" aria-hidden="true">
-                <div className="flex-1 h-px bg-outline-variant" />
-                <span className="text-label-small text-on-surface-variant">or</span>
-                <div className="flex-1 h-px bg-outline-variant" />
-              </div>
-              <button
-                onClick={claimShareBonus}
-                className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline py-m3-small rounded-m3-full text-title-small flex items-center justify-center gap-m3-x-small focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] transition-all duration-m3-short-2"
-              >
-                <svg className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                </svg>
-                Share NoBlur to WhatsApp
-              </button>
-              <p className="text-label-small text-on-surface-variant text-center">Get +3 compressions today, free</p>
-              <button
-                onClick={() => { setShowUpsell(false); trackEvent('upsell_dismissed'); }}
-                className="w-full text-label-large text-on-surface-variant font-medium py-m3-x-small hover:text-on-surface transition-colors"
-              >
-                No wahala, maybe later
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UpsellModal
+        isOpen={showUpsell}
+        onClose={() => setShowUpsell(false)}
+        onClaimBonus={claimShareBonus}
+        upsell={upsell}
+      />
 
-      {/* Toast */}
+      {/* Toast Notification */}
       {toast && (
         <Toast
           message={toast.message}

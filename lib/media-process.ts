@@ -1,11 +1,11 @@
 /**
- * Media-process adapter — the single module that owns child-process invocation
+ * Media-process adapter: the single module that owns child-process invocation
  * for ffmpeg / ffprobe (and other media tools), plus the Windows ffmpeg_bin
  * PATH bootstrap.
  *
  * One seam, two adapters: the real execFileSync runner in production, a
  * recording fake via setProcessRunner() in tests. Every command executes with
- * an argument array — never a shell string (AGENTS.md Q3 Rule 20).
+ * an argument array - never a shell string (AGENTS.md Q3 Rule 20).
  */
 
 import { execFile } from 'node:child_process';
@@ -47,7 +47,7 @@ let runner: CommandRunner = (command, args, opts) => {
 };
 
 /**
- * Swap the process runner — the second adapter behind this seam. Used by
+ * Swap the process runner: the second adapter behind this seam. Used by
  * tests to record args or throw without invoking a real binary.
  */
 export function setProcessRunner(fn: CommandRunner): void {

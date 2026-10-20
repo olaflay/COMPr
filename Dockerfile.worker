@@ -1,4 +1,4 @@
-# NoBlur Worker Image
+# Vecteus Worker Image
 # Includes: Node.js 22, FFmpeg (with SVT-AV1), OpenCV4, VMAF model
 FROM node:22-slim
 
@@ -25,7 +25,7 @@ COPY models/vmaf_v0.6.1.json /usr/share/model/vmaf_v0.6.1.json
 
 WORKDIR /app
 
-# Full install (including devDependencies) is required here — the `prisma`
+# Full install (including devDependencies) is required here : the `prisma`
 # CLI needed by `prisma generate` below is a devDependency, and workers
 # import lib/prisma.ts just like the API server does.
 COPY package.json package-lock.json ./
@@ -37,11 +37,12 @@ RUN npx prisma generate
 
 # Copy application code
 COPY lib/ ./lib/
-COPY workers/ ./workers/
+COPY apps/workers/ ./apps/workers/
+COPY packages/ ./packages/
 COPY config/ ./config/
 
 # Now that the client is generated, strip devDependencies to keep the image
-# smaller — this only removes packages, not the already-generated client.
+# smaller : this only removes packages, not the already-generated client.
 RUN npm prune --omit=dev
 
 # Create temp directory for processing
@@ -51,4 +52,4 @@ RUN mkdir -p /app/temp
 RUN python3 -c "import cv2; print(f'OpenCV {cv2.__version__} loaded')" || \
     (echo "WARNING: OpenCV not available to Python" && exit 0)
 
-CMD ["node", "--experimental-strip-types", "workers/run-all.ts"]
+CMD ["node", "--experimental-strip-types", "apps/workers/src/run-all.ts"]

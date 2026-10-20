@@ -1,6 +1,6 @@
 version: "3.9"
 
-# NoBlur — Multi-service architecture for adaptive media engine.
+# Vecteus: Multi-service architecture for perceptual transcoding engine.
 # Usage:
 #   docker compose up -d                  # Start all services
 #   docker compose up -d postgres redis   # Start only infrastructure
@@ -13,9 +13,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-noblur}
+      POSTGRES_USER: ${POSTGRES_USER:-vecteus}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-noblur}
+      POSTGRES_DB: ${POSTGRES_DB:-vecteus}
     ports:
       # Bound to localhost only (D-2): DB must not be reachable on the public
       # host interface in a production-like deployment. Internal services
@@ -25,7 +25,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-noblur}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vecteus}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -34,7 +34,7 @@ services:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     ports:
-      # Localhost-only binding (D-2) — see note on postgres above.
+      # Localhost-only binding (D-2): see note on postgres above.
       - "127.0.0.1:6379:6379"
     volumes:
       - redisdata:/data
@@ -53,14 +53,14 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-noblur}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-noblur}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-vecteus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-vecteus}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - TIGRIS_ENDPOINT=${TIGRIS_ENDPOINT:-}
       - TIGRIS_REGION=${TIGRIS_REGION:-auto}
       - TIGRIS_ACCESS_KEY_ID=${TIGRIS_ACCESS_KEY_ID:-}
       - TIGRIS_SECRET_ACCESS_KEY=${TIGRIS_SECRET_ACCESS_KEY:-}
-      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-noblur-uploads}
-      - TIGRIS_OUTPUTS_BUCKET=${TIGRIS_OUTPUTS_BUCKET:-noblur-outputs}
+      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-vecteus-uploads}
+      - TIGRIS_OUTPUTS_BUCKET=${TIGRIS_OUTPUTS_BUCKET:-vecteus-outputs}
       - SENTRY_DSN=${SENTRY_DSN:-}
       - POSTHOG_API_KEY=${POSTHOG_API_KEY:-}
       - NEXT_PUBLIC_APP_URL=http://localhost
@@ -101,14 +101,14 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-noblur}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-noblur}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-vecteus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-vecteus}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - TIGRIS_ENDPOINT=${TIGRIS_ENDPOINT:-}
       - TIGRIS_REGION=${TIGRIS_REGION:-auto}
       - TIGRIS_ACCESS_KEY_ID=${TIGRIS_ACCESS_KEY_ID:-}
       - TIGRIS_SECRET_ACCESS_KEY=${TIGRIS_SECRET_ACCESS_KEY:-}
-      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-noblur-uploads}
-      - TIGRIS_OUTPUTS_BUCKET=${TIGRIS_OUTPUTS_BUCKET:-noblur-outputs}
+      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-vecteus-uploads}
+      - TIGRIS_OUTPUTS_BUCKET=${TIGRIS_OUTPUTS_BUCKET:-vecteus-outputs}
     command: ["node", "--experimental-strip-types", "workers/analysis-worker.ts"]
     volumes:
       - ./temp:/app/temp
@@ -130,14 +130,14 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-noblur}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-noblur}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-vecteus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-vecteus}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - TIGRIS_ENDPOINT=${TIGRIS_ENDPOINT:-}
       - TIGRIS_REGION=${TIGRIS_REGION:-auto}
       - TIGRIS_ACCESS_KEY_ID=${TIGRIS_ACCESS_KEY_ID:-}
       - TIGRIS_SECRET_ACCESS_KEY=${TIGRIS_SECRET_ACCESS_KEY:-}
-      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-noblur-uploads}
-      - TIGRIS_OUTPUTS_BUCKET=${TIGRIS_OUTPUTS_BUCKET:-noblur-outputs}
+      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-vecteus-uploads}
+      - TIGRIS_OUTPUTS_BUCKET=${TIGRIS_OUTPUTS_BUCKET:-vecteus-outputs}
       - VMAF_MODEL_PATH=/usr/share/model/vmaf_v0.6.1.json
     command: ["node", "--experimental-strip-types", "workers/encode-worker.ts"]
     volumes:
@@ -152,7 +152,7 @@ services:
       resources:
         limits:
           cpus: "2"
-          memory: 2G
+          memory: 768M
       replicas: 1
 
   cleanup-cron:
@@ -160,13 +160,13 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-noblur}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-noblur}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-vecteus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-vecteus}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - TIGRIS_ENDPOINT=${TIGRIS_ENDPOINT:-}
       - TIGRIS_REGION=${TIGRIS_REGION:-auto}
       - TIGRIS_ACCESS_KEY_ID=${TIGRIS_ACCESS_KEY_ID:-}
       - TIGRIS_SECRET_ACCESS_KEY=${TIGRIS_SECRET_ACCESS_KEY:-}
-      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-noblur-uploads}
+      - TIGRIS_UPLOADS_BUCKET=${TIGRIS_UPLOADS_BUCKET:-vecteus-uploads}
       - RUN_CLEANUP_LOOP=true
     command: ["node", "--experimental-strip-types", "workers/cleanup-cron.ts"]
     depends_on:
@@ -174,6 +174,26 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  webhook-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-noblur}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-noblur}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+    command: ["node", "--experimental-strip-types", "workers/webhook-worker.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+      replicas: 1
 
 volumes:
   pgdata:

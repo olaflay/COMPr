@@ -1,8 +1,8 @@
 import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
 import { z } from 'zod';
-import { hashString } from '../../lib/crypto.ts';
-import { grantShareBonus, fetchUsage, FREE_DAILY_LIMIT, remainingJobs, allowanceFor, todayStart } from '../../lib/quota.ts';
-import { redisConnection } from '../../lib/queue.ts';
+import { hashString } from '../../../../lib/crypto.ts';
+import { grantShareBonus, fetchUsage, FREE_DAILY_LIMIT, remainingJobs, allowanceFor, todayStart } from '../../../../lib/quota.ts';
+import { redisConnection } from '../../../../lib/queue.ts';
 
 const fingerprintSchema = z.object({
   fingerprint: z.string().optional(),
@@ -36,11 +36,11 @@ const usageRoutes: FastifyPluginAsyncZod = async (app) => {
   }, async (request, reply) => {
     // D-4: read the fingerprint from a header so it never rides in a URL.
     // Query param kept as a fallback for older clients / manual testing.
-    const fingerprint = (request.headers['x-noblur-fingerprint'] ??
+    const fingerprint = (request.headers['x-vecteus-fingerprint'] ??
       request.query.fingerprint) as string | undefined;
     if (!fingerprint) {
       return reply.code(400).send({
-        error: { code: 'MISSING_FINGERPRINT', message: 'fingerprint is required (X-NoBlur-Fingerprint header)' },
+        error: { code: 'MISSING_FINGERPRINT', message: 'fingerprint is required (X-Vecteus-Fingerprint header)' },
       });
     }
 
@@ -69,7 +69,7 @@ const usageRoutes: FastifyPluginAsyncZod = async (app) => {
     return body;
   });
 
-  // Share = Credit: grant bonus compressions once per day for sharing NoBlur
+  // Share = Credit: grant bonus compressions once per day for sharing Vecteus
   app.post('/api/v1/usage/share-bonus', {
     schema: {
       body: fingerprintSchema,

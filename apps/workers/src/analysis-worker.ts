@@ -2,14 +2,14 @@ import * as Sentry from '@sentry/node';
 import { Worker } from 'bullmq';
 import { join } from 'node:path';
 import { mkdirSync, unlinkSync, existsSync } from 'node:fs';
-import { prisma } from '../lib/prisma.ts';
-import { redisConnection, mediaEncodeQueue } from '../lib/queue.ts';
-import { probe } from '../lib/pipeline.ts';
-import { downloadObject } from '../server/services/storage.ts';
-import { sniffFileType } from '../lib/sniff-file-type.ts';
+import { prisma } from '../../../lib/prisma.ts';
+import { redisConnection, mediaEncodeQueue, webhookQueue } from '../../../lib/queue.ts';
+import { probe } from '../../../lib/pipeline.ts';
+import { downloadObject } from '../../../lib/storage.ts';
+import { sniffFileType } from '../../../lib/sniff-file-type.ts';
 
-import { cleanupStaleTempFiles } from '../lib/sre-cleanup.ts';
-import { isPermanentFailure } from '../lib/error-classification.ts';
+import { cleanupStaleTempFiles } from '../../../lib/sre-cleanup.ts';
+import { isPermanentFailure } from '../../../lib/error-classification.ts';
 
 // Ensure local temp folder exists
 const TEMP_DIR = join(process.cwd(), 'temp');
@@ -110,6 +110,11 @@ export const analysisWorker = new Worker(
           status: 'FAILED',
           errorMessage: error.message || 'Media analysis failed.',
         },
+      });
+
+      // Enqueue outbound failure webhook dispatch
+      webhookQueue.add('webhook-dispatch', { jobId, event: 'job.failed' }).catch((err: any) => {
+        console.warn(`[Analysis Worker] Failed to enqueue failure webhook dispatch for job ${jobId}:`, err);
       });
 
       // Permanent failure classification: invalid headers, format, or decode errors

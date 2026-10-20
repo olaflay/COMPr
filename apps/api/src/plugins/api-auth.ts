@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import { createHash } from 'node:crypto';
-import { prisma } from '../../lib/prisma.ts';
+import { prisma } from '../../../../lib/prisma.ts';
 
 declare module 'fastify' {
   interface FastifyRequest {

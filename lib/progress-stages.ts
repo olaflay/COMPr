@@ -1,9 +1,9 @@
 /**
- * Goal Gradient Effect — PRD FR-8, §12.
+ * Goal Gradient Effect : PRD FR-8, §12.
  *
  * Front-loads perceived progress so early stages visibly move the bar,
  * and counts down remaining steps near completion instead of raw percentage.
- * This is a display-layer reweighting only — actual job status remains
+ * This is a display-layer reweighting only : actual job status remains
  * truthfully tracked server-side (Job.status in schema.prisma).
  */
 

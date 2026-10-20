@@ -24,7 +24,12 @@ import billingRoutes from './routes/billing.ts';
 import contactRoutes from './routes/contact.ts';
 import healthRoutes from './routes/health.ts';
 import queueStatsRoutes from './routes/queue-stats.ts';
+import ingestRoutes from './routes/v1/ingest.ts';
+import tenantRoutes from './routes/v1/tenants.ts';
 import rateLimitPlugin from './plugins/rate-limit.ts';
+import { redisConnection } from '../../../lib/queue.ts';
+import { prisma } from '../../../lib/prisma.ts';
+import { registerGracefulShutdown } from '../../../lib/lifecycle.ts';
 
 const app = Fastify({
   logger: true,
@@ -40,14 +45,14 @@ app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
 
 // CORS: lock to frontend origins only. Prevents cross-origin quota-burn attacks.
-const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || 'https://noblur.app,http://localhost:3000').split(',');
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || 'https://vecteus.dev,http://localhost:3000').split(',');
 app.addHook('onRequest', async (request, reply) => {
   const origin = request.headers.origin || '';
   if (ALLOWED_ORIGINS.some(o => origin === o.trim())) {
     reply.header('Access-Control-Allow-Origin', origin);
     reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-    reply.header('Access-Control-Allow-Headers', 'Content-Type, X-NoBlur-Fingerprint');
-    // Cache preflight responses for 24h (D-8) — reduces OPTIONS round-trips.
+    reply.header('Access-Control-Allow-Headers', 'Content-Type, X-Vecteus-Key, X-Vecteus-Signature, X-Vecteus-Fingerprint, X-Vectis-Key, X-Vectis-Signature');
+    // Cache preflight responses for 24h (D-8) : reduces OPTIONS round-trips.
     reply.header('Access-Control-Max-Age', '86400');
     // Reflect the origin header back through intermediaries (required for a
     // dynamic Access-Control-Allow-Origin to be cache-safe).
@@ -62,6 +67,8 @@ app.addHook('onRequest', async (request, reply) => {
 app.register(rateLimitPlugin);
 
 // Register routes
+app.register(ingestRoutes);
+app.register(tenantRoutes);
 app.register(jobsRoutes);
 app.register(usageRoutes);
 app.register(onboardingRoutes);
@@ -71,7 +78,8 @@ app.register(contactRoutes);
 app.register(healthRoutes);
 app.register(queueStatsRoutes);
 
-// Error handling envelope mapping - PRD §18, coding-standards.md
+
+// Error handling envelope mapping: PRD §18, coding-standards.md
 app.setErrorHandler((error, _request, reply) => {
   const err = error as any;
   const statusCode = err.statusCode || 500;
@@ -100,5 +108,20 @@ const start = async () => {
     process.exit(1);
   }
 };
+
+// Graceful shutdown (Twelve-Factor disposability): stop accepting new
+// requests, drain in-flight ones (fastify.close), then close Redis + Prisma.
+// DRAIN_TIMEOUT_MS overrides the 30s default for slow-draining workloads.
+const drainTimeoutMs = Number(process.env.DRAIN_TIMEOUT_MS) || undefined;
+
+registerGracefulShutdown({
+  timeoutMs: drainTimeoutMs,
+  log: (msg) => app.log.info(msg),
+  onShutdown: async () => {
+    await app.close();
+    await redisConnection.quit();
+    await prisma.$disconnect();
+  },
+});
 
 start();

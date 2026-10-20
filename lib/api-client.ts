@@ -4,7 +4,7 @@
  * Client-side fetch wrapper for the Fastify API.
  *
  * In production, NEXT_PUBLIC_API_URL points directly at the API host (e.g.
- * Railway), and this calls it as an absolute cross-origin URL — required
+ * Railway), and this calls it as an absolute cross-origin URL : required
  * because Next.js's rewrites() proxy preserves the original Host header,
  * which breaks host-based routing on platforms like Railway (the proxied
  * request gets rejected as "Application not found" even though the path is

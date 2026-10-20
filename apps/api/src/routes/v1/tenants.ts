@@ -1,9 +1,9 @@
 import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
 import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
-import { prisma } from '../../../lib/prisma.ts';
+import { prisma } from '../../../../../lib/prisma.ts';
 import { hashApiKey } from '../../plugins/api-auth.ts';
-import { validateWebhookUrl } from '../../../lib/ssrf.ts';
+import { validateWebhookUrl } from '../../../../../lib/ssrf.ts';
 
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
@@ -222,7 +222,7 @@ const tenantRoutes: FastifyPluginAsyncZod = async (app) => {
 
     return reply.code(200).send({
       tenantId,
-      usage: usageRecords.map((r) => ({
+      usage: usageRecords.map((r: any) => ({
         billingMonth: r.billingMonth,
         minutesEncoded: r.minutesEncoded,
         bytesIn: Number(r.bytesIn),

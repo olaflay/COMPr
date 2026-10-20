@@ -1,0 +1,51 @@
+{
+  "name": "@vecteus/contracts",
+  "version": "1.0.0",
+  "description": "Shared Zod schemas, API request and response DTOs, and error envelopes",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js",
+      "default": "./dist/errors.js"
+    },
+    "./ingest": {
+      "types": "./dist/ingest.d.ts",
+      "import": "./dist/ingest.js",
+      "default": "./dist/ingest.js"
+    },
+    "./jobs": {
+      "types": "./dist/jobs.d.ts",
+      "import": "./dist/jobs.js",
+      "default": "./dist/jobs.js"
+    },
+    "./tenants": {
+      "types": "./dist/tenants.d.ts",
+      "import": "./dist/tenants.js",
+      "default": "./dist/tenants.js"
+    },
+    "./uploads": {
+      "types": "./dist/uploads.d.ts",
+      "import": "./dist/uploads.js",
+      "default": "./dist/uploads.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "typecheck": "tsc --build"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  }
+}

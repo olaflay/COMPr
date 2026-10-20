@@ -125,7 +125,7 @@ export default function InstallPromptModal({ onInstalled }: { onInstalled?: () =
 
   // "Cancel" (X) is a lightweight exit for THIS prompt only: it closes without
   // pinning the dismissal flag, so the prompt is allowed to appear again in a
-  // later session (Nielsen "user control and freedom" — a visible cancel that
+  // later session (Nielsen "user control and freedom" : a visible cancel that
   // doesn't silently commit the user to a long quiet period).
   const handleCancel = useCallback(() => {
     setDeferredPrompt(null);
@@ -171,7 +171,7 @@ export default function InstallPromptModal({ onInstalled }: { onInstalled?: () =
         aria-describedby="install-prompt-desc"
         className="relative w-full max-w-sm bg-surface-container-high text-on-surface rounded-m3-xl shadow-m3-4 p-m3-large flex flex-col gap-m3-medium"
       >
-        {/* Cancel (X) icon button — always-visible exit that doesn't pin the
+        {/* Cancel (X) icon button : always-visible exit that doesn't pin the
             quiet-period flag (see handleCancel). M3 icon button, keyboard
             focusable, participates in the focus trap. */}
         <button
@@ -196,11 +196,11 @@ export default function InstallPromptModal({ onInstalled }: { onInstalled?: () =
 
         <div className="flex flex-col gap-m3-small">
           <h2 id="install-prompt-title" className="text-title-large font-semibold">
-            {iosMode ? 'Put NoBlur for your home screen' : 'Put NoBlur for your phone'}
+            {iosMode ? 'Put Vecteus for your home screen' : 'Put Vecteus for your phone'}
           </h2>
           <p id="install-prompt-desc" className="text-body-medium text-on-surface-variant">
             {iosMode
-              ? 'iOS no go prompt you to install. Put NoBlur for your home screen, then open am one-tap.'
+              ? 'iOS no go prompt you to install. Put Vecteus for your home screen, then open am one-tap.'
               : 'Open am like app, straight from your phone. Sharp WhatsApp media, no browser hunting.'}
           </p>
         </div>

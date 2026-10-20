@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { redisConnection } from '../../lib/queue.ts';
-import { hashString } from '../../lib/crypto.ts';
+import { redisConnection } from '../../../../lib/queue.ts';
+import { hashString } from '../../../../lib/crypto.ts';
 
 // Per-IP request budgets per 60s window, keyed by route class.
 // Write paths are resource-expensive (create MediaFile rows, presign) so they
@@ -77,8 +77,9 @@ export default async function rateLimitPlugin(app: FastifyInstance): Promise<voi
       (path === '/api/v1/usage' ||
        (path !== undefined && path.startsWith('/api/v1/jobs/')))
     ) {
+      const routeKey = path.startsWith('/api/v1/jobs/') ? '/api/v1/jobs/:jobId' : path;
       const ok = await applyFixedWindowLimit(
-        `rl:${ipHash}:${path}`,
+        `rl:${ipHash}:${routeKey}`,
         READ_LIMIT,
         request,
         reply

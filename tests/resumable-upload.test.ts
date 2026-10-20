@@ -5,8 +5,8 @@ import {
   validatorCompiler,
   serializerCompiler,
 } from '@fastify/type-provider-zod';
-import { storageClient } from '../server/services/storage.ts';
-import uploadsRoutes from '../server/routes/uploads.ts';
+import { storageClient } from '../lib/storage.ts';
+import uploadsRoutes from '../apps/api/src/routes/uploads.ts';
 import { prisma } from '../lib/prisma.ts';
 
 describe('resumable-upload flow routes', () => {

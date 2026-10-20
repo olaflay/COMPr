@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { storageClient } from '../server/services/storage.ts';
+import { storageClient } from '../lib/storage.ts';
 
 interface EndpointShape {
   protocol?: string;

@@ -28,7 +28,7 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
   const pollIntervalRef = useRef<any>(null);
 
   useEffect(() => {
-    const fp = localStorage.getItem('noblur_fingerprint');
+    const fp = localStorage.getItem('vecteus_fingerprint');
 
     if (!fp) {
       setLoading(false);
@@ -146,8 +146,8 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
       <div className="max-w-xl w-full mx-auto flex-1 flex flex-col gap-m3-large">
         <header className="flex justify-between items-center pb-m3-medium border-b border-outline-variant">
           <Link href="/dashboard" className="flex items-center gap-m3-x-small hover:opacity-85 transition-opacity duration-m3-short-2">
-            <Image src="/favicon.svg" alt="NoBlur logo" width={28} height={28} className="rounded-m3-md select-none" />
-            <span className="text-title-medium">NoBlur</span>
+            <Image src="/favicon.svg" alt="Vecteus logo" width={28} height={28} className="rounded-m3-md select-none" />
+            <span className="text-title-medium">Vecteus</span>
           </Link>
           <div className="text-label-medium text-on-surface-variant font-mono">
             Job: {jobId.substring(0, 8)}
@@ -239,7 +239,7 @@ export default function JobPageClient({ jobId }: { jobId: string }) {
                 <a
                   key={idx}
                   href={apiUrl(out.downloadPath)}
-                  download={`noblur_output_${activeJob.jobId}${idx > 0 ? `_part${idx}` : ''}.mp4`}
+                  download={`vecteus_output_${activeJob.jobId}${idx > 0 ? `_part${idx}` : ''}.mp4`}
                   className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface py-m3-small rounded-m3-full text-label-large text-center block border border-outline transition-all duration-m3-short-2"
                 >
                   Download to device {activeJob.outputs.length > 1 ? `(Part ${idx + 1})` : ''}

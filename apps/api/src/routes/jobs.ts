@@ -1,14 +1,14 @@
 import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
 import { z } from 'zod';
-import platformLimits from '../../config/platform-limits.json' with { type: 'json' };
-import { prisma } from '../../lib/prisma.ts';
-import { cumulativeDisplayPercent, stepsRemaining } from '../../lib/progress-stages.ts';
-import { chooseInitialResolution } from '../../lib/resolution.ts';
-import { createJobForFingerprint, IntakeError } from '../../lib/job-intake.ts';
-import { createBatchJobForFingerprint, BatchNotImplementedError } from '../../lib/batch-intake.ts';
+import platformLimits from '../../../../config/platform-limits.json' with { type: 'json' };
+import { prisma } from '../../../../lib/prisma.ts';
+import { cumulativeDisplayPercent, stepsRemaining } from '../../../../lib/progress-stages.ts';
+import { chooseInitialResolution } from '../../../../lib/resolution.ts';
+import { createJobForFingerprint, IntakeError } from '../../../../lib/job-intake.ts';
+import { createBatchJobForFingerprint, BatchNotImplementedError } from '../../../../lib/batch-intake.ts';
 import { getPresignedDownloadUrl } from '../services/storage.ts';
-import { hashString, createSignedDownloadToken, verifySignedDownloadToken } from '../../lib/crypto.ts';
-import { redisConnection } from '../../lib/queue.ts';
+import { hashString, createSignedDownloadToken, verifySignedDownloadToken } from '../../../../lib/crypto.ts';
+import { redisConnection } from '../../../../lib/queue.ts';
 
 const PRESET_VALUES = ['STATUS', 'CHAT', 'CUSTOM'] as const;
 const DESTINATION_VALUES = ['WHATSAPP_NORMAL', 'WHATSAPP_HD', 'WHATSAPP_DOCUMENT', 'PREVIEW_WEB'] as const;
@@ -22,7 +22,7 @@ const createJobBodySchema = z.object({
   fingerprint: z.string(),
 });
 
-// Scaffold only — see lib/batch-intake.ts. Body shape is settled ahead of
+// Scaffold only : see lib/batch-intake.ts. Body shape is settled ahead of
 // the real implementation so the client contract doesn't have to change later.
 const createBatchJobBodySchema = z.object({
   fileKeys: z.array(z.string()).min(2).max(10),
@@ -34,7 +34,7 @@ const createBatchJobBodySchema = z.object({
 });
 
 const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
-  // POST /api/v1/jobs — Create job
+  // POST /api/v1/jobs : Create job
   app.post('/api/v1/jobs', {
     schema: {
       body: createJobBodySchema,
@@ -58,7 +58,7 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
       await redisConnection.del(`usage_cache:${fpHash}`).catch(() => {});
 
       return reply.code(202).send(result);
-    } catch (err) {
+    } catch (err: any) {
       if (err instanceof IntakeError) {
         return reply.code(err.statusCode).send({
           error: {
@@ -72,7 +72,7 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
     }
   });
 
-  // POST /api/v1/jobs/batch — SCAFFOLD ONLY, not functional yet.
+  // POST /api/v1/jobs/batch : SCAFFOLD ONLY, not functional yet.
   // Always responds 501; see lib/batch-intake.ts for what real support needs.
   app.post('/api/v1/jobs/batch', {
     schema: {
@@ -92,7 +92,7 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
         ip: request.ip,
       });
       return reply.code(202).send(result);
-    } catch (err) {
+    } catch (err: any) {
       if (err instanceof BatchNotImplementedError) {
         return reply.code(err.statusCode).send({
           error: { code: err.code, message: err.message },
@@ -102,7 +102,7 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
     }
   });
 
-  // GET /api/v1/jobs/:jobId — Get job status
+  // GET /api/v1/jobs/:jobId : Get job status
   app.get('/api/v1/jobs/:jobId', async (request, reply) => {
     const { jobId } = request.params as { jobId: string };
 
@@ -120,7 +120,7 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     }
 
-    const fingerprint = (request.headers['x-noblur-fingerprint'] ??
+    const fingerprint = (request.headers['x-vecteus-fingerprint'] ??
       (request.query as { fingerprint?: string }).fingerprint) as string | undefined;
     if (!fingerprint || hashString(fingerprint) !== job.fingerprintHash) {
       return reply.code(403).send({
@@ -142,7 +142,7 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
     // direct access). Downloads go through the download route below, which
     // verifies ownership via a short-lived signed token (D-4) and redirects
     // to a fresh server-side URL. The raw fingerprint is never put in a URL.
-    const outputs = job.outputs.map((out) => ({
+    const outputs = job.outputs.map((out: any) => ({
       id: out.id,
       segmentIndex: out.segmentIndex,
       downloadPath: `/api/v1/jobs/${job.id}/download/${out.id}?dl=${encodeURIComponent(createSignedDownloadToken(job.id, out.id))}`,
@@ -153,13 +153,13 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
     if (job.status === 'DONE' && job.mediaKind === 'VIDEO' && job.sourceFile && job.outputs.length > 0 && job.preset !== 'CUSTOM') {
       const sourceHeight = job.sourceFile.height || 0;
       const sourceWidth = job.sourceFile.width || 0;
-      // Same preset cap the encode worker applies — sourced from the config
+      // Same preset cap the encode worker applies : sourced from the config
       // table, never hardcoded (AGENTS.md Q3).
       const presetMaxHeight = platformLimits[job.preset].maxResolution.height;
       const initialResolution = chooseInitialResolution(sourceWidth, sourceHeight, presetMaxHeight);
 
-      const outputHeights = job.outputs.map((out) => out.height || 0);
-      const hasDrop = outputHeights.some((h) => h > 0 && h < initialResolution.height);
+      const outputHeights = job.outputs.map((out: any) => out.height || 0);
+      const hasDrop = outputHeights.some((h: number) => h > 0 && h < initialResolution.height);
       if (hasDrop) {
         resolutionDropped = true;
       }
@@ -181,7 +181,7 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
     });
   });
 
-  // GET /api/v1/jobs/:jobId/download/:outputId — server-mediated download.
+  // GET /api/v1/jobs/:jobId/download/:outputId : server-mediated download.
   //
   // The client only ever holds an app-relative path. This route verifies a
   // short-lived signed token owns the output, looks it up, and 302-redirects
@@ -213,7 +213,7 @@ const jobsRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     }
 
-    const output = job.outputs.find((o) => o.id === outputId);
+    const output = job.outputs.find((o: any) => o.id === outputId);
     if (!output) {
       return reply.code(404).send({
         error: { code: 'OUTPUT_NOT_FOUND', message: `Output ${outputId} not found on this job` },

@@ -132,7 +132,7 @@ export default function BeforeAfterSlider({
           <div className="absolute inset-0 skeleton" aria-label="Loading comparison images" />
         )}
 
-        {/* Output frame (Background) — for video jobs, both sides are parked on the same timestamp */}
+        {/* Output frame (Background) : for video jobs, both sides are parked on the same timestamp */}
         {isVideo ? (
           <video
             ref={outputVideoRef}

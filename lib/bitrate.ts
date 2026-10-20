@@ -1,5 +1,5 @@
 /**
- * Bitrate calculation engine — implements PRD Section 14.
+ * Bitrate calculation engine : implements PRD Section 14.
  *
  * MUX_OVERHEAD_MARGIN is a starting value (8%), explicitly flagged in the
  * PRD as needing empirical tuning against real encodes (Milestone 3) before
@@ -36,7 +36,7 @@ export interface BitrateResult {
 }
 
 function clampAudioBitrateKbps(channels: number): number {
-  if (channels <= 0) return 0; // silent video or GIF — allocate full budget to video
+  if (channels <= 0) return 0; // silent video or GIF : allocate full budget to video
   if (channels >= 2) return 96; // stereo default within the 64-128 confirmed range
   return 64; // mono
 }
@@ -71,7 +71,7 @@ export function calculateBitrate(
 /**
  * FR-7 size-triggered retry: adjust bitrate by the measured delta between
  * actual output size and target size, distinct from the quality-triggered
- * retry path (which drops a resolution tier instead — see resolution.ts).
+ * retry path (which drops a resolution tier instead : see resolution.ts).
  */
 export function adjustBitrateForSizeRetry(
   previousVideoBitrateKbps: number,

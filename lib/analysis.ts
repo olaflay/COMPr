@@ -1,5 +1,5 @@
 /**
- * Media scene analysis — adaptive engine analysis service.
+ * Media scene analysis : adaptive engine analysis service.
  *
  * Extracts 1fps frames (adaptive-engine.md Rule 3), runs face detection
  * via Haar Cascade and text detection via Canny edge analysis, and computes

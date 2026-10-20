@@ -1,9 +1,9 @@
 import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
 import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
-import { prisma } from '../../../lib/prisma.ts';
-import { getPresignedUploadUrl } from '../../services/storage.ts';
-import { mediaAnalysisQueue } from '../../../lib/queue.ts';
+import { prisma } from '../../../../../lib/prisma.ts';
+import { getPresignedUploadUrl, checkUploadedObject } from '../../services/storage.ts';
+import { mediaAnalysisQueue } from '../../../../../lib/queue.ts';
 import { hashApiKey } from '../../plugins/api-auth.ts';
 
 const ALLOWED_MIME_TYPES = [
@@ -58,8 +58,8 @@ const ingestRoutes: FastifyPluginAsyncZod = async (app) => {
     }
 
     let tenantId: string | null = null;
+    const keyHash = hashApiKey(rawKey);
     try {
-      const keyHash = hashApiKey(rawKey);
       const apiKeyRecord = await prisma.apiKey.findUnique({
         where: { keyHash },
       });
@@ -91,7 +91,7 @@ const ingestRoutes: FastifyPluginAsyncZod = async (app) => {
         preset: 'CUSTOM',
         mediaKind,
         sourceFileId: mediaFile.id,
-        fingerprintHash: rawKey,
+        fingerprintHash: keyHash,
         tenantId,
         ipHash: request.ip || '127.0.0.1',
         targetVmaf,
@@ -150,6 +150,33 @@ const ingestRoutes: FastifyPluginAsyncZod = async (app) => {
         status: job.status,
         queuePosition: 0,
       });
+    }
+
+    // Verify uploaded object exists and does not exceed maximum allowable size (500MB)
+    if (job.sourceFile?.storageKey) {
+      const meta = await checkUploadedObject(job.sourceFile.storageKey);
+      if (!meta) {
+        return reply.code(400).send({
+          error: {
+            code: 'SOURCE_OBJECT_NOT_FOUND',
+            message: 'Uploaded source file was not found in storage. Ensure upload finished before calling complete.',
+          },
+        } as any);
+      }
+      if (meta.sizeBytes > 500 * 1024 * 1024) {
+        return reply.code(400).send({
+          error: {
+            code: 'FILE_TOO_LARGE',
+            message: 'Uploaded file exceeds the maximum allowed size of 500MB.',
+          },
+        } as any);
+      }
+      if (meta.sizeBytes > 0 && meta.sizeBytes !== job.sourceFile.sizeBytes) {
+        await prisma.mediaFile.update({
+          where: { id: job.sourceFile.id },
+          data: { sizeBytes: meta.sizeBytes },
+        });
+      }
     }
 
     // Enqueue to BullMQ for asynchronous distributed processing

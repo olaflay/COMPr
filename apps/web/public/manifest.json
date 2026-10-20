@@ -1,6 +1,6 @@
 {
-  "name": "NoBlur - WhatsApp Media Optimizer",
-  "short_name": "NoBlur",
+  "name": "Vecteus - WhatsApp Media Optimizer",
+  "short_name": "Vecteus",
   "description": "Pre-optimize photos and videos so they stay sharp after WhatsApp compresses them. No account needed.",
   "start_url": "/dashboard",
   "scope": "/",

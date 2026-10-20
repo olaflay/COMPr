@@ -1,5 +1,5 @@
 /**
- * PRD 37: Sitemap — only static, indexable marketing pages.
+ * PRD 37: Sitemap : only static, indexable marketing pages.
  * Job pages (/jobs/:id) are excluded per robots.txt.
  */
 

@@ -1,10 +1,10 @@
 import * as Sentry from '@sentry/node';
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { prisma } from '../lib/prisma.ts';
-import { storageClient } from '../server/services/storage.ts';
+import { prisma } from '../../../lib/prisma.ts';
+import { storageClient } from '../../../lib/storage.ts';
 
-const OUTPUTS_BUCKET = process.env.TIGRIS_OUTPUTS_BUCKET || 'noblur-outputs';
-const UPLOADS_BUCKET = process.env.TIGRIS_UPLOADS_BUCKET || 'noblur-uploads';
+const OUTPUTS_BUCKET = process.env.TIGRIS_OUTPUTS_BUCKET || process.env.VECTEUS_OUTPUTS_BUCKET || 'vecteus-outputs';
+const UPLOADS_BUCKET = process.env.TIGRIS_UPLOADS_BUCKET || process.env.VECTEUS_UPLOADS_BUCKET || 'vecteus-uploads';
 
 /**
  * Sweep expired MediaFiles:
@@ -15,12 +15,13 @@ const UPLOADS_BUCKET = process.env.TIGRIS_UPLOADS_BUCKET || 'noblur-uploads';
 export async function cleanupExpiredFiles(): Promise<void> {
   const now = new Date();
 
-  // Query files that have expired and are not yet marked deleted
+  // Query files that have expired and are not yet marked deleted in bounded batches
   const expiredFiles = await prisma.mediaFile.findMany({
     where: {
       expiresAt: { lt: now },
       deletedAt: null,
     },
+    take: 100,
   });
 
   console.log(`[Cleanup Cron] Found ${expiredFiles.length} expired files to clean up.`);
@@ -56,8 +57,9 @@ export async function cleanupExpiredFiles(): Promise<void> {
 }
 
 // Set up periodic sweep
+let cleanupLoop: ReturnType<typeof setInterval> | null = null;
 if (process.env.RUN_CLEANUP_LOOP === 'true') {
-  setInterval(async () => {
+  cleanupLoop = setInterval(async () => {
     try {
       await cleanupExpiredFiles();
     } catch (e) {
@@ -65,4 +67,12 @@ if (process.env.RUN_CLEANUP_LOOP === 'true') {
       Sentry.captureException(e);
     }
   }, 60 * 1000); // Check every minute
+}
+
+/** Stop the sweep during graceful shutdown so the loop is not left behind. */
+export function stopCleanupLoop(): void {
+  if (cleanupLoop) {
+    clearInterval(cleanupLoop);
+    cleanupLoop = null;
+  }
 }

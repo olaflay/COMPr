@@ -15,7 +15,7 @@ function requireSalt(): string {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('CRYPTO_SALT is required in production (lib/crypto.ts)');
     }
-    return 'noblur_fallback_salt_2026';
+    return 'vecteus_fallback_salt_2026';
   }
   return salt;
 }
@@ -72,3 +72,20 @@ export function verifySignedDownloadToken(token: string, jobId: string, outputId
   const b = Buffer.from(expected);
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+/**
+ * Signs an outbound webhook payload using HMAC-SHA256.
+ */
+export function signWebhookPayload(payload: string, secret: string): string {
+  return createHmac('sha256', secret).update(payload).digest('hex');
+}
+
+/**
+ * Verifies an incoming webhook signature using timing-safe comparison.
+ */
+export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
+  const expected = signWebhookPayload(payload, secret);
+  if (signature.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expected, 'hex'));
+}
+

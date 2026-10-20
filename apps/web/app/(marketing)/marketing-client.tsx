@@ -1,333 +1,392 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { motion, AnimatePresence, type Variants, type Transition } from 'motion/react';
 import SiteHeader from '../../components/marketing/SiteHeader';
 import SiteFooter from '../../components/marketing/SiteFooter';
-import MediaMessageDemo, { type WhatsAppMode } from '../../components/marketing/MediaMessageDemo';
+import ComparisonSlider from '../../components/marketing/ComparisonSlider';
+import InteractiveDropZone from '../../components/marketing/InteractiveDropZone';
+import CodePreview from '../../components/marketing/CodePreview';
+import CostCalculator from '../../components/marketing/CostCalculator';
 
-const MODE_SUB_COPY: Record<WhatsAppMode, string> = {
-  Status: 'Tuned for Status, so your video keeps more detail when WhatsApp compresses am.',
-  Chat: 'Tuned for Chat, so your photos and videos keep detail when you send am.',
-  Product: 'Tuned for product photos, so dem stay sharp for your buyers.',
+const smoothTransition: Transition = {
+  duration: 0.35,
+  ease: [0.16, 1, 0.3, 1] as const,
 };
 
-const CTA_LABEL: Record<WhatsAppMode, string> = {
-  Status: 'Optimise a Status video',
-  Chat: 'Optimise for Chat',
-  Product: 'Optimise product photos',
+const fadeInUp: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: smoothTransition,
+  },
 };
 
-const PRESET_BY_MODE: Record<WhatsAppMode, string> = {
-  Status: 'STATUS',
-  Chat: 'CHAT',
-  Product: 'CUSTOM',
+const staggerContainer: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
 };
 
 export default function MarketingClient() {
-  const router = useRouter();
-  const heroFileInputRef = useRef<HTMLInputElement>(null);
-  const [whatsappMode, setWhatsappMode] = useState<WhatsAppMode>('Status');
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
-  const [isHeroDragging, setIsHeroDragging] = useState(false);
-
-  const handleHeroFile = (file: File) => {
-    if (typeof window !== 'undefined') {
-      (window as any).__stagedNoBlurFile = file;
-    }
-    router.push(`/dashboard?preset=${PRESET_BY_MODE[whatsappMode]}`);
-  };
-
-  const handleHeroFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleHeroFile(e.target.files[0]);
-    }
-  };
-
-  const handleHeroDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsHeroDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleHeroFile(e.dataTransfer.files[0]);
-    }
-  };
 
   const faqs = [
     {
-      q: 'Does NoBlur bypass WhatsApp compression?',
-      a: 'No. WhatsApp compresses every file you send. NoBlur pre-optimizes your media so it survives that compression with maximum details intact.',
+      q: 'How does Vecteus reduce our cloud bills?',
+      a: 'Vecteus automatically shrinks incoming videos by up to 75% before they are stored. Smaller files mean you pay significantly less for cloud storage and user streaming bandwidth every month.',
     },
     {
-      q: 'How is NoBlur different from other WhatsApp compressors?',
-      a: 'Most tools only handle Status. NoBlur tunes separately for Status, Chat, and product photos, and shows you a before-and-after comparison so you can see exactly how much sharper your file is before you send.',
+      q: 'Does picture quality get worse when files shrink?',
+      a: 'No. Every transcode is validated by an automated perceptual quality gate (VMAF >= 90.0) before saving. Fine edges, texture details, and color fidelity are preserved.',
     },
     {
-      q: 'Is my media secure?',
-      a: 'Yes. Every file you upload is automatically and permanently deleted from our servers within 24 hours.',
+      q: 'Do user video files pass through your application servers?',
+      a: 'No. Files upload directly from user devices into your own Amazon S3 or Cloudflare storage bucket using secure direct links. Your servers never get bogged down by heavy video uploads.',
     },
     {
-      q: 'Do I need to sign up?',
-      a: 'No. You can start optimizing photos and videos immediately without creating an account or sharing personal info.',
+      q: 'How fast can we integrate Vecteus into our app?',
+      a: 'Most teams get up and running in under 15 minutes using our 3-line TypeScript SDK or simple REST API calls.',
     },
     {
-      q: 'Is NoBlur free to use?',
-      a: 'Yes, you get 5 free optimizations every day, plus 3 more if you share NoBlur to WhatsApp. A ₦2,500/month Premium plan for unlimited use is coming soon.',
+      q: 'Which cloud storage providers do you support?',
+      a: 'Vecteus connects directly with AWS S3, Cloudflare R2, Google Cloud Storage, or any S3-compatible cloud storage bucket.',
     },
   ];
 
+  const toggleFaq = (idx: number) => {
+    setActiveFaq(activeFaq === idx ? null : idx);
+  };
+
   return (
-    <main className="min-h-screen min-h-[100dvh] w-full flex-1 flex flex-col justify-between bg-background text-on-background pt-m3-medium pb-m3-large px-m3-large md:pt-m3-x-large md:pb-m3-xxx-large md:px-m3-xxx-large">
+    <main className="min-h-screen min-h-[100dvh] w-full flex-1 flex flex-col justify-between bg-[#0B0F17] text-slate-100 pt-m3-x-small pb-m3-medium px-m3-medium md:pt-m3-small md:pb-m3-large md:px-m3-large">
       <SiteHeader />
 
-      <div className="flex-1 flex flex-col items-center justify-start max-w-[1120px] mx-auto w-full px-m3-medium pt-m3-xxx-large md:pt-m3-6xl pb-m3-xxx-large md:pb-m3-7xl">
-        {/* Hero */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-m3-x-large md:gap-m3-xx-large items-center w-full">
-          <div className="flex flex-col items-start text-left gap-y-m3-medium">
-            <div className="flex flex-col items-start gap-y-m3-x-small message-reveal" style={{ animationDelay: '0.02s' }}>
-              <p className="text-label-large text-on-surface-variant">Where you dey post am?</p>
-              <div
-                className="flex flex-wrap gap-m3-x-small"
-                role="radiogroup"
-                aria-label="WhatsApp destination selection"
-              >
-                {(['Status', 'Chat', 'Product'] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    role="radio"
-                    aria-checked={whatsappMode === mode}
-                    onClick={() => setWhatsappMode(mode)}
-                    className={`flex items-center gap-m3-xx-small py-m3-x-small px-m3-medium rounded-m3-full border transition-all duration-m3-medium-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] ${whatsappMode === mode
-                      ? 'bg-primary-container text-on-primary-container border-primary-container font-semibold shadow-m3-1'
-                      : 'bg-surface text-on-surface border-outline hover:bg-surface-container-high'
-                      }`}
-                  >
-                    {mode}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <h1 className="hero-display-text text-on-surface leading-tight message-reveal" style={{ animationDelay: '0.06s' }}>
-              WhatsApp dey reduce quality?
-              <br />
-              <span className="text-primary">NoBlur</span> make it <span className="text-primary">sharp</span>.
-            </h1>
-
-            <p key={whatsappMode} className="text-body-large text-on-surface-variant leading-relaxed animate-fade-in message-reveal" style={{ animationDelay: '0.1s' }}>
-              {MODE_SUB_COPY[whatsappMode]}
-            </p>
-
-            <div
-              onDrop={handleHeroDrop}
-              onDragOver={(e) => { e.preventDefault(); setIsHeroDragging(true); }}
-              onDragEnter={(e) => { e.preventDefault(); setIsHeroDragging(true); }}
-              onDragLeave={() => setIsHeroDragging(false)}
-              className={`flex flex-col items-start gap-m3-small w-full mt-m3-x-small message-reveal rounded-m3-lg p-m3-x-small transition-all duration-m3-short-2 ${
-                isHeroDragging ? 'border-2 border-dashed border-primary bg-primary-container/10' : ''
-              }`}
-              style={{ animationDelay: '0.14s' }}
-            >
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-m3-small w-full">
-                <button
-                  type="button"
-                  onClick={() => heroFileInputRef.current?.click()}
-                  className="bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container transition-all duration-m3-medium-1 ease-m3-standard py-m3-small px-m3-x-large rounded-m3-full text-title-medium shadow-m3-1 hover:shadow-m3-2 hover:-translate-y-[2px] min-w-[200px] text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] active:shadow-m3-0 flex items-center justify-center gap-m3-x-small cursor-pointer"
-                >
-                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  <span>Select photo or video</span>
-                </button>
-                <Link
-                  href={`/dashboard?preset=${PRESET_BY_MODE[whatsappMode]}`}
-                  className="text-on-surface hover:text-primary transition-colors py-m3-small px-m3-medium text-center text-label-large underline-offset-4 hover:underline"
-                >
-                  {CTA_LABEL[whatsappMode]} &rarr;
-                </Link>
-              </div>
-
-              <input
-                ref={heroFileInputRef}
-                type="file"
-                accept="video/*,image/*"
-                onChange={handleHeroFileSelect}
-                className="hidden"
-                aria-label="Select a photo or video to optimize"
-              />
-
-              <span className="text-label-small text-on-surface-variant">
-                {isHeroDragging ? 'Drop your file here to optimize' : 'Free to use: no account required. Drag and drop supported.'}
-              </span>
-            </div>
-          </div>
-
-          {/* Signature: the media-message seam */}
-          <div className="message-reveal" style={{ animationDelay: '0.1s' }}>
-            <MediaMessageDemo mode={whatsappMode} />
-          </div>
-        </div>
-
-        {/* Trust Signal Strip */}
-        <div className="w-full flex flex-wrap justify-center items-center gap-x-m3-x-large gap-y-m3-small py-m3-medium border-y border-outline-variant/40 mt-m3-xxx-large md:mt-m3-6xl">
-          <div className="flex items-center gap-m3-x-small text-body-small text-on-surface-variant">
-            <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <span>Files deleted within 24 hours</span>
-          </div>
-          <div className="flex items-center gap-m3-x-small text-body-small text-on-surface-variant">
-            <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4" />
-            </svg>
-            <span><span className="font-mono font-semibold text-on-surface">5</span> free files every day</span>
-          </div>
-        </div>
-
-        {/* How It Works Section */}
-        <div className="w-full flex flex-col items-center gap-y-m3-x-large mt-m3-xxx-large md:mt-m3-6xl">
-          <div className="text-center flex flex-col gap-y-m3-x-small">
-            <h2 className="text-headline-medium text-on-surface font-bold">Three steps. That is it.</h2>
-            <p className="text-body-large text-on-surface-variant">No complicated settings. No sign-up needed.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-m3-large w-full relative">
-            <div className="hidden md:block absolute top-8 left-[calc(16.67%+1rem)] right-[calc(16.67%+1rem)] h-px bg-outline-variant z-0" aria-hidden="true" />
-
-            {[
-              {
-                icon: (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                ),
-                title: 'Upload your media',
-                text: 'Drop a photo or video. No sign-up. Works instantly.',
-              },
-              {
-                icon: (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                ),
-                title: 'NoBlur prepares it',
-                text: 'Pre-optimized to look sharp after WhatsApp compresses it.',
-              },
-              {
-                icon: (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                ),
-                title: 'Download and send',
-                text: 'Get your file. Send it on WhatsApp. Stays sharp.',
-              },
-            ].map((step, i) => (
-              <div key={step.title} className="flex flex-col items-center text-center gap-y-m3-medium relative z-10">
-                <div className="w-16 h-16 rounded-m3-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-m3-1">
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    {step.icon}
-                  </svg>
-                </div>
-                <div className="flex flex-col gap-y-m3-xx-small">
-                  <span className="text-label-small text-primary font-semibold uppercase tracking-wide">
-                    Step {i + 1}
-                  </span>
-                  <h3 className="text-title-medium text-on-surface font-semibold">{step.title}</h3>
-                  <p className="text-body-small text-on-surface-variant leading-relaxed">
-                    {step.text}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Core Features Grid */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-m3-large text-left mt-m3-xxx-large md:mt-m3-6xl">
-          <div className="bg-surface-container-low border border-outline-variant p-m3-large rounded-m3-lg flex flex-col gap-y-m3-medium shadow-m3-1 hover:shadow-m3-2 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-m3-medium-1">
-            <div className="text-primary w-8 h-8 flex items-center justify-center" aria-hidden="true">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h3 className="text-title-large text-on-surface font-semibold">Tuned for WhatsApp</h3>
-            <p className="text-body-medium text-on-surface-variant leading-relaxed">
-              Built for WhatsApp&apos;s own limits on Status, Chat, and product photos, not just one surface.
-            </p>
-          </div>
-          <div className="bg-surface-container-low border border-outline-variant p-m3-large rounded-m3-lg flex flex-col gap-y-m3-medium shadow-m3-1 hover:shadow-m3-2 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-m3-medium-1">
-            <div className="text-primary w-8 h-8 flex items-center justify-center" aria-hidden="true">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 className="text-title-large text-on-surface font-semibold">Smart presets</h3>
-            <p className="text-body-medium text-on-surface-variant leading-relaxed">
-              Status, Chat, or Custom. Each one adjusts the file to hit the right size and stay sharp.
-            </p>
-          </div>
-          <div className="bg-surface-container-low border border-outline-variant p-m3-large rounded-m3-lg flex flex-col gap-y-m3-medium shadow-m3-1 hover:shadow-m3-2 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-m3-medium-1">
-            <div className="text-primary w-8 h-8 flex items-center justify-center" aria-hidden="true">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h3 className="text-title-large text-on-surface font-semibold">Privacy first</h3>
-            <p className="text-body-medium text-on-surface-variant leading-relaxed">
-              Every file you upload is automatically and permanently deleted from our servers within 24 hours.
-            </p>
-          </div>
-        </div>
-
-        {/* Bottom CTA Section */}
-        <div className="w-full bg-primary rounded-m3-xl px-m3-large py-m3-xx-large flex flex-col items-center text-center gap-y-m3-medium shadow-m3-2 mt-m3-xxx-large md:mt-m3-6xl">
-          <h2 className="text-headline-large text-on-primary font-bold leading-tight max-w-lg">
-            Ready to send sharp media on WhatsApp?
-          </h2>
-          <p className="text-body-large text-on-primary/80 max-w-sm">
-            Keep your media sharp. Free to use. No account. 5 files daily.
-          </p>
-          <Link
-            href="/dashboard"
-            className="bg-on-primary text-primary hover:bg-on-primary/90 transition-all duration-m3-medium-1 ease-m3-standard py-m3-small px-m3-x-large rounded-m3-full text-title-medium shadow-m3-2 hover:shadow-m3-3 hover:-translate-y-[2px] active:scale-[0.98] active:shadow-m3-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-primary mt-m3-x-small"
+      <div className="flex-1 flex flex-col items-center justify-start max-w-[1080px] mx-auto w-full px-m3-small pt-m3-large md:pt-m3-xx-large pb-m3-large md:pb-m3-xx-large gap-y-m3-xx-large">
+        {/* Hero Section */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+          className="flex flex-col items-center text-center gap-y-m3-medium w-full"
+        >
+          <motion.div
+            variants={fadeInUp}
+            className="inline-flex items-center gap-m3-xx-small bg-primary/10 border border-primary/25 px-m3-small py-m3-xxx-small rounded-m3-full text-label-small md:text-label-medium text-primary font-medium tracking-wide"
           >
-            Get Started Free
-          </Link>
-        </div>
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            Headless Media Ingestion | Direct S3 &amp; Cloudflare R2 Proxy
+          </motion.div>
 
-        {/* FAQs Section */}
-        <div className="w-full flex flex-col gap-y-m3-large text-left mt-m3-xxx-large md:mt-m3-6xl">
-          <div className="flex flex-col gap-m3-x-small w-full max-w-2xl mx-auto">
-            <h2 className="text-headline-small text-on-surface font-bold">Frequently Asked Questions</h2>
+          <motion.h1
+            variants={fadeInUp}
+            className="text-[2rem] sm:text-[2.75rem] md:text-[3.5rem] font-extrabold text-white tracking-tight leading-[1.15] max-w-[900px]"
+          >
+            Cut video storage and streaming bills by up to{' '}
+            <span className="text-primary underline decoration-primary/40 underline-offset-8">75%</span> without losing picture quality.
+          </motion.h1>
+
+          <motion.p
+            variants={fadeInUp}
+            className="text-body-large text-slate-300 max-w-[720px] leading-relaxed"
+          >
+            Vecteus connects directly to your cloud storage. Video payloads shrink by up to 75% on ingest, cutting storage and egress bills while guaranteeing broadcast-grade perceptual fidelity.
+          </motion.p>
+
+          <motion.div
+            variants={fadeInUp}
+            className="flex flex-col sm:flex-row items-center gap-m3-small mt-m3-xx-small"
+          >
+            <Link
+              href="/dashboard"
+              className="bg-primary hover:bg-[#188c43] text-white transition-all duration-200 py-m3-x-small px-m3-large rounded-m3-full text-label-large font-semibold shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 active:scale-[0.98] min-w-[200px] text-center"
+            >
+              Start Building Free
+            </Link>
+            <Link
+              href="/how-it-works"
+              className="bg-surface-container-high/60 hover:bg-surface-container-high text-slate-200 transition-all duration-200 py-m3-x-small px-m3-large rounded-m3-full text-label-large font-medium border border-outline-variant/40 hover:border-slate-500 min-w-[180px] text-center"
+            >
+              How It Works &rarr;
+            </Link>
+          </motion.div>
+
+          {/* Key Metric Highlights Strip */}
+          <motion.div
+            variants={staggerContainer}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-m3-small w-full mt-m3-small pt-m3-small border-t border-slate-800"
+          >
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-col items-center sm:items-start p-m3-small rounded-m3-lg bg-[#121824]/60 border border-slate-800/80"
+            >
+              <span className="text-headline-small font-extrabold text-primary font-mono">75% Smaller</span>
+              <span className="text-body-small text-slate-400">Average bandwidth and storage reduction</span>
+            </motion.div>
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-col items-center sm:items-start p-m3-small rounded-m3-lg bg-[#121824]/60 border border-slate-800/80"
+            >
+              <span className="text-headline-small font-extrabold text-white font-mono">VMAF &gt;= 90.0</span>
+              <span className="text-body-small text-slate-400">Closed-loop Netflix perceptual quality gate</span>
+            </motion.div>
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-col items-center sm:items-start p-m3-small rounded-m3-lg bg-[#121824]/60 border border-slate-800/80"
+            >
+              <span className="text-headline-small font-extrabold text-white font-mono">$0 Transit Fees</span>
+              <span className="text-body-small text-slate-400">Direct uploads straight to your cloud bucket</span>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+
+        {/* Section 1: Live Interactive Browser Drop Playground */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={smoothTransition}
+          className="w-full"
+          aria-label="Interactive video test playground"
+        >
+          <InteractiveDropZone />
+        </motion.section>
+
+        {/* Section 2: Interactive Comparison Slider */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={smoothTransition}
+          className="w-full flex flex-col gap-y-m3-small"
+          aria-label="Interactive quality comparison"
+        >
+          <div className="flex flex-col items-start gap-y-m3-xxx-small text-left">
+            <h2 className="text-headline-small md:text-headline-medium text-white font-bold tracking-tight">
+              See the Difference: Crisp Visuals at 1/4 the File Size
+            </h2>
+            <p className="text-body-medium text-slate-400 max-w-[680px]">
+              Drag the interactive slider below to compare the original video against the optimized version. Notice how edges, colors, and textures stay completely intact.
+            </p>
+          </div>
+
+          <ComparisonSlider
+            originalImage="/water.jpg"
+            compressedImage="/water.jpg"
+            originalLabel="Original Video"
+            compressedLabel="Vecteus Optimized"
+            originalSize="50.0 MB"
+            compressedSize="12.5 MB"
+            qualityScore={94}
+          />
+        </motion.section>
+
+        {/* Section 3: How It Works in 3 Simple Steps */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={smoothTransition}
+          className="w-full flex flex-col gap-y-m3-medium"
+          aria-label="How Vecteus works"
+        >
+          <div className="flex flex-col items-center text-center gap-y-m3-xxx-small">
+            <h2 className="text-headline-small md:text-headline-medium text-white font-bold tracking-tight">
+              How It Works: Simple, Direct, and Cloud-Native
+            </h2>
+            <p className="text-body-medium text-slate-400 max-w-[640px]">
+              Zero extra server complexity. Your app stays fast and your user files never get trapped on middleman servers.
+            </p>
+          </div>
+
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-40px' }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-m3-medium w-full"
+          >
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-col items-start text-left p-m3-medium rounded-m3-xl bg-[#121824]/80 border border-slate-800 hover:border-primary/40 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-title-medium mb-m3-small font-mono">
+                1
+              </div>
+              <h3 className="text-title-medium font-bold text-white mb-m3-xx-small">
+                Direct Cloud Upload
+              </h3>
+              <p className="text-body-small text-slate-400 leading-relaxed">
+                Your users upload video files straight to your Amazon S3 or Cloudflare storage bucket using secure temporary links. Your servers never handle heavy video bytes.
+              </p>
+            </motion.div>
+
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-col items-start text-left p-m3-medium rounded-m3-xl bg-[#121824]/80 border border-slate-800 hover:border-primary/40 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-title-medium mb-m3-small font-mono">
+                2
+              </div>
+              <h3 className="text-title-medium font-bold text-white mb-m3-xx-small">
+                Perceptual Quality Gate
+              </h3>
+              <p className="text-body-small text-slate-400 leading-relaxed">
+                Vecteus transcodes media using SVT-AV1 rate control and validates output with automated VMAF quality checks (score &gt;= 90.0) before saving.
+              </p>
+            </motion.div>
+
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-col items-start text-left p-m3-medium rounded-m3-xl bg-[#121824]/80 border border-slate-800 hover:border-primary/40 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-title-medium mb-m3-small font-mono">
+                3
+              </div>
+              <h3 className="text-title-medium font-bold text-white mb-m3-xx-small">
+                Instant Notification
+              </h3>
+              <p className="text-body-small text-slate-400 leading-relaxed">
+                The smaller video lands right inside your cloud bucket, and Vecteus sends your app an instant signed alert with exact file size and savings data.
+              </p>
+            </motion.div>
+          </motion.div>
+        </motion.section>
+
+        {/* Section 4: Interactive Live Code Preview */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={smoothTransition}
+          className="w-full flex flex-col gap-y-m3-small"
+          aria-label="Developer code example"
+        >
+          <div className="flex flex-col items-start gap-y-m3-xxx-small text-left">
+            <h2 className="text-headline-small md:text-headline-medium text-white font-bold tracking-tight">
+              Developer-First: Up and Running in 3 Lines of Code
+            </h2>
+            <p className="text-body-medium text-slate-400 max-w-[680px]">
+              Works with TypeScript, Node.js, Python, or standard REST calls. Integrate in minutes with zero infrastructure maintenance.
+            </p>
+          </div>
+
+          <CodePreview />
+        </motion.section>
+
+        {/* Section 5: Cloud Cost Savings Calculator */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={smoothTransition}
+          className="w-full flex flex-col gap-y-m3-small"
+          aria-label="Cost savings calculator"
+        >
+          <CostCalculator />
+        </motion.section>
+
+        {/* Section 6: Plain-Language FAQ Accordion */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={smoothTransition}
+          className="w-full flex flex-col gap-y-m3-medium"
+          aria-label="Frequently asked questions"
+        >
+          <div className="flex flex-col items-center text-center gap-y-m3-xxx-small">
+            <h2 className="text-headline-small md:text-headline-medium text-white font-bold tracking-tight">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-body-medium text-slate-400 max-w-[600px]">
+              Everything you need to know about reducing video storage and bandwidth costs.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-y-m3-xx-small w-full">
             {faqs.map((faq, index) => {
               const isOpen = activeFaq === index;
               return (
-                <div key={index} className="border border-outline-variant rounded-m3-md overflow-hidden bg-surface-container-low shadow-m3-0">
+                <div
+                  key={faq.q}
+                  className="rounded-m3-xl border border-slate-800 bg-[#121824]/60 overflow-hidden transition-all duration-200"
+                >
                   <button
                     type="button"
+                    onClick={() => toggleFaq(index)}
+                    className="w-full flex items-center justify-between p-m3-small md:p-m3-medium text-left font-semibold text-white hover:text-primary transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                     aria-expanded={isOpen}
-                    onClick={() => setActiveFaq(activeFaq === index ? null : index)}
-                    className="w-full flex justify-between items-center p-m3-medium text-title-medium font-medium text-on-surface hover:bg-surface-container-high transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
                   >
-                    <span>{faq.q}</span>
-                    <svg
-                      className={`w-5 h-5 transition-transform duration-m3-medium-1 ${isOpen ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                    <span className="text-title-small md:text-title-medium pr-m3-small">{faq.q}</span>
+                    <span
+                      className={`text-slate-400 transition-transform duration-200 text-title-medium ${
+                        isOpen ? 'rotate-180 text-primary' : ''
+                      }`}
                       aria-hidden="true"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                      &#9662;
+                    </span>
                   </button>
-                  <div
-                    className={`transition-all duration-m3-medium-1 ease-m3-standard overflow-hidden ${isOpen ? 'max-h-[200px] border-t border-outline-variant' : 'max-h-0'}`}
-                  >
-                    <p className="p-m3-medium text-body-medium text-on-surface-variant leading-relaxed">
-                      {faq.a}
-                    </p>
-                  </div>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] as const }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-m3-small md:px-m3-medium pb-m3-medium text-body-medium text-slate-300 leading-relaxed border-t border-slate-800/60 pt-m3-small">
+                          {faq.a}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
           </div>
-        </div>
+        </motion.section>
+
+        {/* Section 7: Bottom Call to Action Card */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={smoothTransition}
+          className="w-full rounded-m3-2xl p-m3-large md:p-m3-x-large bg-gradient-to-br from-[#121824] to-[#0D1520] border border-primary/30 flex flex-col items-center text-center gap-y-m3-small shadow-2xl relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-primary/5 pointer-events-none" />
+          <h2 className="text-headline-medium md:text-headline-large font-bold text-white tracking-tight max-w-[650px] relative z-10">
+            Ready to Cut Your Cloud Video Bills?
+          </h2>
+          <p className="text-body-large text-slate-300 max-w-[560px] relative z-10">
+            Get your developer API key in seconds and start shrinking media without losing picture clarity.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-m3-small mt-m3-x-small relative z-10">
+            <Link
+              href="/dashboard"
+              className="bg-primary hover:bg-[#188c43] text-white transition-all duration-200 py-m3-x-small px-m3-large rounded-m3-full text-label-large font-semibold shadow-lg hover:shadow-primary/30 active:scale-[0.98] min-w-[200px] text-center"
+            >
+              Get Free API Key
+            </Link>
+            <Link
+              href="/how-it-works"
+              className="bg-transparent hover:bg-white/5 text-slate-200 transition-colors py-m3-x-small px-m3-large rounded-m3-full text-label-large font-medium border border-slate-700 min-w-[180px] text-center"
+            >
+              Read Documentation
+            </Link>
+          </div>
+        </motion.section>
       </div>
 
       <SiteFooter />

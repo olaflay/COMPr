@@ -54,7 +54,7 @@ export function middleware(request: NextRequest) {
   // script emission, and ship the CSP itself on the response.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
-  // The request header must not carry the CSP — it would only be copied back
+  // The request header must not carry the CSP : it would only be copied back
   // out by my own handler re-setting it below; keep x-nonce only.
 
   const response = NextResponse.next({

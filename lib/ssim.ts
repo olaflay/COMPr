@@ -12,7 +12,7 @@ export interface SSIMResult {
  * SSIM sampled at fixed 2-second intervals across
  * the full duration. Source is scaled to match output resolution via
  * scale2ref for a valid comparison. The stats_file path uses a random
- * suffix to prevent any path injection — all FFmpeg args are arrays.
+ * suffix to prevent any path injection: all FFmpeg args are arrays.
  */
 export async function measureSSIM(
   sourcePath: string,

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OpenCV face and text edge detection for NoBlur adaptive engine.
+OpenCV face and text edge detection for Vecteus adaptive engine.
 
 Usage: python3 opencv_analyze.py <frame_path> [<frame_path> ...]
 

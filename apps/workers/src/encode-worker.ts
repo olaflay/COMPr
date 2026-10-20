@@ -2,16 +2,18 @@ import * as Sentry from '@sentry/node';
 import { Worker } from 'bullmq';
 import { join, extname } from 'node:path';
 import { mkdirSync, unlinkSync, existsSync } from 'node:fs';
-import { prisma } from '../lib/prisma.ts';
-import { redisConnection, mediaEncodeQueue } from '../lib/queue.ts';
-import { runPipeline, runAdaptivePipeline, processImage, processAnimatedGif, probe, fileSizeMB } from '../lib/pipeline.ts';
-import { splitVideo } from '../lib/split.ts';
+import { prisma } from '../../../lib/prisma.ts';
+import { redisConnection, mediaEncodeQueue, webhookQueue } from '../../../lib/queue.ts';
+import { runPipeline, runAdaptivePipeline, runVecteusPipeline, processImage, processAnimatedGif, probe, fileSizeMB } from '../../../lib/pipeline.ts';
+import { splitVideo } from '../../../lib/split.ts';
 import { cpus } from 'node:os';
-import { downloadObject, uploadObject } from '../server/services/storage.ts';
-import platformLimits from '../config/platform-limits.json' with { type: 'json' };
+import { downloadObject, uploadObject } from '../../../lib/storage.ts';
+import { uploadToStorageDestination } from '../../../lib/destination-storage.ts';
+import { recordTenantUsage } from '../../../lib/tenant-usage.ts';
+import platformLimits from '../../../config/platform-limits.json' with { type: 'json' };
 
-import { cleanupStaleTempFiles } from '../lib/sre-cleanup.ts';
-import { isPermanentFailure } from '../lib/error-classification.ts';
+import { cleanupStaleTempFiles } from '../../../lib/sre-cleanup.ts';
+import { isPermanentFailure } from '../../../lib/error-classification.ts';
 
 const TEMP_DIR = join(process.cwd(), 'temp');
 if (!existsSync(TEMP_DIR)) {
@@ -26,7 +28,10 @@ export const encodeWorker = new Worker(
 
     const job = await prisma.job.findUnique({
       where: { id: jobId },
-      include: { sourceFile: true },
+      include: {
+        sourceFile: true,
+        storageDestination: true,
+      },
     });
 
     if (!job || !job.sourceFile) {
@@ -67,7 +72,7 @@ export const encodeWorker = new Worker(
           : platformLimits[job.preset].maxResolution.height;
 
       // Adaptive queue-aware encoding: default to fast/cheap, only upgrade when idle.
-      // On free tiers, CPU is the scarcest resource—prioritize throughput over perfection.
+      // On free tiers, CPU is the scarcest resource: prioritize throughput over perfection.
       let cpuPreset: 'slow' | 'medium' | 'fast' = 'fast';
       let passCount: 1 | 2 = 1;
 
@@ -94,15 +99,26 @@ export const encodeWorker = new Worker(
       const runVideoPipeline = async (inputPath: string, outputDir: string) => {
         let adaptiveResult;
         try {
-          adaptiveResult = await runAdaptivePipeline({
-            inputPath,
-            outputDir,
-            targetSizeMB,
-            presetMaxHeight,
-            prioritizeDetail: job.prioritizeDetail,
-            destination: job.destination,
-            speedPresetOverride: cpuPreset,
-          });
+          if (job.tenantId) {
+            adaptiveResult = await runVecteusPipeline({
+              inputPath,
+              outputDir,
+              targetVmaf: job.targetVmaf ?? 92.0,
+              maxBitrateKbps: job.maxBitrateKbps ?? undefined,
+              segmentDurationSec: job.segmentDurationSec ?? null,
+              speedPresetOverride: cpuPreset,
+            });
+          } else {
+            adaptiveResult = await runAdaptivePipeline({
+              inputPath,
+              outputDir,
+              targetSizeMB,
+              presetMaxHeight,
+              prioritizeDetail: job.prioritizeDetail,
+              destination: job.destination,
+              speedPresetOverride: cpuPreset,
+            });
+          }
         } catch (adaptiveErr) {
           console.warn('[Encode Worker] Adaptive pipeline failed, falling back to H.264:', adaptiveErr);
           // Fallback: use legacy H.264 pipeline
@@ -117,7 +133,7 @@ export const encodeWorker = new Worker(
           });
           adaptiveResult = {
             source: legacyResult.source,
-            attempts: legacyResult.attempts.map((a) => ({
+            attempts: legacyResult.attempts.map((a: any) => ({
               attempt: a.attempt,
               profileName: 'h264_legacy',
               codec: 'libx264',
@@ -261,7 +277,7 @@ export const encodeWorker = new Worker(
       } else {
         // Run image pipeline (FR-15, PRD §15, §24).
         // An animated GIF (frame count > 1) needs the palette-aware GIF
-        // encoder to avoid banded/dithered output — a static (single-frame)
+        // encoder to avoid banded/dithered output: a static (single-frame)
         // GIF, or any other still image, goes through the regular JPEG path.
         const sourceProbe = await probe(finalInputPath);
         const isAnimatedGif = sourceProbe.codecName === 'gif' && (sourceProbe.frameCount ?? 0) > 1;
@@ -334,13 +350,55 @@ export const encodeWorker = new Worker(
         });
       }
 
-      // 3. Mark job as DONE
+      // 3. Optional Destination Storage Dispatch & Mark job as DONE
+      const sourceBytes = job.sourceFile.sizeBytes;
+      const primaryOutputBytes = outputsToCreate[0]?.sizeBytes ?? 0;
+      const savingsPercent = sourceBytes > 0 && primaryOutputBytes > 0
+        ? Math.round((1 - primaryOutputBytes / sourceBytes) * 1000) / 10
+        : null;
+
+      let destinationUri: string | null = null;
+      if (job.storageDestination && finalLocalPath && existsSync(finalLocalPath)) {
+        try {
+          const destFilename = `output_${jobId}${extname(finalLocalPath)}`;
+          const destKey = `videos/${job.id}/${destFilename}`;
+          destinationUri = await uploadToStorageDestination(
+            job.storageDestination,
+            destKey,
+            finalLocalPath
+          );
+        } catch (destErr) {
+          console.error(`[Encode Worker] Failed to dispatch to destination storage:`, destErr);
+        }
+      }
+
       await prisma.job.update({
         where: { id: jobId },
         data: {
           status: 'DONE',
           completedAt: new Date(),
+          savingsPercent,
+          outputStorageKey: destinationUri || outputsToCreate[0]?.storageKey || null,
         },
+      });
+
+      // Record tenant usage if this is a B2B tenant job
+      if (job.tenantId) {
+        try {
+          await recordTenantUsage({
+            tenantId: job.tenantId,
+            durationSec: job.sourceFile.durationSec ?? 0,
+            bytesIn: sourceBytes,
+            bytesOut: primaryOutputBytes,
+          });
+        } catch (usageErr) {
+          console.warn(`[Encode Worker] Failed to record tenant usage for job ${job.id}:`, usageErr);
+        }
+      }
+
+      // Enqueue outbound webhook dispatch
+      webhookQueue.add('webhook-dispatch', { jobId, event: 'job.completed' }).catch((err: any) => {
+        console.warn(`[Encode Worker] Failed to enqueue webhook dispatch for job ${jobId}:`, err);
       });
 
       // 4. Source file should be deleted immediately after job completion
@@ -355,6 +413,11 @@ export const encodeWorker = new Worker(
     } catch (error: any) {
       console.error(`[Encode Worker] Error processing job ${jobId}:`, error);
       Sentry.captureException(error);
+
+      // Enqueue outbound failure webhook dispatch
+      webhookQueue.add('webhook-dispatch', { jobId, event: 'job.failed' }).catch((err: any) => {
+        console.warn(`[Encode Worker] Failed to enqueue failure webhook dispatch for job ${jobId}:`, err);
+      });
 
       // Set source file retention to 1 hour grace period on failure
       if (job.sourceFile) {
@@ -405,10 +468,10 @@ export const encodeWorker = new Worker(
   },
   {
     connection: redisConnection,
-    // Scale concurrency with available CPU to maximize throughput on free/cheap tiers.
-    // Single-pass encodes are light; multiple concurrent jobs beat one heavy 2-pass encode.
-    concurrency: Math.max(1, Math.floor((cpus().length || 1) / 2)),
-    lockDuration: 60000,
+    // Throttle concurrency to max 2 to prevent container cgroup memory exhaustion (768MB limit).
+    // Transcode workloads scale horizontally across worker containers, not by overloading single nodes.
+    concurrency: Math.min(2, Math.max(1, Math.floor((cpus().length || 1) / 4))),
+    lockDuration: 300000, // 5 minutes to accommodate multi-pass encodes without stalled job loops
   }
 );
 

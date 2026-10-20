@@ -1,5 +1,5 @@
 /**
- * Intake validation — pure rules for job intake. No side effects (no prisma,
+ * Intake validation : pure rules for job intake. No side effects (no prisma,
  * no queues, no redis), so it is unit-testable without infra.
  */
 
@@ -21,7 +21,7 @@ export class IntakeValidationError extends Error {
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
 
 /**
- * Routing hint only — the authoritative media-kind check is the magic-byte
+ * Routing hint only : the authoritative media-kind check is the magic-byte
  * sniff in the analysis worker (AGENTS.md Q3 Rule 15). A lying extension
  * fails that sniff and the job ends FAILED at analysis, never mis-encoded.
  */

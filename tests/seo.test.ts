@@ -5,9 +5,9 @@ import { buildMetadata, organizationSchema, softwareApplicationSchema, faqSchema
 describe('seo.ts structured data and metadata', () => {
   it('generates the default metadata accurately', () => {
     const meta = buildMetadata();
-    assert.equal(meta.title, 'NoBlur | WhatsApp-ready photos and videos');
+    assert.equal(meta.title, 'Vecteus | Headless Media Ingestion & Perceptual Transcoding Proxy');
     assert.ok(meta.description.includes('optimize'));
-    assert.equal(meta.alternates.canonical, 'https://noblur.app');
+    assert.equal(meta.alternates.canonical, 'https://vecteus.dev');
     assert.ok(meta.icons);
     assert.equal(meta.icons.icon, '/favicon.svg');
     assert.equal(meta.icons.shortcut, '/favicon.ico');
@@ -16,31 +16,31 @@ describe('seo.ts structured data and metadata', () => {
 
   it('customizes the page title in metadata', () => {
     const meta = buildMetadata({ title: 'About Us', path: '/about' });
-    assert.equal(meta.title, 'About Us | NoBlur');
-    assert.equal(meta.alternates.canonical, 'https://noblur.app/about');
+    assert.equal(meta.title, 'About Us | Vecteus');
+    assert.equal(meta.alternates.canonical, 'https://vecteus.dev/about');
   });
 
   it('returns valid JSON-LD schemas', () => {
     const org = organizationSchema();
     assert.equal(org['@type'], 'Organization');
-    assert.equal(org.name, 'NoBlur');
+    assert.equal(org.name, 'Vecteus');
 
     const app = softwareApplicationSchema();
     assert.equal(app['@type'], 'SoftwareApplication');
-    assert.equal(app.name, 'NoBlur');
+    assert.equal(app.name, 'Vecteus');
     assert.equal((app.offers as any).price, '0');
   });
 
   it('builds a valid FAQPage schema', () => {
     const schema = faqSchema([
-      { question: 'Is NoBlur free?', answer: 'Yes, 5 free optimizations per day.' },
+      { question: 'Is Vecteus free?', answer: 'Yes, 5 free optimizations per day.' },
       { question: 'Do I need an account?', answer: 'No.' },
     ]);
     assert.equal(schema['@type'], 'FAQPage');
     const main = schema.mainEntity as Array<{ '@type': string; name: string; acceptedAnswer: { '@type': string } }>;
     assert.equal(main.length, 2);
     assert.equal(main[0]['@type'], 'Question');
-    assert.equal(main[0].name, 'Is NoBlur free?');
+    assert.equal(main[0].name, 'Is Vecteus free?');
     assert.equal(main[0].acceptedAnswer['@type'], 'Answer');
   });
 });

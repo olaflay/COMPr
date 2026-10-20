@@ -6,7 +6,7 @@
  * window.localStorage / Date.now), keeping the behavior byte-for-byte.
  */
 
-export const DISMISS_KEY = 'noblur_install_dismissed_at';
+export const DISMISS_KEY = 'vecteus_install_dismissed_at';
 // Re-prompt after this many days if the user dismissed ("Not now") before.
 export const REPROMPT_AFTER_DAYS = 7;
 

@@ -7,29 +7,29 @@ export const metadata = buildMetadata({
 
 const FAQS = [
   {
-    question: 'Does NoBlur bypass WhatsApp compression?',
+    question: 'How does Vecteus reduce our cloud bills?',
     answer:
-      'No. WhatsApp compresses every file you send. NoBlur pre-optimizes your media so it survives that compression with maximum details intact.',
+      'Vecteus automatically shrinks incoming videos by up to 75% before they are stored. Smaller files mean you pay significantly less for cloud storage and user streaming bandwidth every month.',
   },
   {
-    question: 'How is NoBlur different from other WhatsApp compressors?',
+    question: 'Does picture quality get worse when files shrink?',
     answer:
-      'Most tools only handle Status. NoBlur tunes separately for Status, Chat, and product photos, and shows you a before-and-after comparison so you can see exactly how much sharper your file is before you send.',
+      'No. Every transcode is validated by an automated perceptual quality gate (VMAF >= 90.0) before saving. Fine edges, texture details, and color fidelity are preserved.',
   },
   {
-    question: 'Is my media secure?',
+    question: 'Do user video files pass through your application servers?',
     answer:
-      'Yes. Every file you upload is automatically and permanently deleted from our servers within 24 hours.',
+      'No. Files upload directly from user devices into your own Amazon S3 or Cloudflare storage bucket using secure direct links. Your servers never get bogged down by heavy video uploads.',
   },
   {
-    question: 'Do I need to sign up?',
+    question: 'How fast can we integrate Vecteus into our app?',
     answer:
-      'No. You can start optimizing photos and videos immediately without creating an account or sharing personal info.',
+      'Most teams get up and running in under 15 minutes using our 3-line TypeScript SDK or simple REST API calls.',
   },
   {
-    question: 'Is NoBlur free to use?',
+    question: 'Which cloud storage providers do you support?',
     answer:
-      'Yes, you get 5 free optimizations every day, plus 3 more if you share NoBlur to WhatsApp. A ₦2,500/month Premium plan for unlimited use is coming soon.',
+      'Vecteus connects directly with AWS S3, Cloudflare R2, Google Cloud Storage, or any S3-compatible cloud storage bucket.',
   },
 ];
 

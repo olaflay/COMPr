@@ -13,7 +13,7 @@ export interface ProbeResult {
   colorPrimaries?: string;
   /**
    * Frame count, when ffprobe reports it (e.g. GIF). Used to distinguish a
-   * static (single-frame) GIF from an animated one — GIF duration is derived
+   * static (single-frame) GIF from an animated one : GIF duration is derived
    * from frame count x per-frame delay, not a video `duration` field the way
    * MP4 reports it, so a single-frame GIF can still carry a non-zero
    * `format.duration` and must not be mistaken for animated on that basis alone.
@@ -24,7 +24,7 @@ export interface ProbeResult {
 /**
  * ffprobe extracts duration, resolution, frame rate, codec,
  * container, audio stream info, and HDR color spaces.
- * All args passed as an array — no shell strings.
+ * All args passed as an array : no shell strings.
  */
 export async function probe(inputPath: string): Promise<ProbeResult> {
   const out = await runFfprobe([
@@ -63,7 +63,7 @@ export async function probe(inputPath: string): Promise<ProbeResult> {
   const aStream = streams.find((s: any) => s.codec_type === 'audio');
 
   // GIF's frame count (not its `duration` field) is what tells a static
-  // single-frame GIF apart from an animated one — a 1-frame GIF can still
+  // single-frame GIF apart from an animated one : a 1-frame GIF can still
   // carry a non-zero duration (e.g. one long-held frame), so duration alone
   // would misclassify it as animated/VIDEO.
   const frameCount = vStream.nb_frames ? parseInt(vStream.nb_frames, 10) : undefined;

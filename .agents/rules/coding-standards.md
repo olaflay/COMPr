@@ -2,112 +2,51 @@
 trigger: always_on
 ---
 
-Source of truth for *what* to build: `NoBlur-PRD-v1.md`. Source of truth for
-locked stack/architecture: `AGENTS.md`. This file governs code shape and
-quality only — it does not restate rules already in AGENTS.md Q5, it adds to them.
+Source of truth for technical architecture: `docs/VECTEUS-TECHNICAL-SPEC.md`. This file governs code shape, quality, and systems safety for the Vecteus infrastructure platform.
 
-## Language & typing
+## Language & Typing
 
-- TypeScript everywhere (frontend, `/lib`, `/server`, `/workers`). No implicit `any`.
-- `@ts-ignore` requires a one-line comment explaining why — an unexplained
-  suppression is treated as a bug, not a shortcut.
-- `tsc --noEmit` must pass with zero errors before a task is reported done.
+- TypeScript everywhere (`/lib`, `/server`, `/workers`). No implicit `any`.
+- `@ts-ignore` requires a one-line comment explaining why. An unexplained suppression is treated as a bug.
+- `tsc --noEmit` must pass with zero errors before any task is reported done.
 
-## Function and file shape
+## Process & Memory Sandboxing (Zero-Cost Invariant)
 
-- `/lib` functions are small, pure, and named for what they compute
-  (`calculateBitrate`, `dropOneResolutionTier`) — never generic (`process`,
-  `handle`, `doStuff`).
-- No file in `/lib` exceeds ~200 lines. Split before it becomes a "pipeline god file."
-- Every exported `/lib` function has a corresponding unit test in `/tests`,
-  mirroring the `/lib` structure 1:1. Logic without a test is incomplete work,
-  not "good enough for now."
+- Unbounded child process execution is forbidden. Every external command (`ffmpeg`, `ffprobe`, `python3`) must execute with:
+  1. An explicit timeout timer (default: 300s for video, 30s for probes).
+  2. A capped maxBuffer (maximum 10MB) to prevent Node.js buffer exhaustion.
+- FFmpeg commands must never use shell interpolation (`exec`). Always pass arguments as a structured array (`execFile` or `spawn`).
+- Process memory allocations must fit within the container cgroup memory reservation (maximum 768MB resident memory per worker). SVT-AV1 thread allocations must remain throttled (`lp=2`).
 
-## Error handling
+## Function and File Shape
 
-- All API errors return the standard envelope: `{ error: { code, message } }`
-  (PRD §18). No route invents its own error shape.
-- Error `code` values are stable, documented strings (e.g. `INVALID_PRESET`,
-  `QUOTA_EXCEEDED`) — never a raw exception message leaked to the client.
-- User-facing error copy is plain-language (PRD §25 table). Internal error
-  detail (stack traces, file paths, DB errors) never reaches the client —
-  log it to Sentry, return the generic mapped message instead.
-- FFmpeg/ffprobe failures are classified before retry logic runs: transient
-  (OOM/signal-killed) vs. permanent (invalid data/decode error) — per PRD §19.
-  Never write a retry path that treats all failures the same way.
+- `/lib` functions are small, pure, and named for what they compute (`calculateTargetBitrate`, `scoreVmafQuality`).
+- No file in `/lib` exceeds ~250 lines. Split before it becomes a bloated pipeline god file.
+- Every exported `/lib` function has a corresponding unit test in `/tests`, mirroring the `/lib` structure 1:1.
 
-## Comments
+## Error Handling & Standard Envelope
 
-- Comments explain *why*, not *what* — especially for constants tied to a PRD
-  assumption (mux overhead margin, SSIM floor, retry counts, tolerance
-  percentages). Reference the PRD section number.
-- No magic numbers for anything WhatsApp-related. Pull from
-  `config/platform-limits.json` / `PlatformLimit` — never inline a `90` or `720`.
+- All API errors return the standard envelope: `{ error: { code, message } }`. No route invents its own error shape.
+- Error `code` values are stable, documented strings (e.g. `INVALID_API_KEY`, `UNSUPPORTED_MEDIA_TYPE`, `QUOTA_EXCEEDED`).
+- Internal error details (stack traces, file system paths, database connection strings) never reach the client.
+- Media processing failures are classified before retry logic runs:
+  * Transient (OOM / signal-killed / storage 503) triggers a single retry with step-down preset.
+  * Permanent (invalid bitstream / demux error) terminates immediately with zero retries.
 
-## Environment & secrets
+## Environment & Secrets
 
-- Secrets (Flutterwave keys, R2 credentials, DB URL) are read from
-  `process.env` only, validated at boot (fail fast if missing), never
-  hardcoded, never logged, never committed.
-- Any new environment variable is called out explicitly in the task summary,
-  not silently added.
+- Secrets (API signing keys, R2/S3 credentials, database URL) are read from `process.env` only, validated at startup.
+- Never hardcode, log, or commit secret values.
 
-## Linting & formatting
+## Linting & Formatting
 
-- Prettier + ESLint run in CI. Do not hand-format around the linter, and do
-  not disable a lint rule to make a diff pass without flagging it.
+- Prettier and ESLint run in CI. Do not hand-format around the linter or disable rules without explicit authorization.
+- No em dashes or double hyphens are permitted in code comments, error messages, API descriptions, or documentation.
 
-## Detail Discipline — Visual and Interaction Craft
+## Definition of Done (Code Level)
 
-All three rules below are derived from the same principle (Linear/Stripe/Vercel
-pattern of monochrome-plus-one-accent, generous whitespace, sharp typography)
-and map directly to the existing M3 token system — they do not introduce a new
-palette or spacing scale.
-
-### 1. One saturated color per screen
-
-The existing M3 token set (PRD §12) uses the WhatsApp accent (`#25D366` /
-`#075E54`) as the primary and primary-container colors. No screen may introduce
-a second saturated color (a second accent, a bright red call-to-action, a
-distinct brand teal) without a stated PRD reason for that specific element.
-Error colors (`--md-sys-color-error`) are exempt — they are functional, not
-accent.
-
-If an agent uses a second saturated color for visual variety rather than for a
-PRD-stated function, treat that as a rule violation, not a style choice — it
-defeats the deliberate monochrome-plus-one-accent discipline that makes the
-WhatsApp accent meaningful.
-
-### 2. Spacing from the token scale only
-
-All margins, paddings, and gaps must use the design-system skill's spacing
-scale (derived from the M3 token system). If a gap "looks a little tight,"
-the fix is to go up one token step (e.g. from `p-3` to `p-4` in Tailwind,
-which maps to the M3 spacing scale) — never a one-off pixel value or a
-Tailwind arbitrary value like `p-[13px]`.
-
-This applies to every layout, every component, every screen — there is no
-"quick spacing tweak" exception.
-
-### 3. Empty states, error states, and loading states get the same craft bar
-
-Every empty state, error state, and loading state must be built with the same
-care as the primary happy-path screen. The PRD already requires these states
-to exist (FR-8 goal-gradient progress for loading states, §25's error-handling
-table for error states, §11 step 12's upsell screen for quota-exhausted
-states). This rule adds that they must also meet the same visual and
-interaction craft bar — not a bare text string, not a default browser error
-page, not a spinner slapped onto a blank background.
-
-The single most common gap between an average product and a well-crafted one
-is neglected non-happy-path screens. This rule exists to prevent that gap
-before it ships.
-
-## Definition of done (code-level)
-
-- [ ] `tsc --noEmit` passes, zero TS errors.
-- [ ] Lint passes, zero errors.
+- [ ] `tsc --noEmit` passes with zero errors.
+- [ ] `npm test` passes with zero errors.
 - [ ] Every new `/lib` function has a passing unit test.
-- [ ] No magic WhatsApp constants introduced.
-- [ ] No secret hardcoded or logged.
-- [ ] Error responses conform to the standard envelope.
+- [ ] No unbounded or shell-interpolated child process execution.
+- [ ] Error responses conform to the standard `{ error: { code, message } }` envelope.

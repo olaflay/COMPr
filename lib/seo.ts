@@ -4,10 +4,10 @@
  * description, canonical URL, Open Graph, and Twitter Card tags.
  */
 
-export const SITE_NAME = 'NoBlur';
-export const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://noblur.app';
+export const SITE_NAME = 'Vecteus';
+export const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://vecteus.dev';
 export const DEFAULT_DESCRIPTION =
-  'Pre-optimize photos and videos so they stay sharp after WhatsApp compresses them | up to 90% smaller, 5 free daily, no account needed.';
+  'Pre-optimize and transcode media with automated VMAF quality | up to 80% smaller, zero egress, developer-first.';
 
 export interface MetadataInput {
   title?: string;
@@ -54,7 +54,7 @@ export function buildMetadata({
 }: MetadataInput = {}): PageMetadata {
   const fullTitle = title
     ? `${title} | ${SITE_NAME}`
-    : `${SITE_NAME} | WhatsApp-ready photos and videos`;
+    : `${SITE_NAME} | Headless Media Ingestion & Perceptual Transcoding Proxy`;
   const url = `${BASE_URL}${path}`;
 
   return {

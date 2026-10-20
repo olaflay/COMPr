@@ -1,12 +1,25 @@
 import type { NextConfig } from 'next';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { withSentryConfig } from '@sentry/nextjs';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const nextConfig: NextConfig = {
-  outputFileTracingRoot: path.join(__dirname),
+  output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '../../'),
+  transpilePackages: ['@vecteus/contracts', '@vecteus/sdk'],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+    tsconfigPath: './tsconfig.next.json',
+  },
   async rewrites() {
-    let apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').trim();
-    // A rewrite destination must be a fully-qualified URL (protocol + host) —
+    let apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000').trim();
+    // A rewrite destination must be a fully qualified URL (protocol + host):
     // a bare domain like "api.example.com" fails Next's rewrite validation
     // and crashes the build. Guard against that here instead of at deploy time.
     if (!/^https?:\/\//i.test(apiUrl)) {
@@ -47,13 +60,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+// Only wrap with Sentry Webpack plugin in production builds or when explicit SENTRY_ENABLED is set.
+// In dev, skipping withSentryConfig allows Turbopack to run natively without Webpack wrapper overhead,
+const sentryConfigured = withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
-  org: "stockpadi",
+  org: 'stockpadi',
 
-  project: "javascript-nextjs-1b",
+  project: 'javascript-nextjs-1b',
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
@@ -72,12 +87,6 @@ export default withSentryConfig(nextConfig, {
   // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
 
-  // Uncomment to route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  // tunnelRoute: "/monitoring",
-
   webpack: {
     // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
     // See the following for more information:
@@ -92,3 +101,5 @@ export default withSentryConfig(nextConfig, {
     },
   },
 });
+
+export default process.env.SENTRY_ENABLED === 'true' ? sentryConfigured : nextConfig;

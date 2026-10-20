@@ -1,16 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
-import { Roboto } from 'next/font/google';
 import { BASE_URL, buildMetadata, organizationSchema, softwareApplicationSchema } from '../lib/seo';
 import './globals.css';
 import { PostHogProvider } from './providers';
 
-const roboto = Roboto({
-  weight: ['400', '500', '700'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-roboto',
-});
+const roboto = {
+  variable: 'font-roboto',
+};
 
 export const metadata: Metadata = {
   ...buildMetadata(),

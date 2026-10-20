@@ -1,5 +1,5 @@
 /**
- * Policy engine — maps scene analysis scores to SVT-AV1 encoding parameters.
+ * Policy engine : maps scene analysis scores to SVT-AV1 encoding parameters.
  *
  * Reads encoding profiles from config/encoding-profiles.json and selects the
  * best profile based on face, text, and motion scores from the analysis stage.
@@ -45,7 +45,7 @@ export interface EncodingPlan {
 }
 
 // --- CRF-to-Bitrate lookup (720p baseline, kbps) ---
-// Empirical starting points — tuned per Milestone validation
+// Empirical starting points : tuned per Milestone validation
 const CRF_BITRATE_MAP: Record<number, number> = {
   20: 5000,
   22: 3800,
@@ -236,7 +236,7 @@ export function selectProfile(
 
 /**
  * Build the complete FFmpeg argument array for an encoding plan.
- * All args are arrays — never shell-interpolated (AGENTS.md Q3 Rule 20).
+ * All args are arrays : never shell-interpolated (AGENTS.md Q3 Rule 20).
  */
 export function buildFFmpegArgs(
   inputPath: string,

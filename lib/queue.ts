@@ -60,3 +60,27 @@ export const mediaEncodeQueue =
 if (process.env.NODE_ENV !== 'production') {
   global.mediaEncodeQueue = mediaEncodeQueue;
 }
+
+declare global {
+  var webhookQueue: Queue | undefined;
+}
+
+export const webhookQueue =
+  global.webhookQueue ||
+  new Queue('vecteus-webhooks', {
+    connection: redisConnection,
+    defaultJobOptions: {
+      removeOnComplete: true,
+      removeOnFail: false,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 3000,
+      },
+    },
+  });
+
+if (process.env.NODE_ENV !== 'production') {
+  global.webhookQueue = webhookQueue;
+}
+

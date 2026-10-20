@@ -1,8 +1,8 @@
 import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
 import { z } from 'zod';
-import { prisma } from '../../lib/prisma.ts';
-import { hashString } from '../../lib/crypto.ts';
-import { applyOnboardingPreferences } from '../../lib/growth-ux.ts';
+import { prisma } from '../../../../lib/prisma.ts';
+import { hashString } from '../../../../lib/crypto.ts';
+import { applyOnboardingPreferences } from '../../../../lib/growth-ux.ts';
 
 const onboardingBodySchema = z.object({
   // Bound all user-supplied strings (D-7): valid values are short enum

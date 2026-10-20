@@ -45,7 +45,7 @@ export function fileSizeMB(p: string): number {
  * FFmpeg encode with computed parameters and advanced optimizations.
  * Dynamic HDR to SDR tone mapping fallback cascade, GOP alignments,
  * color sanitization, and stereo downmixing are applied.
- * All args passed as an array via execFileSync — no shell strings.
+ * All args passed as an array via execFileSync : no shell strings.
  */
 export async function encode({
   inputPath,
@@ -237,7 +237,7 @@ export async function processImage({
  *    from the actual scaled/fps-limited frame stream.
  *  - Pass 2: `paletteuse` applies that palette during the same scale/fps
  *    filter chain, with error-diffusion dithering for smoother gradients.
- * Both passes use array-based ffmpeg args — no shell strings.
+ * Both passes use array-based ffmpeg args : no shell strings.
  */
 export async function processAnimatedGif({
   inputPath,

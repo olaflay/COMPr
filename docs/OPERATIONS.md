@@ -12,8 +12,12 @@ Runbooks, health checks, scaling procedures, and troubleshooting for NoBlur in p
 ```bash
 curl -v https://<YOUR_API_HOST_URL>/health
 ```
-- **200 OK** → All systems healthy
-- **503 Service Unavailable** → Database/Redis unreachable
+- **200 OK** → All systems healthy (database, Redis, storage buckets reachable)
+- **503 Service Unavailable** → Database/Redis unreachable, or a storage bucket
+  (`TIGRIS_UPLOADS_BUCKET` / `TIGRIS_OUTPUTS_BUCKET`, defaults
+  `noblur-uploads` / `noblur-outputs`) is missing or unreachable. The response
+  body lists per-check status under `checks`: read it to see which dependency
+  failed.
 
 **Configure platform to:**
 - Check every 30 seconds
@@ -488,11 +492,11 @@ Current logic: Fast by default → acceptable quality + throughput for 1000 user
 
 ## §10. Observability (Sentry / PostHog)
 
-### Error Tracking (Sentry) — Pending Setup
+### Error Tracking (Sentry) : Pending Setup
 
-`@sentry/nextjs` and `@sentry/node` are installed as dependencies, but Sentry is **not yet initialized anywhere in the code** — there is no `Sentry.init()` call wired up. `SENTRY_DSN` / `SENTRY_AUTH_TOKEN` in `.env` currently have no effect. Wiring this up is tracked as a separate, in-progress task. Until it lands:
+`@sentry/nextjs` and `@sentry/node` are installed as dependencies, but Sentry is **not yet initialized anywhere in the code** : there is no `Sentry.init()` call wired up. `SENTRY_DSN` / `SENTRY_AUTH_TOKEN` in `.env` currently have no effect. Wiring this up is tracked as a separate, in-progress task. Until it lands:
 - Do not assume errors are being reported to Sentry.
-- Do not rely on a Sentry dashboard for the alerting rules in §3 — use application logs and the `/health` / `/api/v1/queue-stats` endpoints instead.
+- Do not rely on a Sentry dashboard for the alerting rules in §3 : use application logs and the `/health` / `/api/v1/queue-stats` endpoints instead.
 - Once initialized, the intended setup is: get a DSN from Sentry project settings, set `SENTRY_DSN`, and filter in the Sentry dashboard for FFmpeg encode errors (expected failures), database connection errors (actionable), and rate limit errors (informational).
 
 ### Set Up Product Analytics (PostHog)
@@ -525,7 +529,7 @@ curl -X POST https://app.posthog.com/capture \
 ### On-Call Runbook
 
 **Page Received:** Ping immediately
-1. Check application logs / `/health` and `/api/v1/queue-stats` for error spike or alert details (Sentry is not yet wired up — see §10)
+1. Check application logs / `/health` and `/api/v1/queue-stats` for error spike or alert details (Sentry is not yet wired up : see §10)
 2. Run health checks (§1)
 3. Check queue depth (`redis-cli LLEN bull:...`)
 4. Review logs (`docker logs <service> | tail -50`)

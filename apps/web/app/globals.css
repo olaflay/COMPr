@@ -57,7 +57,7 @@ body {
   100% { transform: translateX(100%); }
 }
 
-/* ---- Chat message arrival (home hero) ---- */
+/* Chat message arrival (home hero) */
 @keyframes message-in {
   from {
     opacity: 0;
@@ -80,8 +80,7 @@ body {
   border-radius: var(--md-sys-shape-corner-small);
 }
 
-/* Sheen sweep: transform-only animation (compositor thread, no repaint).
-   Cheaper than animating background-position on every frame. */
+/* Sheen sweep: transform-only animation on compositor thread */
 .skeleton::after {
   content: '';
   position: absolute;
@@ -102,13 +101,13 @@ body {
   }
 }
 
-/* ---- Upload drop zone active state ---- */
+/* Upload drop zone active state */
 .drop-zone-active {
   border-color: var(--md-sys-color-primary) !important;
   background-color: color-mix(in srgb, var(--md-sys-color-primary) 6%, transparent);
 }
 
-/* ---- Focus ring utility ---- */
+/* Focus ring utility */
 .focus-ring {
   outline: none;
 }
@@ -117,11 +116,49 @@ body {
   outline-offset: 2px;
 }
 
-/* ---- Reduced motion: stop fade-in ---- */
+/* Reduced motion: stop fade-in */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* Ambient Spotlight Card & Beam */
+.ambient-glow-card {
+  position: relative;
+  border-radius: 1rem;
+  overflow: hidden;
+  background-color: #0e131d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ambient-glow-card:hover {
+  border-color: rgba(97, 217, 137, 0.3);
+  box-shadow: 0 0 25px rgba(97, 217, 137, 0.08);
+}
+
+.ambient-glow-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    450px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(97, 217, 137, 0.25),
+    transparent 65%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.ambient-glow-card:hover::before {
+  opacity: 1;
 }

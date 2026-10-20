@@ -1,5 +1,5 @@
 /**
- * Job intake module — PRD §18, FR-11.
+ * Job intake module : PRD §18, FR-11.
  *
  * The deep module behind POST /api/v1/jobs. Owns target-size validation, the
  * first-job reciprocity exemption, the daily quota gate, media-kind routing,
@@ -78,7 +78,7 @@ export function createJobForFingerprint(input: CreateJobInput): Promise<JobIntak
   });
 }
 
-/** Internal async body — separated from validation so the pure rules stay testable. */
+/** Internal async body : separated from validation so the pure rules stay testable. */
 async function createJobForFingerprintValidated(input: {
   fileKey: string;
   preset: PresetValue;

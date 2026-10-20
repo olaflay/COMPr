@@ -1,22 +1,36 @@
 {
-  "name": "noblur",
+  "name": "@vecteus/core",
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "npm run dev --workspace=@vecteus/web",
+    "dev:api": "npm run dev --workspace=@vecteus/api",
+    "dev:workers": "npm run dev --workspace=@vecteus/workers",
+    "build": "npm run build --workspace=@vecteus/web",
+    "build:all": "npm run build --workspaces --if-present",
+    "start": "npm run start --workspace=@vecteus/web",
+    "start:server": "node --experimental-strip-types --env-file=.env apps/api/src/index.ts",
+    "start:workers": "node --experimental-strip-types --env-file=.env apps/workers/src/run-all.ts",
     "lint": "eslint . --fix",
+    "lint:check": "eslint .",
     "format": "prettier --write .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --build",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "check:boundaries": "node --experimental-strip-types scripts/check-boundaries.ts",
+    "verify:bundle-leakage": "node --experimental-strip-types scripts/verify-bundle-leakage.ts",
+    "verify:packaging": "node --experimental-strip-types scripts/verify-packaging.ts",
+    "verify:pipeline": "node --experimental-strip-types scripts/verify-b2b-pipeline.ts",
+    "qualify:adversarial": "node --experimental-strip-types scripts/adversarial-qualification.ts",
+    "audit:deep": "node --experimental-strip-types scripts/deep-systems-audit.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
-    "start:server": "node --experimental-strip-types --env-file=.env server/index.ts",
-    "start:workers": "node --experimental-strip-types --env-file=.env workers/run-all.ts"
+    "generate:landing-images": "node --env-file=.env scripts/generate-landing-images.mjs"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -30,12 +44,11 @@
     "@sentry/node": "^10.66.0",
     "bullmq": "^5.12.0",
     "fastify": "^5.12.1",
-    "flutterwave-node-v3": "^1.4.1",
+    "fastify-plugin": "^5.0.1",
     "ioredis": "^5.11.1",
-    "jszip": "^3.10.1",
+    "motion": "^14.4.0",
     "next": "^15.0.0",
     "posthog-js": "^1.404.1",
-    "posthog-node": "^5.45.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.4.3"

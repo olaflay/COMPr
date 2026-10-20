@@ -9,5 +9,5 @@ Allow: /how-it-works
 Disallow: /jobs/
 Disallow: /api/
 
-Sitemap: https://noblur.app/sitemap.xml
+Sitemap: https://vecteus.dev/sitemap.xml
 Crawl-delay: 1

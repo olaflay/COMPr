@@ -18,7 +18,7 @@ export default [
     plugins: { security, 'no-secrets': noSecrets },
     // Security rules aimed at the P0-1/P0-3 regression class: hardcoded
     // secrets and dangerous evaluation. Filesystem/child_process heuristics
-    // are intentionally omitted — this is a media pipeline that legitimately
+    // are intentionally omitted: this is a media pipeline that legitimately
     // uses dynamic fs paths and spawns encoders.
     rules: {
       'no-secrets/no-secrets': ['error', {

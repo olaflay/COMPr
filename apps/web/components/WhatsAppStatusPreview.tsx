@@ -9,7 +9,7 @@ interface WhatsAppStatusPreviewProps {
 }
 
 // Pull the Status duration ceiling from the single source of truth
-// (config/platform-limits.json / PlatformLimit table), never hardcode it —
+// (config/platform-limits.json / PlatformLimit table), never hardcode it :
 // WhatsApp raised it 30s -> 60s -> 90s over 2024-2026 (AGENTS.md Q5).
 const STATUS_MAX_DURATION_SEC = platformLimits.STATUS.maxDurationSec || 90;
 

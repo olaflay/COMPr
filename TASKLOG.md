@@ -1,11 +1,100 @@
-# NoBlur Deployment Readiness — Task Log
+# Vecteus Infrastructure Readiness - Task Log
 
-> Created: 2026-09-02 · Audit-driven priorities (all items trace to the full deployment audit).
-> Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
+> Pivot Milestone: 2026-10-18 | Rebranded to Vecteus (@vecteus/core) enterprise B2B media ingestion and perceptual transcoding proxy.
+> Status legend: `[ ]` not started | `[~]` in progress | `[x]` done | `[!]` blocked
 
 ---
 
-## Priority 0 — CRITICAL (fix/verify before any production deploy)
+## Vecteus Milestone 1: Enterprise B2B Ingestion Gateway [x] (DONE 2026-10-18)
+
+- **Brand & Package:** Renamed to `@vecteus/core` in `package.json`, updated `README.md`, created `docs/VECTEUS-TECHNICAL-SPEC.md` and `docs/VECTEUS-PRD.md`.
+- **Harness & Rules:** Refactored `.agents/rules/` (`coding-standards.md`, `workflow-pipeline.md`, `copy-and-claims.md`, `database-schema.md`, `security.md`) with zero em dashes, process cgroup memory budgeting, and B2B invariants.
+- **Multi-Tenant Schema:** Added `Tenant`, `ApiKey`, `StorageDestination`, `WebhookEndpoint`, `WebhookDelivery`, `TenantUsage` models in `prisma/schema.prisma`.
+- **Core Pipeline:** Added `runVecteusPipeline` in `lib/pipeline.ts` for dynamic VMAF target optimization and source dimension preservation.
+- **Headless Ingestion API:** Added `server/plugins/api-auth.ts` and `server/routes/v1/ingest.ts` (`POST /v1/ingest/presign`, `POST /v1/ingest/complete`, `GET /v1/jobs/:jobId`).
+- **Webhook Worker:** Added `workers/webhook-worker.ts` with HMAC-SHA256 signatures (`signWebhookPayload` in `lib/crypto.ts`) and integrated into `workers/run-all.ts`.
+- **Deterministic Verification:** Added `scripts/verify-b2b-pipeline.ts` and `tests/b2b-ingest.test.ts`.
+
+---
+
+## Vecteus Milestone 2: Transcoding Ladder & Storage Destination Dispatch [x] (DONE 2026-10-18)
+
+- **Storage Destination Dispatch:** Added `lib/destination-storage.ts` providing automated publishing directly to customer-owned S3 and R2 buckets via presigned multipart writes.
+- **Multi-Tenant Usage Accounting:** Added `lib/tenant-usage.ts` tracking minutes encoded, bytes in, bytes out, and job count partitioned by billing month.
+- **Worker Integration:** Wired `workers/encode-worker.ts` to execute `runVecteusPipeline` for tenant jobs, stream output to `StorageDestination`, and record `TenantUsage`.
+- **Webhook Triggering:** Wired outbound event dispatches for `job.completed` and `job.failed` with cryptographic signatures.
+- **Unit Test Coverage:** Added unit test suites `tests/destination-storage.test.ts` and `tests/tenant-usage.test.ts`.
+
+---
+
+## Vecteus Milestone 3: Scale Invariance, Worker Sandboxing & Verification [x] (DONE 2026-10-18)
+
+- **Worker Memory Sandboxing:** Bounded child process execution to 768MB resident memory reservation with SVT-AV1 thread limits (`lp=2`, lookahead 16).
+- **Error Classification:** Enforced deterministic separation of transient failures (OOM, network reset) triggering a single step-down retry vs permanent failures terminating immediately.
+- **Zero Em Dash Invariant:** Audited all documentation, comments, error messages, and tests to guarantee zero em dashes across the repository.
+- **Deterministic Verification Gate:** Verified complete suite: 158/158 unit tests passing with zero failures, `tsc --noEmit` passing with zero errors, and `verify:pipeline` passing 4/4 core invariants.
+
+---
+
+## Vecteus Milestone 4: Resilient Edge Ingestion & Error Isolation [x] (DONE 2026-10-18)
+
+- **Tenant Job Linkage:** Auto-resolved tenant identity from `X-Vecteus-Key` during ingestion presign and linked `Job.tenantId`.
+- **Ingestion Idempotency:** Guarded `POST /v1/ingest/complete` against double submission and race conditions.
+- **Error Propagation:** Wired analysis failure path to enqueue `job.failed` webhooks to notify tenant endpoints immediately.
+- **Failure Classification:** Expanded permanent failure patterns to isolate corrupted bitstreams, empty files, and missing MOOV atoms.
+
+---
+
+## Vecteus Milestone 5: Official Production B2B SDK (@vecteus/sdk) [x] (DONE 2026-10-18)
+
+- **TypeScript Client:** Created `lib/sdk.ts` exporting `VecteusClient` with full typing for ingestion presigning, one-shot stream upload, and job telemetry polling.
+- **Webhook Security:** Added timing-safe `VecteusClient.webhooks.verifySignature` utility using HMAC-SHA256.
+- **Unit Test Coverage:** Created `tests/sdk.test.ts` covering client initialization, signature validation, and tamper detection.
+
+---
+
+## Vecteus Milestone 6: Enterprise Tenant Management API [x] (DONE 2026-10-18)
+
+- **Tenant Endpoints:** Added `server/routes/v1/tenants.ts` mounted in Fastify:
+  - `POST /v1/tenants`: Create tenant profile with unique slug and monthly minute quotas.
+  - `POST /v1/tenants/:id/keys`: Issue `vct_live_` API keys storing salted SHA-256 hashes.
+  - `POST /v1/tenants/:id/destinations`: Register customer S3 and Cloudflare R2 destination storage.
+  - `POST /v1/tenants/:id/webhooks`: Register webhook endpoints with `whsec_` signing secrets.
+  - `GET /v1/tenants/:id/usage`: Retrieve billing month volume breakdown.
+- **Webhook Retry Loop:** Enhanced `workers/webhook-worker.ts` with BullMQ exponential retry on 5xx errors and persistent attempt tracking in `WebhookDelivery`.
+- **Unit Test Coverage:** Added `tests/b2b-tenants.test.ts` validating slug validation, 404 boundaries, and error envelopes.
+
+---
+
+## Vecteus Milestone 7: Production Containerization & Cloud Infrastructure [x] (DONE 2026-10-18)
+
+- **Docker Compose:** Updated `docker-compose.yml` with `@vecteus/core` standards, default bucket configurations, 768MB worker memory ceilings, and added `webhook-worker` service.
+- **Multi-Service Architecture:** Documented end-to-end multi-container deployment across API gateway, analysis workers, transcode workers, webhook workers, and cleanup cron.
+
+---
+
+## Vecteus Milestone 8: Staff-Level Adversarial Qualification & SSRF Hardening [x] (DONE 2026-10-19)
+
+- **Pathological Ingestion Suite:** Built automated qualification matrix in `tests/pathological-ingest.test.ts` testing missing MOOV atom, truncated bitstream, 10-bit YUV422P profile, VFR timing, and pure audio-only MP4 containers.
+- **SSRF Defense Engine:** Created `lib/ssrf.ts` blocking loopback (127.0.0.0/8, ::1), cloud metadata (169.254.169.254), RFC 1918 private subnets, and non-HTTP schemes. Wired directly into `server/routes/v1/tenants.ts` and `workers/webhook-worker.ts`.
+- **Permanent Failure Isolation:** Expanded `lib/error-classification.ts` to cleanly fail stream mismatches, empty video streams, and SSRF blocks with standard error envelopes without queue stall retries.
+- **Automated Adversarial Qualification Runner:** Added `scripts/adversarial-qualification.ts` (`npm run qualify:adversarial`) validating 60%+ byte reduction, closed-loop VMAF >= 90.0, and 768MB cgroup memory compliance.
+- **Deterministic Verification Gate:** All 184 unit tests passing across 42 suites, `tsc --noEmit` clean (0 errors), `npm run verify:pipeline` verified, and `check:boundaries` clean.
+
+---
+
+## Vecteus Milestone 9: Physics-Driven 60fps Interactive Developer Showcase [x] (DONE 2026-10-19)
+
+- **Live In-Browser Drop Zone:** Created `components/marketing/InteractiveDropZone.tsx` allowing visitors to drag-and-drop their own video/image or pick instant presets, simulating real-time file size reduction and rendering an interactive edge/savings heatmap without server uploads.
+- **Physics-Damped Comparison Slider:** Upgraded `components/marketing/ComparisonSlider.tsx` using the Pointer Events API with `setPointerCapture`, spring physics damping (`F = -kx - cv`), 2x detail inspection loupe, midpoint haptic feedback, and visual difference overlay.
+- **Ambient Cursor Spotlight & Ticker Telemetry:** Created ambient radial glow effects tracking cursor velocity across cards (`.ambient-glow-card`) and built rolling animated number tickers in `components/marketing/CostCalculator.tsx` using `requestAnimationFrame` ease-out interpolation.
+- **Clean Copy & Jargon-Free Communication:** Rewrote all marketing copy to be completely accessible and understandable to buyers while preserving developer-grade technical rigor.
+- **Verification Gate:** Verified `tsc --noEmit` (0 errors), `npm test` (184/184 pass), `check:boundaries` clean, and zero em dashes or double hyphens across all landing page files.
+
+---
+
+
+## Priority 0 : CRITICAL (fix/verify before any production deploy)
 
 ### P0-1 · Rotate & purge leaked Sentry auth token
 - **Finding:** `.env.sentry-build-plugin` contains a real Sentry auth token and is tracked by git (present in working tree despite `.gitignore`).
@@ -24,7 +113,7 @@
 
 ---
 
-## Priority 1 — Tigris Storage Migration
+## Priority 1 : Tigris Storage Migration
 
 Goal: replace Supabase S3-compatible storage with **Tigris** (zero egress fees, S3-compatible, globally low latency). Tigris is S3-API compatible, so the `@aws-sdk/client-s3` code path is preserved; only connection config + env vars change.
 
@@ -47,17 +136,17 @@ Goal: replace Supabase S3-compatible storage with **Tigris** (zero egress fees, 
   - `TIGRIS_UPLOADS_BUCKET`
   - `TIGRIS_OUTPUTS_BUCKET`
 - Add a compatibility shim so `SUPABASE_S3_*` still maps until both buckets are created in Tigris (optional, to avoid a hard cutover).
-- **DONE (2026-09-02):** all 6 vars swapped to `TIGRIS_*` in code, compose, `.env.example`, and deploy/ops docs. Hard cutover chosen (no shim) — real buckets must be created in Tigris before first upload. Canonical endpoint default is `https://t3.storage.dev`.
+- **DONE (2026-09-02):** all 6 vars swapped to `TIGRIS_*` in code, compose, `.env.example`, and deploy/ops docs. Hard cutover chosen (no shim) : real buckets must be created in Tigris before first upload. Canonical endpoint default is `https://t3.storage.dev`.
 
 ### T-3 · Bucket config in Tigris [~]
 - **Action (outside code):** Create `noblur-uploads` and `noblur-outputs` buckets in the Tigris console.
-- Standardize bucket name defaults — note a 3-way inconsistency exists today: `.env.example` says `compr-uploads`/`compr-outputs`, code defaults say `noblur-uploads`/`noblur-outputs`, docker-compose says `noblur-uploads`/`noblur-outputs`. Pick one (`noblur-*`) everywhere.
+- Standardize bucket name defaults : note a 3-way inconsistency exists today: `.env.example` says `compr-uploads`/`compr-outputs`, code defaults say `noblur-uploads`/`noblur-outputs`, docker-compose says `noblur-uploads`/`noblur-outputs`. Pick one (`noblur-*`) everywhere.
 - **Code part DONE (2026-09-02):** standardized to `noblur-uploads`/`noblur-outputs` everywhere (`.env.example`, compose, code defaults). **REMAINING (blocked on user):** create the two buckets in the Tigris console.
 
 ### T-4 · Path-style config check [x]
 - **File:** `server/services/storage.ts:15`
 - Currently `forcePathStyle: true` (required by Supabase). Tigris supports standard virtual-hosted-style; verify which is correct against the Tigris endpoint. Default to `forcePathStyle: false` unless the endpoint requires it.
-- **DONE (2026-09-02):** researched — Tigris requires virtual-hosted-style (`forcePathStyle: false`) and `region: "auto"` with the AWS SDK. Both set; verified by `tests/storage-tigris.test.ts`.
+- **DONE (2026-09-02):** researched : Tigris requires virtual-hosted-style (`forcePathStyle: false`) and `region: "auto"` with the AWS SDK. Both set; verified by `tests/storage-tigris.test.ts`.
 
 ### T-5 · CSP connect-src update [x]
 - **File:** `next.config.ts:22`
@@ -71,7 +160,7 @@ Goal: replace Supabase S3-compatible storage with **Tigris** (zero egress fees, 
 
 ---
 
-## Priority 2 — Deployment / Security Hardening
+## Priority 2 : Deployment / Security Hardening
 
 ### D-1 · Reduce nginx `client_max_body_size` [x]
 - **File:** `nginx/nginx.conf:52`
@@ -118,7 +207,7 @@ Goal: replace Supabase S3-compatible storage with **Tigris** (zero egress fees, 
 
 ---
 
-## Priority 3 — UI/UX & PWA Install Flow
+## Priority 3 : UI/UX & PWA Install Flow
 
 ### UX-1 · Register a service worker (required for `beforeinstallprompt`) [x]
 - **Finding:** No `sw.js` / service worker exists. `beforeinstallprompt` reliably fires only after a service worker with a `fetch` handler is registered and the installability criteria (manifest + SW + HTTPS) are met. Without it the install feature likely never shows in production.
@@ -130,14 +219,14 @@ Goal: replace Supabase S3-compatible storage with **Tigris** (zero egress fees, 
 - Behavior:
   - Listens for `beforeinstallprompt` at the app root (once), stores the deferred event.
   - Shows a **modal** with: icon, value prop ("Add NoBlur to your phone"), benefit list, primary "Install App" + secondary "Not now".
-  - "Not now" dismisses via a localStorage flag (`noblur_install_dismissed_at`) and re-prompts after 7 days — non-nagging.
+  - "Not now" dismisses via a localStorage flag (`noblur_install_dismissed_at`) and re-prompts after 7 days : non-nagging.
   - Fully accessible: `role="dialog"`, `aria-modal`, focus trap, Escape to close, `prefers-reduced-motion` respected.
   - On accept → `deferredInstallPrompt.prompt()`, tracks via `onInstalled` callback.
 - Shared across landing + dashboard (mounted once at the root).
 
 ### UX-3 · Wire install prompt into the DASHBOARD [x]
 - **File:** `app/dashboard/dashboard-client.tsx`
-- Removed the inline header chip and its own `beforeinstallprompt` listener/state — now handled by the global `InstallPromptModal`, avoiding a double prompt.
+- Removed the inline header chip and its own `beforeinstallprompt` listener/state : now handled by the global `InstallPromptModal`, avoiding a double prompt.
 
 ### UX-4 · Wire install prompt into the LANDING page [x]
 - **Files:** `app/providers.tsx`, `public/sw.js`
@@ -146,12 +235,12 @@ Goal: replace Supabase S3-compatible storage with **Tigris** (zero egress fees, 
 ### UX-5 · Route / linking audit (landing vs dashboard) [x]
 - Confirm every CTA/target is correct and error paths are graceful:
   - Landing CTAs → `/dashboard` (correct across hero, trust strip, bottom CTA, header, pricing, how-it-works).
-  - Header logo → `/` (drills back to landing) — confirm dashboard header logo also → `/`.
-  - Dashboard requires no auth (fingerprint fallback) — confirm `/dashboard` renders the upload shell even when quota/usage fails (it does via `usageLoading` skeleton + tolerant fetch).
-  - `/jobs/:id` standalone page: noindex, nofollow, ownership-gated — already intentional.
+  - Header logo → `/` (drills back to landing) : confirm dashboard header logo also → `/`.
+  - Dashboard requires no auth (fingerprint fallback) : confirm `/dashboard` renders the upload shell even when quota/usage fails (it does via `usageLoading` skeleton + tolerant fetch).
+  - `/jobs/:id` standalone page: noindex, nofollow, ownership-gated : already intentional.
   - 404/error/loading boundaries already exist (`error.tsx`, `global-error.tsx`, `not-found.tsx`, `loading.tsx`).
   - **Add:** a visible "opens app" / "open dashboard" affordance on landing (e.g. sticky header CTA already "Get Started"; consider a "Try a sample" CTA to reduce friction for cold visitors).
-- **AUDITED (2026-09-02):** all CTA targets → `/dashboard`; header + dashboard logos → `/`; `/jobs/[id]` noindex/nofollow via metadata + `X-Robots-Tag`; error/not-found/loading boundaries present. "Try a sample" already satisfied by the dashboard's `loadDemoFile` demo-photo flow — no new CTA needed.
+- **AUDITED (2026-09-02):** all CTA targets → `/dashboard`; header + dashboard logos → `/`; `/jobs/[id]` noindex/nofollow via metadata + `X-Robots-Tag`; error/not-found/loading boundaries present. "Try a sample" already satisfied by the dashboard's `loadDemoFile` demo-photo flow : no new CTA needed.
 
 ### UX-6 · Accessibility + UX polish pass [x]
 - Ensure all interactive elements have visible focus rings (M3 tokens exist).
@@ -162,14 +251,14 @@ Goal: replace Supabase S3-compatible storage with **Tigris** (zero egress fees, 
 
 ---
 
-## Priority 4 — Nice-to-have / Structural
+## Priority 4 : Nice-to-have / Structural
 
 ### N-1 · Provider-neutral naming everywhere [x]
 - Sweep remaining `R2`/`Supabase` comments in `lib/error-classification.ts`, `lib/queue.ts` comments, docs → generic "object storage" or "Tigris".
-- **DONE (2026-09-02):** `lib/error-classification.ts` → "object-storage timeouts"; `workers/analysis-worker.ts` (2 comments) → uploads bucket / storage connection; `server/services/storage.ts` (4 JSDoc comments) → uploads/outputs bucket (bucket names still reference the generic `noblur-*` convention); `workers/encode-worker.ts` → object storage; `.env.example` + `tests/error-classification.test.ts` provider-neutral. `lib/queue.ts` had no stale references. Docs referencing actual DB/infra operator decisions (Supabase Postgres, backups) left as-is — they describe real infrastructure, not code-comment naming.
+- **DONE (2026-09-02):** `lib/error-classification.ts` → "object-storage timeouts"; `workers/analysis-worker.ts` (2 comments) → uploads bucket / storage connection; `server/services/storage.ts` (4 JSDoc comments) → uploads/outputs bucket (bucket names still reference the generic `noblur-*` convention); `workers/encode-worker.ts` → object storage; `.env.example` + `tests/error-classification.test.ts` provider-neutral. `lib/queue.ts` had no stale references. Docs referencing actual DB/infra operator decisions (Supabase Postgres, backups) left as-is : they describe real infrastructure, not code-comment naming.
 
 ### N-2 · Missing SEO assets [x]
-- `og-default.jpg` referenced in `lib/seo.ts` is not in `public/` — add it.
+- `og-default.jpg` referenced in `lib/seo.ts` is not in `public/` : add it.
 - Add FAQPage JSON-LD for the FAQ section (`@type: FAQPage`).
 - Add canonical URL + OG/Twitter to `/about`, `/pricing`, `/how-it-works` (they use manual metadata today, lacking OG/Twitter/OG image).
 - **DONE (2026-09-02):** generated `public/og-default.jpg` (1200×630, brand card on M3 dark-teal gradient with NoBlur logotype + value prop); added `faqSchema()` builder in `lib/seo.ts` and rendered FAQPage JSON-LD on the marketing home page; converted `/about`, `/pricing`, `/how-it-works` to `buildMetadata(...)` so they inherit canonical URL + OG + Twitter + OG image. Added `tests/seo.test.ts` coverage for `faqSchema`.
@@ -180,7 +269,7 @@ Goal: replace Supabase S3-compatible storage with **Tigris** (zero egress fees, 
 
 ### N-4 · Test the install event path [x]
 - Add a unit test for `InstallPromptModal` logic (deferred prompt capture, dismiss flag, accept → prompt). Mock `beforeinstallprompt` (EventTarget) in jsdom.
-- **DONE (2026-09-02):** extracted the retry/dismiss decision + persistence out of the component into `lib/install-prompt.ts` (`shouldShowAgain`, `rememberDismissed`), so the logic is unit-testable without a DOM. Added `tests/install-prompt.test.ts` (5 tests: first-show, quiet-period window, hide-during-window, timestamp persistence, corrupt-value recovery). The component now consumes these helpers via a stable injected store (defaults to `window.localStorage` / `Date.now`). **Note:** the full deferred-prompt capture + accept→prompt flow (`beforeinstallprompt` EventTarget + React render) still needs a DOM test runner, which the repo's plain `node:test` setup (no jsdom/testing-library) does not have — deferred to avoid adding unrequested dependencies.
+- **DONE (2026-09-02):** extracted the retry/dismiss decision + persistence out of the component into `lib/install-prompt.ts` (`shouldShowAgain`, `rememberDismissed`), so the logic is unit-testable without a DOM. Added `tests/install-prompt.test.ts` (5 tests: first-show, quiet-period window, hide-during-window, timestamp persistence, corrupt-value recovery). The component now consumes these helpers via a stable injected store (defaults to `window.localStorage` / `Date.now`). **Note:** the full deferred-prompt capture + accept→prompt flow (`beforeinstallprompt` EventTarget + React render) still needs a DOM test runner, which the repo's plain `node:test` setup (no jsdom/testing-library) does not have: deferred to avoid adding unrequested dependencies.
 
 ### I-1 · Idempotent job intake (retry-safe `POST /api/v1/jobs`) [x]
 - A client retry after a lost success response used to re-hit `FILE_ALREADY_PROCESSED` (400), making the client think a successfully-processed upload failed and re-upload it unnecessarily.
@@ -193,20 +282,51 @@ Goal: replace Supabase S3-compatible storage with **Tigris** (zero egress fees, 
 
 ---
 
+## SRE Reliability Pass (2026-09-18): research-backed
+
+Applied against Google SRE book (sre.google/books), BullMQ graceful shutdown guide
+(docs.bullmq.io/guide/workers/graceful-shutdown: "listen for both SIGINT and SIGTERM
+to close gracefully", `worker.close()` waits for active jobs), Twelve-Factor
+Disposability, and the MIT production-ready checklist (health must validate every
+dependency, 503 on failure).
+
+### SRE-1 · Graceful shutdown for API server [x]
+- **Gap:** `SIGTERM` killed the Fastify server mid-request; Redis connection and Prisma pool torn down abruptly.
+- **Done:** `lib/lifecycle.ts`: `createShutdownCoordinator(deps)` + `registerGracefulShutdown(deps)`, injected `signals/onShutdown/timeoutMs(30s)/log/exit/on`. First signal drains, repeat signal forces `exit(1)`, drain timeout forces `exit(1)`, clean drain `exit(0)`. `server/index.ts` wiring: `app.close()` → `redisConnection.quit()` → `prisma.$disconnect()`. `DRAIN_TIMEOUT_MS` env override. 4 unit tests in `tests/lifecycle.test.ts`, all green.
+
+### SRE-2 · Graceful shutdown for workers [x]
+- **Gap:** killing the worker process risked stalled jobs; BullMQ needs `worker.close()` so active jobs finish / stalled detection can re-queue.
+- **Done:** `workers/cleanup-cron.ts` exports `stopCleanupLoop()`; `workers/run-all.ts` shutdown path stops the cron, `Promise.allSettled([analysisWorker.close(), encodeWorker.close()])`, then `redisConnection.quit()` + `prisma.$disconnect()`. `WORKER_DRAIN_TIMEOUT_MS` env override. Long encodes can raise it from the 30s default.
+
+### SRE-3 · Health endpoint validates storage [x]
+- **Gap:** `/health` reported healthy even when uploads/outputs buckets were unreachable: a silent download/shared-link outage.
+- **Done:** `server/routes/health.ts` runs `HeadBucketCommand` against `TIGRIS_UPLOADS_BUCKET` and `TIGRIS_OUTPUTS_BUCKET` (defaults `noblur-uploads`/`noblur-outputs`); any failure → 503 with per-check detail under `checks`. `docs/OPERATIONS.md` §1 updated.
+
+### SRE-4 · CI gates: lint + build [x]
+- **Gap:** CI ran tests only; lint and `next build` were never machine-checked on push.
+- **Done:** `package.json` `lint:check` script (`eslint .`, no `--fix`); `.github/workflows/ci.yml` adds a Lint step and a `build` job. Both verified locally: `lint:check` 0 errors, `next build` passes (9 routes + sitemap, middleware 96.7 kB).
+
+### SRE-5 · npm audit [x]
+- fflate (moderate) fixed via non-breaking `npm audit fix`; 5 → 4 vulns. Remaining `joi` (flutterwave-node-v3) + `postcss` (next) need breaking upgrades: tracked under "Deferred / Blocked", item 11 (above). Do not force-downgrade mid-milestone.
+
+**Verify-on-next-release:** `DRAIN_TIMEOUT_MS` / `WORKER_DRAIN_TIMEOUT_MS` documented in `.env.example`; all checks green (148/148, typecheck, lint:check, boundaries, build).
+
+---
+
 ## Deployment Checklist (final gate)
 
 - [x] P0-3 resolved (CRYPTO_SALT mandatory in prod, tested)
-- [~] P0-1 (rotate Sentry auth token — manual; verified no `sntrys_` in git history, file untracked) · [x] P0-2 (Sentry double-init)
+- [~] P0-1 (rotate Sentry auth token : manual; verified no `sntrys_` in git history, file untracked) · [x] P0-2 (Sentry double-init)
 - [~] T-1..T-6 done in code; **T-3 real Tigris buckets + round-trip verify pending** (needs user's Tigris creds)
 - [x] D-1 .. D-8 done (all landed + verified this session)
 - [x] N-3 security ESLint plugins (lint clean)
 - [x] UX-1 .. UX-6 done (install flow + audit)
-- [x] `npm test` green (**140/140**), `tsc --noEmit` clean, `eslint` clean (0 errors), `check:boundaries` passes
+- [x] `npm test` green (**148/148**), `tsc --noEmit` clean, `eslint` clean (0 errors), `check:boundaries` passes
 - [x] I-1 idempotent job intake (retry-safe `POST /api/v1/jobs`; same-owner retry returns existing job, cross-owner rejected 403, no quota leak)
-- [x] `next build` passes reliably — **fix: Sentry source-map upload was hanging builds; now opt-in via `SENTRY_SOURCE_MAPS=1`** (`next.config.ts` `sourcemaps.disable`)
+- [x] `next build` passes reliably : **fix: Sentry source-map upload was hanging builds; now opt-in via `SENTRY_SOURCE_MAPS=1`** (`next.config.ts` `sourcemaps.disable`)
 - [x] CSP nonce verified at runtime (`next start` + curl: nonced script-src, no unsafe-inline)
-- [~] Docker images build (web/api/worker), compose health checks pass — **blocked on environment here**: Docker CLI present but Docker Desktop/engine not running on this machine, and runtime `compose up` additionally needs `POSTGRES_PASSWORD`/`REDIS_PASSWORD`. Verify on a Docker-enabled host.
-- [x] Secrets: none committed — verified 2026-09-02; `.env` + `.env.sentry-build-plugin` git-ignored (untracked), `.env.example` is the template, no `sntrys_` token in git history, DSN env-driven only (`instrumentation.ts`; no hardcoded DSN in source)
+- [~] Docker images build (web/api/worker), compose health checks pass : **blocked on environment here**: Docker CLI present but Docker Desktop/engine not running on this machine, and runtime `compose up` additionally needs `POSTGRES_PASSWORD`/`REDIS_PASSWORD`. Verify on a Docker-enabled host.
+- [x] Secrets: none committed : verified 2026-09-02; `.env` + `.env.sentry-build-plugin` git-ignored (untracked), `.env.example` is the template, no `sntrys_` token in git history, DSN env-driven only (`instrumentation.ts`; no hardcoded DSN in source)
 
 ---
 
@@ -214,14 +334,14 @@ Goal: replace Supabase S3-compatible storage with **Tigris** (zero egress fees, 
 
 > **All of these are tracked, with copy-paste instructions, in [`docs/PENDING-TASKS.md`](docs/PENDING-TASKS.md).**
 
-1. **P0-1 — Rotate leaked Sentry auth token** in the Sentry dashboard (no git purge needed; file is untracked).
-2. **T-3 — Create `noblur-uploads` and `noblur-outputs` buckets** in the Tigris console; fill `TIGRIS_ACCESS_KEY_ID` / `TIGRIS_SECRET_ACCESS_KEY` + a strong `CRYPTO_SALT` in `.env`.
-3. **T-6 — Manual round-trip** (upload → process → download) against real Tigris creds.
-4. **D-2 — `POSTGRES_PASSWORD` / `REDIS_PASSWORD`** must be set for `docker compose up` (new required vars).
-5. **P0-2 — Sentry double-init** — resolved 2026-09-02 (deleted duplicate config files; `instrumentation.ts` is the sole init path).
-6. **N-1 — Provider-neutral naming sweep** — resolved 2026-09-02 (code comments + `.env.example` + test swept; docs describing real DB/backup infra left as-is).
-7. **N-2 — SEO assets** — resolved 2026-09-02 (`og-default.jpg` added to `public/`; FAQPage JSON-LD on home page; `/about`, `/pricing`, `/how-it-works` now use `buildMetadata` with canonical + OG/Twitter + OG image).
-8. **N-4 — InstallPromptModal unit test** — retry/dismiss logic now tested via extracted `lib/install-prompt.ts` (5 tests). The deferred-prompt capture/accept→prompt React flow still needs a DOM test runner (jsdom/testing-library) not present in the repo; adding it is out of scope for the current pass.
-9. **D-6 sliding-window option** — fixed-window implemented; ZSET sliding window intentionally not built (documented tradeoff).
-10. **D-5 tradeoff note** — nonce CSP turns previously-static pages dynamic (per-request nonce). Acceptable; flag if static rendering is later required.
-11. **npm audit** reports 12 vulnerabilities (3 moderate, 9 high) — review before deploy.
+1. **P0-1 : Rotate leaked Sentry auth token** in the Sentry dashboard (no git purge needed; file is untracked).
+2. **T-3 : Create `noblur-uploads` and `noblur-outputs` buckets** in the Tigris console; fill `TIGRIS_ACCESS_KEY_ID` / `TIGRIS_SECRET_ACCESS_KEY` + a strong `CRYPTO_SALT` in `.env`.
+3. **T-6 : Manual round-trip** (upload → process → download) against real Tigris creds.
+4. **D-2 : `POSTGRES_PASSWORD` / `REDIS_PASSWORD`** must be set for `docker compose up` (new required vars).
+5. **P0-2 : Sentry double-init** : resolved 2026-09-02 (deleted duplicate config files; `instrumentation.ts` is the sole init path).
+6. **N-1 : Provider-neutral naming sweep** : resolved 2026-09-02 (code comments + `.env.example` + test swept; docs describing real DB/backup infra left as-is).
+7. **N-2 : SEO assets** : resolved 2026-09-02 (`og-default.jpg` added to `public/`; FAQPage JSON-LD on home page; `/about`, `/pricing`, `/how-it-works` now use `buildMetadata` with canonical + OG/Twitter + OG image).
+8. **N-4 : InstallPromptModal unit test** : retry/dismiss logic now tested via extracted `lib/install-prompt.ts` (5 tests). The deferred-prompt capture/accept→prompt React flow still needs a DOM test runner (jsdom/testing-library) not present in the repo; adding it is out of scope for the current pass.
+9. **D-6 sliding-window option** : fixed-window implemented; ZSET sliding window intentionally not built (documented tradeoff).
+10. **D-5 tradeoff note** : nonce CSP turns previously-static pages dynamic (per-request nonce). Acceptable; flag if static rendering is later required.
+11. **npm audit**: was 12 vulnerabilities (3 moderate, 9 high). **2026-09-18:** fflate fixed with non-breaking `npm audit fix` → **4 remain** (3 moderate, 1 high: `joi` via `flutterwave-node-v3`, `postcss` via `next`). Both fixes are breaking (`npm audit fix --force` would drop `flutterwave-node-v3` to v1.3.0 and jump `next` to v16). Tracked; resolve together with the next major upgrade, not as a forced downgrade mid-milestone.

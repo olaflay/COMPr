@@ -9,7 +9,7 @@ const contactBodySchema = z.object({
 });
 
 const contactRoutes: FastifyPluginAsyncZod = async (app) => {
-  // POST /api/v1/contact — Receive support or contact messages
+  // POST /api/v1/contact : Receive support or contact messages
   app.post(
     '/api/v1/contact',
     {

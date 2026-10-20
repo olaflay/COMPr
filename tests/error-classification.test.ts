@@ -6,7 +6,11 @@ describe('Error Classification SRE utility', () => {
   test('should classify invalid format errors as permanent', () => {
     assert.equal(isPermanentFailure('Magic-byte validation failed: expected VIDEO'), true);
     assert.equal(isPermanentFailure('No media stream found in the source file'), true);
+    assert.equal(isPermanentFailure('No video stream present in container'), true);
+    assert.equal(isPermanentFailure('Stream map "0:v" matches no streams'), true);
+    assert.equal(isPermanentFailure('Output file does not contain any stream'), true);
     assert.equal(isPermanentFailure('Invalid data found when processing input'), true);
+    assert.equal(isPermanentFailure('SSRF_BLOCKED: Destination IP is private or blocked'), true);
   });
 
   test('should classify configuration/argument errors as permanent', () => {

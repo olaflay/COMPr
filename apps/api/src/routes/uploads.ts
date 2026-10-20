@@ -1,7 +1,7 @@
 import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
 import { z } from 'zod';
 import { extname } from 'node:path';
-import { prisma } from '../../lib/prisma.ts';
+import { prisma } from '../../../../lib/prisma.ts';
 import { getPresignedUploadUrl, startMultipartUpload, getPresignedPartUploadUrl, completeMultipartUpload } from '../services/storage.ts';
 
 // Server-side MIME whitelist (PRD §23 / D-3), kept in sync with the

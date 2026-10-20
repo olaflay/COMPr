@@ -20,7 +20,8 @@ COPY prisma/ ./prisma/
 RUN npx prisma generate
 
 # Copy application source files
-COPY server/ ./server/
+COPY apps/api/ ./apps/api/
+COPY packages/ ./packages/
 COPY lib/ ./lib/
 COPY config/ ./config/
 COPY tsconfig.json ./tsconfig.json
@@ -34,4 +35,4 @@ EXPOSE 5000
 
 ENV PORT=5000
 
-CMD ["node", "--experimental-strip-types", "server/index.ts"]
+CMD ["node", "--experimental-strip-types", "apps/api/src/index.ts"]

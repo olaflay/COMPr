@@ -1,5 +1,5 @@
 /**
- * VMAF quality verification — adaptive engine quality gate.
+ * VMAF quality verification: adaptive engine quality gate.
  *
  * Runs VMAF on sampled keyframes (1 per 2 seconds, adaptive-engine.md Rule 3)
  * using the pre-compiled VMAF model. Triggers a single re-encode fallback with
@@ -11,7 +11,7 @@
  * identical encode and never improve a failing score. The floor here is the
  * practical visual-lossless limit for x264 (14), not the profile start point.
  *
- * All FFmpeg args are arrays — never shell-interpolated (AGENTS.md Q3 Rule 20).
+ * All FFmpeg args are arrays: never shell-interpolated (AGENTS.md Q3 Rule 20).
  */
 
 import { readFileSync, unlinkSync, existsSync } from 'node:fs';
@@ -23,7 +23,7 @@ import { runFfmpeg } from './media-process.ts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// VMAF model path — bundled in repo per deployment decision
+// VMAF model path: bundled in repo per deployment decision
 const DEFAULT_MODEL_PATH = join(__dirname, '..', 'models', 'vmaf_v0.6.1.json');
 
 /** VMAF floor below which a re-encode is triggered (debate decision). */
@@ -107,7 +107,7 @@ async function probeVmafInvocation(modelPath: string): Promise<VmafInvocation | 
   }
 
   probeFailed = true;
-  console.error('[VMAF] No working VMAF invocation found — quality gate will report unverified.');
+  console.error('[VMAF] No working VMAF invocation found: quality gate will report unverified.');
   return null;
 }
 
@@ -140,7 +140,7 @@ export async function measureVmaf(
 
   const invocation = await probeVmafInvocation(resolvedModelPath);
   if (!invocation) {
-    // Measurement tool genuinely unavailable — never fabricate a pass.
+    // Measurement tool genuinely unavailable: never fabricate a pass.
     return { avgVmaf: null, minVmaf: null, sampleCount: 0, passed: false, verified: false };
   }
 
@@ -178,7 +178,7 @@ export async function measureVmaf(
     return parseVmafLog(logPath, sourceFps);
   } catch (err: any) {
     console.error('[VMAF] Measurement failed:', err.message);
-    // Never fabricate a pass on measurement failure — report unverified so
+    // Never fabricate a pass on measurement failure: report unverified so
     // the quality gate cannot pass on a number that was never measured.
     return { avgVmaf: null, minVmaf: null, sampleCount: 0, passed: false, verified: false };
   } finally {
@@ -243,7 +243,7 @@ export function qualityGate(
     return {
       shouldReencode: false,
       vmafResult,
-      reason: 'VMAF measurement unavailable — quality unverified, SSIM gate only',
+      reason: 'VMAF measurement unavailable: quality unverified, SSIM gate only',
     };
   }
 

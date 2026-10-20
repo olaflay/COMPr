@@ -1,8 +1,8 @@
 import { Worker, type Job as BullJob } from 'bullmq';
-import { redisConnection } from '../lib/queue.ts';
-import { prisma } from '../lib/prisma.ts';
-import { signWebhookPayload } from '../lib/crypto.ts';
-import { validateWebhookUrl } from '../lib/ssrf.ts';
+import { redisConnection } from '../../../lib/queue.ts';
+import { prisma } from '../../../lib/prisma.ts';
+import { signWebhookPayload } from '../../../lib/crypto.ts';
+import { validateWebhookUrl } from '../../../lib/ssrf.ts';
 
 export interface WebhookJobData {
   jobId: string;
@@ -38,7 +38,7 @@ export const webhookWorker = new Worker<WebhookJobData>(
       return;
     }
 
-    const webhooks = job.tenant.webhooks.filter((w) => w.events.includes(event));
+    const webhooks = job.tenant.webhooks.filter((w: any) => w.events.includes(event));
     if (webhooks.length === 0) {
       console.log(`[WebhookWorker] No active webhook endpoints registered for event ${event}`);
       return;
@@ -103,8 +103,13 @@ export const webhookWorker = new Worker<WebhookJobData>(
             'X-Vectis-Timestamp': timestamp,
           },
           body: payloadString,
+          redirect: 'manual', // Enforce no automatic redirect to prevent SSRF bypass
           signal: AbortSignal.timeout(10000), // 10s timeout
         });
+
+        if (response.status >= 300 && response.status < 400) {
+          throw new Error(`Webhook endpoint attempted an unsafe redirect (HTTP ${response.status})`);
+        }
 
         await prisma.webhookDelivery.create({
           data: {

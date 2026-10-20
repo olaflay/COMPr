@@ -24,7 +24,7 @@ describe('rate-limit plugin', () => {
   before(async () => {
     // Dynamic import to ensure monkey-patched constructors are utilized
     queueModule = await import('../lib/queue.ts');
-    rateLimitPlugin = (await import('../server/plugins/rate-limit.ts')).default;
+    rateLimitPlugin = (await import('../apps/api/src/plugins/rate-limit.ts')).default;
     hashString = (await import('../lib/crypto.ts')).hashString;
 
     // Intercept redis functions to ensure unit tests run in isolation without requiring live Redis

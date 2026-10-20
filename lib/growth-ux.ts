@@ -85,7 +85,7 @@ export function buildUpsellCopy({
   const lossLine =
     jobsBlockedThisMonth > 0
       ? `You don get ${jobsBlockedThisMonth} file${jobsBlockedThisMonth === 1 ? '' : 's'} this month wey no fit optimize once you hit today limit, and dem send at lower quality than dem for don be.`
-      : `Once you hit today free limit, any more files wey you send today go go out without NoBlur optimization.`;
+      : `Once you hit today free limit, any more files wey you send today go go out without Vecteus optimization.`;
 
   return {
     anchorLine: lossLine,

@@ -1,5 +1,5 @@
 /**
- * Daily quota & reciprocity rules — PRD FR-11, §27.
+ * Daily quota & reciprocity rules : PRD FR-11, §27.
  *
  * The single owner of the free-daily-limit, the WhatsApp share bonus, and
  * today's UsageRecord accessors. Previously these were duplicated across

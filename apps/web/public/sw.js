@@ -1,5 +1,5 @@
 /**
- * NoBlur service worker.
+ * Vecteus service worker.
  *
  * This worker exists primarily to satisfy the browser's PWA installability
  * criteria (an activated service worker with a fetch handler is required for
@@ -8,7 +8,7 @@
  * the app shell stays fast without caching personalized/dynamic API data.
  */
 
-const CACHE_NAME = 'noblur-shell-v1';
+const CACHE_NAME = 'vecteus-shell-v1';
 
 /* App shell routes we are safe to cache (static marketing/app frames). */
 const SHELL_ROUTES = ['/', '/pricing', '/how-it-works', '/about', '/dashboard'];

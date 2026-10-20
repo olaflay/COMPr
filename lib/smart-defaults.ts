@@ -1,5 +1,5 @@
 /**
- * Smart Defaults — PRD FR-2, §12.
+ * Smart Defaults : PRD FR-2, §12.
  *
  * Pre-selects the most likely-correct preset based on the media's own
  * characteristics, showing it as an already-selected chip the user can
