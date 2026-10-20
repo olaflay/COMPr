@@ -9,10 +9,10 @@ const __dirname = dirname(__filename);
 
 const compat = new FlatCompat({ baseDirectory: __dirname });
 
-export default [
+const eslintConfig = [
   ...compat.extends('next/core-web-vitals'),
   {
-    ignores: ['.next/**', 'dist/**', 'node_modules/**', 'pgsql/**'],
+    ignores: ['**/.next/**', '**/dist/**', '**/node_modules/**', 'pgsql/**'],
   },
   {
     plugins: { security, 'no-secrets': noSecrets },
@@ -30,3 +30,5 @@ export default [
     },
   },
 ];
+
+export default eslintConfig;
